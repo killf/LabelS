@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 import { Form } from 'antd';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 
 export const TabForm = styled(FlexLayout)`
   padding: 1rem;

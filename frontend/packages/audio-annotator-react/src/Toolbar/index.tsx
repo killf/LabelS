@@ -1,15 +1,15 @@
-import { Toolbar, Tooltip, Kbd, HotkeyPanel } from '@labelu/components-react';
+import { Toolbar, Tooltip, Kbd, HotkeyPanel } from '@labels/components-react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import type { VideoAnnotationType } from '@labelu/interface';
+import type { VideoAnnotationType } from '@labels/interface';
 import styled from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
-import { ReactComponent as SegmentIcon } from '@/assets/icons/segment.svg';
-import { ReactComponent as FrameIcon } from '@/assets/icons/frame.svg';
-import { ReactComponent as CursorIcon } from '@/assets/icons/cursor.svg';
-import { useTool } from '@/context/tool.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { useHistoryCtx } from '@/context/history.context';
+import { ReactComponent as SegmentIcon } from '../assets/icons/segment.svg';
+import { ReactComponent as FrameIcon } from '../assets/icons/frame.svg';
+import { ReactComponent as CursorIcon } from '../assets/icons/cursor.svg';
+import { useTool } from '../context/tool.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { useHistoryCtx } from '../context/history.context';
 
 import hotkeysConst from './hotkeys.const';
 

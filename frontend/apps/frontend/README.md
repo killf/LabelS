@@ -1,27 +1,12 @@
-# Development Guide
+# LabelS 管理与标注页面
 
-## Setup development environment
-
-### Setup latest backend server
-
-search labelu in [Test Pypi](https://test.pypi.org/), to find the right version for installation.
+在 `frontend/` 工作区安装和运行：
 
 ```bash
-# change version '0.1.220' to the version you need.
-pip install -i https://test.pypi.org/simple/ labelu==1.0.6a5
-labelu --help
-labelu --port 8000
+pnpm --config.strictDepBuilds=false install --frozen-lockfile --ignore-scripts
+pnpm --filter @labels/frontend run postinstall
+pnpm --filter @labels/frontend start --host 127.0.0.1
+pnpm build:frontend
 ```
 
-### Setup frontend environment
-
-```bash
-npm install
-
-# edit proxy configuration in need.
-vim vite.config.js
-
-npm run start
-
-open http://localhost:3000/
-```
+开发页面使用 3004 端口，API 与 WebSocket 代理至 `127.0.0.1:8002`。后端启动、存储配置和参考项目见[根 README](../../../README.md)。

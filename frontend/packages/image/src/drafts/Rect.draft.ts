@@ -2,8 +2,8 @@ import cloneDeep from 'lodash.clonedeep';
 import type { BBox } from 'rbush';
 import Color from 'color';
 
-import uid from '@/utils/uid';
-import { EInternalEvent } from '@/enums';
+import uid from '../utils/uid';
+import { EInternalEvent } from '../enums';
 
 import { Rect, type RectStyle } from '../shapes/Rect.shape';
 import { AnnotationRect, type RectData } from '../annotations';

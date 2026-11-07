@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import uid from '@/utils/uid';
-import { VALID_RELATION_TOOLS } from '@/constant';
+import uid from '../utils/uid';
+import { VALID_RELATION_TOOLS } from '../constant';
 
 import type { LineStyle } from '../shapes/Line.shape';
 import { Line } from '../shapes/Line.shape';

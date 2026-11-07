@@ -4,8 +4,8 @@ import { compose, get, isEqual, size } from 'lodash/fp';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import { ReactComponent as AddCategoryIcon } from '@/assets/add-category.svg';
 import { ReactComponent as AddTextIcon } from '@/assets/add-text.svg';

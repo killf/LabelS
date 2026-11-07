@@ -1,4 +1,4 @@
-import { config } from '@/singletons/annotationConfig';
+import { config } from '../singletons/annotationConfig';
 
 import { EInternalEvent } from '../enums';
 import { axis, eventEmitter, rbush } from '../singletons';

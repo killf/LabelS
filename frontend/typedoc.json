@@ -1,9 +1,8 @@
 {
   "entryPoints": ["packages/*"],
-  "name": "LabelU Kit",
+  "name": "LabelS Components",
   "navigationLinks": {
-    "LabelU": "https://opendatalab.github.io/labelU/",
-    "OpenDataLab": "https://opendatalab.com/"
+    "LabelS": "https://github.com/killf/LabelS#readme"
   },
   "entryPointStrategy": "packages",
   "includeVersion": true

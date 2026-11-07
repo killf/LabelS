@@ -1,13 +1,14 @@
-# @labelu/image-annotator-react
+# @labels/image-annotator-react
 
-[![npm](https://img.shields.io/npm/v/%40labelu/image-annotator-react.svg)](https://www.npmjs.com/package/@labelu/image-annotator-react)
+> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
+
 
 ## Installation
 
 ```bash
-npm install @labelu/image-annotator-react
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
 ## Usage
 
-see [example](https://opendatalab.github.io/labelU-Kit/)
+see [example](https://github.com/killf/LabelS#readme)

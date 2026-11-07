@@ -1,8 +1,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { Button } from 'antd';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import { TaskStatus } from '@/api/types';
 

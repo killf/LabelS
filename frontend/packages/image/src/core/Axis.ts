@@ -1,7 +1,7 @@
 import type { BBox } from 'rbush';
 
-import { cursorManager } from '@/singletons/cursorManager';
-import { config } from '@/singletons/annotationConfig';
+import { cursorManager } from '../singletons/cursorManager';
+import { config } from '../singletons/annotationConfig';
 
 import type { AxisPoint } from '../shapes/Point.shape';
 import { Ticker } from './Ticker';

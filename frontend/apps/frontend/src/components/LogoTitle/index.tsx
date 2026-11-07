@@ -1,6 +1,6 @@
 import styled from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
-import { FlexLayout } from '@labelu/components-react';
+import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@labels/components-react';
 
 import { ReactComponent as Logo } from '@/assets/svg/LOGO.svg';
 
@@ -15,8 +15,8 @@ const LogoTitle = () => {
     <FlexLayout flex="column" items="center" gap="1rem">
       <Logo />
       <Description>
-        <div>{t('labelUDescription')}</div>
-        <div>{t('labelUKeywords')}</div>
+        <div>{t('labelSDescription')}</div>
+        <div>{t('labelSKeywords')}</div>
       </Description>
     </FlexLayout>
   );

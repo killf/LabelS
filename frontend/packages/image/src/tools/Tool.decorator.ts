@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import { ControllerPoint } from '@/drafts/ControllerPoint';
-import { ControllerEdge } from '@/drafts/ControllerEdge';
+import { ControllerPoint } from '../drafts/ControllerPoint';
+import { ControllerEdge } from '../drafts/ControllerEdge';
 
 import { axis, eventEmitter, monitor } from '../singletons';
 import { EInternalEvent } from '../enums';

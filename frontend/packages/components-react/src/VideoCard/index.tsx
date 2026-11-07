@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import type { CSSObject } from 'styled-components';
 import styled from 'styled-components';
 
-import { secondsToMinute } from '@/utils';
+import { secondsToMinute } from '../utils';
 
 import MediaError from './Error';
 import { ReactComponent as PlayIcon } from './play.svg';
@@ -36,7 +36,7 @@ export interface StyledVideoProps {
   onMouseLeave?: (e: React.MouseEvent) => void;
 }
 
-const videoClassName = 'labelu-video-card';
+const videoClassName = 'labels-video-card';
 
 const VideoWrapper = styled.div`
   padding: 0 1rem;

@@ -2,7 +2,7 @@ import { SwapOutlined } from '@ant-design/icons';
 import { Tag } from 'antd';
 import { useCallback, useState } from 'react';
 import styled from 'styled-components';
-import { i18n } from '@labelu/i18n';
+import { i18n } from '@labels/i18n';
 
 export interface TagSwitcherProps {
   value?: boolean;

@@ -1,18 +1,18 @@
 import { useState, createRef, useMemo, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import _ from 'lodash-es';
 import { Empty, Spin, message } from 'antd';
-import { Annotator } from '@labelu/video-annotator-react';
-import type { AudioAndVideoAnnotatorRef } from '@labelu/audio-annotator-react';
-import { Annotator as AudioAnnotator } from '@labelu/audio-annotator-react';
+import { Annotator } from '@labels/video-annotator-react';
+import type { AudioAndVideoAnnotatorRef } from '@labels/audio-annotator-react';
+import { Annotator as AudioAnnotator } from '@labels/audio-annotator-react';
 import { useSearchParams, useParams, useRouteLoaderData } from 'react-router-dom';
 import { Bridge } from 'iframe-message-bridge';
-import type { ImageAnnotatorProps, AnnotatorRef as ImageAnnotatorRef } from '@labelu/image-annotator-react';
-import { Annotator as ImageAnnotator } from '@labelu/image-annotator-react';
+import type { ImageAnnotatorProps, AnnotatorRef as ImageAnnotatorRef } from '@labels/image-annotator-react';
+import { Annotator as ImageAnnotator } from '@labels/image-annotator-react';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
-import { FlexLayout } from '@labelu/components-react';
-import type { ToolName } from '@labelu/image';
-import type { ILabel } from '@labelu/interface';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import type { ToolName } from '@labels/image';
+import type { ILabel } from '@labels/interface';
+import { useTranslation } from '@labels/i18n';
 
 import { MediaType, SampleState, type SampleResponse } from '@/api/types';
 import { useScrollFetch } from '@/hooks/useScrollFetch';
@@ -130,7 +130,7 @@ const AnnotationPage = () => {
   const [currentSampleConns, taskConns] = useSampleWs();
   const isMeTheCurrentEditingUser = currentSampleConns?.[0]?.user_id === me.data?.id;
 
-  // TODO： labelu/image中的错误定义
+  // TODO： labels/image中的错误定义
   const onError = useCallback(
     (err: any) => {
       const value = err.value;
@@ -187,9 +187,9 @@ const AnnotationPage = () => {
   const [samples = [] as SampleResponse[], loading, setSamples, svc] = useScrollFetch(
     fetchSamples,
     () =>
-      document.querySelector('.labelu-image__sidebar div') ||
-      document.querySelector('.labelu-audio__sidebar div') ||
-      document.querySelector('.labelu-video__sidebar div'),
+      document.querySelector('.labels-image__sidebar div') ||
+      document.querySelector('.labels-audio__sidebar div') ||
+      document.querySelector('.labels-video__sidebar div'),
     {
       isEnd: () => totalCount === samples.length || serverPage === Math.ceil(totalCount / PAGE_SIZE),
     },

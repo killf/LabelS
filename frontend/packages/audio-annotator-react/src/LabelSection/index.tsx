@@ -1,15 +1,15 @@
 import React, { createRef, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DraggableModalRef, ValidationContextType } from '@labelu/components-react';
-import { DraggableModel, AttributeForm, EllipsisText, FlexLayout, Kbd, getOS } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
-import type { Attribute } from '@labelu/interface';
+import type { DraggableModalRef, ValidationContextType } from '@labels/components-react';
+import { DraggableModel, AttributeForm, EllipsisText, FlexLayout, Kbd, getOS } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
+import type { Attribute } from '@labels/interface';
 
-import { ReactComponent as MenuOpenIcon } from '@/assets/icons/menu-open.svg';
-import { ReactComponent as MenuCloseIcon } from '@/assets/icons/menu-close.svg';
-import { useTool } from '@/context/tool.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { ReactComponent as MouseRightClick } from '@/Toolbar/mouse-right.svg';
+import { ReactComponent as MenuOpenIcon } from '../assets/icons/menu-open.svg';
+import { ReactComponent as MenuCloseIcon } from '../assets/icons/menu-close.svg';
+import { useTool } from '../context/tool.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { ReactComponent as MouseRightClick } from '../Toolbar/mouse-right.svg';
 
 const os = getOS();
 

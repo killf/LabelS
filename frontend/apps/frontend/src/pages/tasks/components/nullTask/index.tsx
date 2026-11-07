@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from 'antd';
-import { useTranslation } from '@labelu/i18n';
-import { FlexLayout } from '@labelu/components-react';
+import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@labels/components-react';
 
 import { ReactComponent as CreateTaskIcon } from '@/assets/svg/create-task.svg';
 

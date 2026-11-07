@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import type { AllShape } from '@/shapes/types';
+import type { AllShape } from '../shapes/types';
 
 import type { LineStyle } from '../shapes/Line.shape';
 import { AnnotationLine, type LineData } from '../annotations';

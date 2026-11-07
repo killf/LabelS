@@ -1,11 +1,12 @@
-# @labelu/audio-react
+# @labels/audio-react
 
-[![npm](https://img.shields.io/npm/v/%40labelu/audio-react.svg)](https://www.npmjs.com/package/@labelu/audio-react)
+> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
+
 
 ## 安装
 
 ```bash
-npm install @labelu/audio-react
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
 ## 使用
@@ -14,7 +15,7 @@ npm install @labelu/audio-react
 
 ```tsx
 import React from 'react';
-import Audio from '@labelu/audio-react';
+import Audio from '@labels/audio-react';
 
 function App() {
   const [annotations, setAnnotations] = useState([]);
@@ -47,4 +48,4 @@ function App() {
 
 ## API
 
-[Documentation](https://opendatalab.github.io/labelU-Kit/)
+[Documentation](https://github.com/killf/LabelS#readme)

@@ -1,12 +1,12 @@
-// import { ImageToolName, TOOL_NAME, EVideoToolName, EAudioToolName } from '@labelu/annotation';
+// import { ImageToolName, TOOL_NAME, EVideoToolName, EAudioToolName } from '@labels/annotation';
 import type { FormProps, SelectProps, TabsProps } from 'antd';
 import { Popconfirm, Button, Form, Tabs, Select, Tooltip } from 'antd';
 import React, { useContext, useEffect, useCallback, useMemo, useState } from 'react';
 import _, { cloneDeep, find } from 'lodash-es';
 import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 import { createGlobalStyle } from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { MediaType, TaskStatus } from '@/api/types';
 import FancyForm from '@/components/FancyForm';
@@ -32,7 +32,7 @@ import audioFrameTemplate from './templates/audioFrame.template';
 import { AttributeBox, AttributeFormItem, ConfigForm, TabForm } from './style';
 
 const GlobalStyle = createGlobalStyle`
-  .labelu-tool-select-popup .rc-virtual-list-holder {
+  .labels-tool-select-popup .rc-virtual-list-holder {
     max-height: none !important;
   }
 `;
@@ -352,7 +352,7 @@ const FormConfig = () => {
       <Form.Item label={t('annotationTool')}>
         <Select
           placeholder={t('addTool')}
-          popupClassName="labelu-tool-select-popup"
+          popupClassName="labels-tool-select-popup"
           options={toolsMenu}
           onSelect={handleToolItemClick}
         >

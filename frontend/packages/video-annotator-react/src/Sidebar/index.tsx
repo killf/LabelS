@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import styled, { css } from 'styled-components';
-import { useSample } from '@labelu/audio-annotator-react';
-import { VideoCard } from '@labelu/components-react';
+import { useSample } from '@labels/audio-annotator-react';
+import { VideoCard } from '@labels/components-react';
 
-import { ReactComponent as ExpandIcon } from '@/assets/icons/arrow.svg';
+import { ReactComponent as ExpandIcon } from '../assets/icons/arrow.svg';
 
 const Cards = styled.div`
   display: flex;
@@ -17,7 +17,7 @@ const Cards = styled.div`
 
 const Wrapper = styled.div.attrs<{ collapsed: boolean }>((props) => ({
   ...props,
-  className: 'labelu-video__sidebar',
+  className: 'labels-video__sidebar',
 }))`
   position: relative;
   background-color: #fff;

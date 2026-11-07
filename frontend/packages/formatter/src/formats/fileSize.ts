@@ -1,7 +1,7 @@
 import type { partial } from 'filesize';
 import { filesize as fileSizeUtil } from 'filesize';
 
-import { isNil } from '@/utils';
+import { isNil } from '../utils';
 
 /**
  * 格式化文件大小

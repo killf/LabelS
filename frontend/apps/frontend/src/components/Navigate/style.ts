@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 
 import { ReactComponent as Logo } from '@/assets/svg/LOGO.svg';
 
@@ -9,7 +9,7 @@ export const NavigationWrapper = styled(FlexLayout)`
   box-sizing: border-box;
 `;
 
-export const LabeluLogo = styled(Logo)`
+export const LabelSLogo = styled(Logo)`
   width: 120px;
   height: 32px;
 `;

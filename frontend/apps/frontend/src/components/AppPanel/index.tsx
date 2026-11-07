@@ -1,7 +1,7 @@
 import { ArrowRightOutlined } from '@ant-design/icons';
 import { Avatar } from 'antd';
 import _ from 'lodash';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 import { useMemo } from 'react';
 
 import { ReactComponent as LabelLLM } from '@/assets/svg/labelllm.svg';
@@ -12,7 +12,6 @@ import styles from './index.module.css';
 
 interface AppLink {
   name: string;
-  title: string;
   links: {
     name: string;
     link: string;

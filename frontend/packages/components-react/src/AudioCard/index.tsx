@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import styled, { css } from 'styled-components';
 
-import { StatusCard } from '@/StatusCard';
+import { StatusCard } from '../StatusCard';
 
 import { ReactComponent as PlayIcon } from './play.svg';
 import { EllipsisText } from '../EllipsisText';
@@ -83,7 +83,7 @@ export function AudioCard({ active, no, title, src, showNo, onClick, completed, 
   }, []);
 
   return (
-    <Wrapper active={active} className="labelu-audio-card">
+    <Wrapper active={active} className="labels-audio-card">
       {showNo && <CardIndex>{no}</CardIndex>}
       <StatusCard onClick={onClick} active={active} completed={completed} skipped={skipped}>
         <InnerWrapper className="audio-card__inner">

@@ -1,5 +1,5 @@
-import type { AxisPoint } from '@/shapes';
-import { CrossCursor, Cursor } from '@/shapes';
+import type { AxisPoint } from '../shapes';
+import { CrossCursor, Cursor } from '../shapes';
 
 import { DEFAULT_LABEL_COLOR } from '../constant';
 

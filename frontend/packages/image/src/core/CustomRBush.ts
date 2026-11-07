@@ -1,8 +1,8 @@
 import type { BBox } from 'rbush';
 import RBush from 'rbush';
 
-import uid from '@/utils/uid';
-import type { AllShape } from '@/shapes/types';
+import uid from '../utils/uid';
+import type { AllShape } from '../shapes/types';
 
 import type { AxisPoint, Shape } from '../shapes';
 import { Line, Point, ShapeText } from '../shapes';

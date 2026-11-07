@@ -1,7 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useEffect } from 'react';
-import { i18n } from '@labelu/i18n';
+import { i18n } from '@labels/i18n';
 
 import Register from '@/pages/register';
 import Tasks from '@/pages/tasks';

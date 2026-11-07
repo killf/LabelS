@@ -1,5 +1,5 @@
-import { CursorManager } from '@/core/CursorManager';
-import type { AxisPoint } from '@/shapes';
+import { CursorManager } from '../core/CursorManager';
+import type { AxisPoint } from '../shapes';
 
 let cursorManager: CursorManager | null = null;
 

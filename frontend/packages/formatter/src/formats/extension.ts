@@ -1,4 +1,4 @@
-import { isNil } from '@/utils';
+import { isNil } from '../utils';
 
 /**
  * 格式化文件扩展名

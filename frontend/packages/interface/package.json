@@ -1,12 +1,12 @@
 {
-  "name": "@labelu/interface",
+  "name": "@labels/interface",
   "version": "1.3.1",
-  "description": "typescript interfaces for labelu annotations",
-  "types": "./dist/index.d.ts",
-  "typings": "./dist/index.d.ts",
+  "description": "typescript interfaces for labels annotations",
+  "types": "./src/index.ts",
+  "typings": "./src/index.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/opendatalab/labelU-Kit.git"
+    "url": "https://github.com/killf/LabelS"
   },
   "scripts": {
     "dev": "tsc -d --emitDeclarationOnly -w",
@@ -15,9 +15,6 @@
     "clean": "rimraf ./node_modules"
   },
   "license": "Apache-2.0",
-  "publishConfig": {
-    "access": "public"
-  },
   "author": {
     "name": "gary",
     "email": "shenguanlin@pjlab.org.cn"

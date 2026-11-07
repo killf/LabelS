@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import type { AnnotationsWithGlobal, MediaSample } from '@labelu/audio-annotator-react';
+import type { AnnotationsWithGlobal, MediaSample } from '@labels/audio-annotator-react';
 
 import type { ParsedResult, SampleResponse } from '@/api/types';
 import { MediaType } from '@/api/types';

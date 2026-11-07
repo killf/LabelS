@@ -1,7 +1,7 @@
-import type { Attribute, AttributeOption, InnerAttributeType, StringType } from '@labelu/interface';
+import type { Attribute, AttributeOption, InnerAttributeType, StringType } from '@labels/interface';
 import type { Rule, ValidateErrorEntity } from 'rc-field-form/es/interface';
 import type { FormProps, FormInstance } from 'rc-field-form';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 import Form, { useForm, Field } from 'rc-field-form';
 import {
   createContext,

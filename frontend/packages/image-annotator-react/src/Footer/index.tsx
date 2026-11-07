@@ -1,13 +1,13 @@
 import styled from 'styled-components';
-import { Tooltip } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { Tooltip } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useCallback } from 'react';
 
-import { tooltipStyle } from '@/Toolbar';
-import Slider from '@/Toolbar/Slider';
-import { PropertyWrapper, TitleWrapper } from '@/Toolbar/ToolStyle';
-import { useTool } from '@/context/tool.context';
+import { tooltipStyle } from '../Toolbar';
+import Slider from '../Toolbar/Slider';
+import { PropertyWrapper, TitleWrapper } from '../Toolbar/ToolStyle';
+import { useTool } from '../context/tool.context';
 
 import { ReactComponent as SettingIcon } from './assets/setting.svg';
 import { ReactComponent as BrightnessIcon } from './assets/brightness.svg';
@@ -27,7 +27,7 @@ const FooterBar = styled.div`
   font-size: 14px;
   user-select: none;
 
-  .labelu-svg-icon {
+  .labels-svg-icon {
     font-size: 1.25rem;
     color: #666;
   }
@@ -52,7 +52,7 @@ const BarItem = styled.div`
   &:hover {
     color: var(--color-primary);
 
-    .labelu-svg-icon {
+    .labels-svg-icon {
       color: var(--color-primary);
     }
   }
@@ -69,7 +69,7 @@ const ContentBody = styled.div`
     width: auto;
   }
 
-  .labelu-svg-icon {
+  .labels-svg-icon {
     font-size: 1.25rem;
   }
 `;
@@ -94,21 +94,21 @@ function Content() {
     <ContentBody>
       <PropertyWrapper>
         <TitleWrapper>
-          <SaturationIcon className="labelu-svg-icon" />
+          <SaturationIcon className="labels-svg-icon" />
           {t('saturation')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('saturation')} />
       </PropertyWrapper>
       <PropertyWrapper>
         <TitleWrapper>
-          <ContrastIcon className="labelu-svg-icon" />
+          <ContrastIcon className="labels-svg-icon" />
           {t('contrast')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('contrast')} />
       </PropertyWrapper>
       <PropertyWrapper>
         <TitleWrapper>
-          <BrightnessIcon className="labelu-svg-icon" />
+          <BrightnessIcon className="labels-svg-icon" />
           {t('exposure')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('brightness')} />
@@ -156,7 +156,7 @@ export default function Footer() {
         </label>
         <Tooltip overlay={<Content />} overlayStyle={tooltipStyle} placement="topLeft">
           <BarItem>
-            <SettingIcon className="labelu-svg-icon" />
+            <SettingIcon className="labels-svg-icon" />
             {t('adjustment')}
           </BarItem>
         </Tooltip>
@@ -167,7 +167,7 @@ export default function Footer() {
             engine?.fit();
           }}
         >
-          <FitContainerIcon className="labelu-svg-icon" />
+          <FitContainerIcon className="labels-svg-icon" />
           {t('fitContainer')}
         </BarItem>
         <BarItem
@@ -175,11 +175,11 @@ export default function Footer() {
             engine?.resetScale();
           }}
         >
-          <ScaleResetIcon className="labelu-svg-icon" />
+          <ScaleResetIcon className="labels-svg-icon" />
           {t('rawScale')}
         </BarItem>
         <BarItem onClick={handleRotate}>
-          <RotateIcon className="labelu-svg-icon" />
+          <RotateIcon className="labels-svg-icon" />
           {t('rotate')}
         </BarItem>
       </Right>

@@ -1,4 +1,4 @@
-import type { Attribute } from '@labelu/interface';
+import type { Attribute } from '@labels/interface';
 
 export interface ToolsConfigState {
   tools: any[];

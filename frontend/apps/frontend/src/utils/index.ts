@@ -1,22 +1,31 @@
-export const jsonParse = (value: string): any => {
-  return JSON.parse(value, (k: any, v: any) => {
-    try {
-      // 将正则字符串转成正则对象
-      if (eval(decodeURIComponent(v)) instanceof RegExp) {
-        return eval(decodeURIComponent(v));
-      }
-      return v;
-    } catch (e) {
-      return v;
-      // nothing
+export { default as compare } from 'lodash/isEqual.js';
+
+/** 读取 JSON，仅还原 jsonStringify 保存的 /pattern/flags 正则字符串。 */
+export const jsonParse = <T = any>(value: string): T => {
+  return JSON.parse(value, (_key: string, entry: unknown) => {
+    if (typeof entry !== 'string') {
+      return entry;
     }
+
+    try {
+      const decoded = decodeURIComponent(entry);
+      const separator = decoded.lastIndexOf('/');
+      if (decoded.startsWith('/') && separator > 0) {
+        return new RegExp(decoded.slice(1, separator), decoded.slice(separator + 1));
+      }
+    } catch {
+      // 普通文本、损坏的编码及无效正则均保留原值。
+    }
+
+    return entry;
   });
 };
 
-export const jsonStringify = (value: Record<string, unknown>, type = 2): any => {
+/** 序列化配置，将 RegExp 编码为可由 jsonParse 还原的字符串。 */
+export const jsonStringify = (value: Record<string, unknown>, type = 2): string => {
   return JSON.stringify(
     value,
-    (k: any, v: any) => {
+    (_key: string, v: unknown) => {
       if (v instanceof RegExp) {
         return encodeURIComponent(v.toString());
       }
@@ -24,39 +33,6 @@ export const jsonStringify = (value: Record<string, unknown>, type = 2): any => 
     },
     type,
   );
-};
-
-/**
- * 深度比较两个对象是否相等
- * @method compare
- * @param oldData 需要比较的值
- * @param newData 需要比较的值
- * @return {Boolean} 判断后的结果
- */
-export const compare = function (...args: [string | any[], string | any[]]) {
-  const oldData = args[0];
-  const newData = args[1];
-
-  if (oldData === newData) {
-    return true;
-  }
-  // @ts-ignore
-  const arg = Array.prototype.slice.call(...args);
-  const objCall = (obj: any, string: string) => Object.prototype.toString.call(obj) === `[object ${string}]`;
-  if (arg.every((obj) => objCall(obj, 'Object')) && Object.keys(oldData).length === Object.keys(newData).length) {
-    // @ts-ignore
-    for (const key in oldData) {
-      if (oldData.hasOwnProperty(key) && !compare(oldData[key], newData[key])) return false;
-    }
-  } else if (arg.every((obj) => objCall(obj, 'Array')) && oldData.length === newData.length) {
-    // @ts-ignore
-    for (const key in oldData) {
-      if (!compare(oldData[key], newData[key])) return false;
-    }
-  } else {
-    return false;
-  }
-  return true;
 };
 
 export function downloadFromUrl(url: string, name?: string) {

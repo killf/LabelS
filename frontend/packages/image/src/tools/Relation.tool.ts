@@ -1,13 +1,13 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import uid from '@/utils/uid';
-import type { RelationData, ValidAnnotationType } from '@/annotations/Relation.annotation';
-import { DraftRelation } from '@/drafts/Relation.draft';
-import type { ToolName } from '@/interface';
-import type { AxisPoint } from '@/shapes';
-import { ShapeText } from '@/shapes';
-import { VALID_RELATION_TOOLS } from '@/constant';
-import type { RBushItem } from '@/core/CustomRBush';
+import uid from '../utils/uid';
+import type { RelationData, ValidAnnotationType } from '../annotations/Relation.annotation';
+import { DraftRelation } from '../drafts/Relation.draft';
+import type { ToolName } from '../interface';
+import type { AxisPoint } from '../shapes';
+import { ShapeText } from '../shapes';
+import { VALID_RELATION_TOOLS } from '../constant';
+import type { RBushItem } from '../core/CustomRBush';
 
 import type { LineStyle } from '../shapes/Line.shape';
 import { Line } from '../shapes/Line.shape';

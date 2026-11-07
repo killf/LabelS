@@ -1,4 +1,4 @@
-import type { EditType, ToolName } from '@/interface';
+import type { EditType, ToolName } from '../interface';
 import type {
   CuboidToolOptions,
   LineToolOptions,
@@ -6,7 +6,7 @@ import type {
   PolygonToolOptions,
   RectToolOptions,
   RelationToolOptions,
-} from '@/tools';
+} from '../tools';
 
 export interface AnnotatorOptions {
   container: HTMLDivElement;

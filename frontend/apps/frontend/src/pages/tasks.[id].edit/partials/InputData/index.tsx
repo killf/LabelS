@@ -2,7 +2,7 @@ import { useMemo, useCallback, useContext, useState } from 'react';
 import type { TableColumnType } from 'antd';
 import { Popconfirm, Button, Table, Tooltip, Tag } from 'antd';
 import _ from 'lodash-es';
-import formatter from '@labelu/formatter';
+import formatter from '@labels/formatter';
 import {
   FileOutlined,
   FolderOpenOutlined,
@@ -11,9 +11,9 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import type { RcFile } from 'antd/lib/upload/interface';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 import { useRevalidator } from 'react-router';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import IconText from '@/components/IconText';
 import type { StatusType } from '@/components/Status';
@@ -75,7 +75,7 @@ const InputData = () => {
   } = useContext(TaskCreationContext);
   const uploadMutation = useUploadFileMutation();
   const revalidator = useRevalidator();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [s3ImportOpen, setS3ImportOpen] = useState(false);
 
   const statusTextMapping = useMemo(
@@ -164,7 +164,7 @@ const InputData = () => {
           }
         }
 
-        // 解析labelu导出的json文件
+        // 解析labels导出的json文件
         if (fileBlob.name.endsWith('.json')) {
           try {
             const preAnnotationJsonSchema = new Draft07(jsonMapping[mediaType]);
@@ -172,7 +172,7 @@ const InputData = () => {
             const json = JSON.parse(content);
 
             if (!Array.isArray(json)) {
-              throw new Error(t('mustBeLabelUJson') as string);
+              throw new Error(t('mustBeLabelSJson') as string);
             }
 
             for (let i = 0; i < json.length; i += 1) {
@@ -458,9 +458,7 @@ const InputData = () => {
               {t('preAnnotationFileUploadDescription')}
               <a
                 target="_blank"
-                href={`https://opendatalab.github.io/labelU/${
-                  i18n.language.startsWith('en') ? 'en/' : ''
-                }schema/pre-annotation/json`}
+                href="https://github.com/killf/LabelS#readme"
                 rel="noreferrer"
               >
                 {t('example')}

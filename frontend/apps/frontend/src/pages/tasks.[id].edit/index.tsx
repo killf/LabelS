@@ -6,9 +6,9 @@ import { omit } from 'lodash/fp';
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { Bridge } from 'iframe-message-bridge';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { message, modal } from '@/StaticAnt';
 import type { OkRespCreateSampleResponse, TaskResponse } from '@/api/types';

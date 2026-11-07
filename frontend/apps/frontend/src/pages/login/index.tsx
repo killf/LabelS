@@ -2,8 +2,8 @@ import type { FormProps } from 'antd';
 import { Input, Form } from 'antd';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 import { useEffect } from 'react';
 
 import { login } from '@/api/services/user';

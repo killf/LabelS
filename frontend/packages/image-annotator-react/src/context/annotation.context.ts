@@ -1,10 +1,10 @@
-import type { AnnotationData, ToolName } from '@labelu/image';
+import type { AnnotationData, ToolName } from '@labels/image';
 import type {
   TextAnnotationEntity,
   TagAnnotationEntity,
   TextAnnotationType,
   TagAnnotationType,
-} from '@labelu/interface';
+} from '@labels/interface';
 import { createContext, useContext } from 'react';
 
 export type GlobalAnnotation = TextAnnotationEntity | TagAnnotationEntity;

@@ -3,9 +3,9 @@ import { Alert, Button, Pagination, Popconfirm, Table, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
-import formatter from '@labelu/formatter';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
+import formatter from '@labels/formatter';
 
 import CustomEmpty from '@/components/CustomEmpty';
 import type { DataSourceResponse, CreateDataSourceCommand, UpdateDataSourceCommand } from '@/api/types';

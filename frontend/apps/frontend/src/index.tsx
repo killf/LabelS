@@ -1,7 +1,5 @@
 import ReactDOM from 'react-dom/client';
 import React from 'react';
-import '@labelu/video-annotator-react/dist/style.css';
-import '@labelu/audio-annotator-react/dist/style.css';
 
 import './polyfills';
 import App from './App';

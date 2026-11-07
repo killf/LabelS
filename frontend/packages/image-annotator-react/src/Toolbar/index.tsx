@@ -1,20 +1,20 @@
-import { Toolbar, Tooltip, HotkeyPanel } from '@labelu/components-react';
+import { Toolbar, Tooltip, HotkeyPanel } from '@labels/components-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import styled from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
-import type { ToolName } from '@labelu/image';
+import { useTranslation } from '@labels/i18n';
+import type { ToolName } from '@labels/image';
 import { useCallback, useMemo } from 'react';
 
-import { ReactComponent as PointIcon } from '@/assets/tools/point.svg';
-import { ReactComponent as LineIcon } from '@/assets/tools/line.svg';
-import { ReactComponent as RectIcon } from '@/assets/tools/rect.svg';
-import { ReactComponent as PolygonIcon } from '@/assets/tools/polygon.svg';
-import { ReactComponent as CuboidIcon } from '@/assets/tools/cuboid.svg';
-import { ReactComponent as RelationIcon } from '@/assets/tools/relation.svg';
-import { useTool } from '@/context/tool.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { useHistoryCtx } from '@/context/history.context';
-import { dragModalRef } from '@/LabelSection';
+import { ReactComponent as PointIcon } from '../assets/tools/point.svg';
+import { ReactComponent as LineIcon } from '../assets/tools/line.svg';
+import { ReactComponent as RectIcon } from '../assets/tools/rect.svg';
+import { ReactComponent as PolygonIcon } from '../assets/tools/polygon.svg';
+import { ReactComponent as CuboidIcon } from '../assets/tools/cuboid.svg';
+import { ReactComponent as RelationIcon } from '../assets/tools/relation.svg';
+import { useTool } from '../context/tool.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { useHistoryCtx } from '../context/history.context';
+import { dragModalRef } from '../LabelSection';
 
 import ToolStyle from './ToolStyle';
 import hotkeysConst from './hotkeys.const';

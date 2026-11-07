@@ -24,7 +24,7 @@ export default [
     id: 'root',
     handle: {
       crumb: () => {
-        return 'LabelU Kit';
+        return 'LabelS Kit';
       },
     },
     children: [

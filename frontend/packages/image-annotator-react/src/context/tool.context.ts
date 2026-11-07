@@ -1,5 +1,5 @@
-import type { ToolName, Annotator as ImageAnnotator, EditType } from '@labelu/image';
-import type { EnumerableAttribute, TextAttribute, ILabel, Attribute } from '@labelu/interface';
+import type { ToolName, Annotator as ImageAnnotator, EditType } from '@labels/image';
+import type { EnumerableAttribute, TextAttribute, ILabel, Attribute } from '@labels/interface';
 import type { RefObject } from 'react';
 import { createContext, useContext } from 'react';
 

@@ -8,23 +8,23 @@ import {
   uid,
   Tooltip,
   FlexLayout,
-} from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+} from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 import type {
   EnumerableAttribute,
   GlobalAnnotationType,
   TagAnnotationEntity,
   TextAnnotationEntity,
   TextAttribute,
-} from '@labelu/interface';
-import { DEFAULT_LABEL_COLOR, DEFAULT_LABEL_TEXT } from '@labelu/image';
+} from '@labels/interface';
+import { DEFAULT_LABEL_COLOR, DEFAULT_LABEL_TEXT } from '@labels/image';
 
-import { ReactComponent as DeleteIcon } from '@/assets/icons/delete.svg';
-import type { AnnotationDataInUI, AnnotationWithTool, GlobalAnnotation } from '@/context/annotation.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { useTool } from '@/context/tool.context';
-import { useSample } from '@/context/sample.context';
-import { tooltipStyle } from '@/Toolbar';
+import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
+import type { AnnotationDataInUI, AnnotationWithTool, GlobalAnnotation } from '../context/annotation.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { useTool } from '../context/tool.context';
+import { useSample } from '../context/sample.context';
+import { tooltipStyle } from '../Toolbar';
 
 import AsideAttributeItem, { AttributeAction, Header } from './AsideAttributeItem';
 

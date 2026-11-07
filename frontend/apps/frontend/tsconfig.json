@@ -1,13 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "isolatedModules": true,
-    "composite": true,
+    "composite": false,
     "module": "ESNext",
     "allowJs": true,
     "resolveJsonModule": true,
@@ -17,24 +13,14 @@
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
-    "types": [
-      "node",
-      "jest"
-    ]
+    "types": ["node", "jest"],
+    "experimentalDecorators": true
   },
-  "include": [
-    "src",
-    "src/styles/theme.json"
-  ],
+  "include": ["src", "src/styles/theme.json"],
   "references": [
     {
       "path": "./tsconfig.node.json"
     }
   ],
-  "exclude": [
-    "dist",
-    "openapi.config.ts",
-    "**/*.test.tsx",
-    "**/*.test.ts"
-  ]
+  "exclude": ["dist", "openapi.config.ts", "**/*.test.tsx", "**/*.test.ts"]
 }

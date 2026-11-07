@@ -1,8 +1,8 @@
 import Color from 'color';
-import type { ILabel } from '@labelu/interface';
+import type { ILabel } from '@labels/interface';
 
-import uid from '@/utils/uid';
-import { DomPortal } from '@/core/DomPortal';
+import uid from '../utils/uid';
+import { DomPortal } from '../core/DomPortal';
 
 import type { BasicImageAnnotation } from '../interface';
 import type { AnnotationParams } from './Annotation';

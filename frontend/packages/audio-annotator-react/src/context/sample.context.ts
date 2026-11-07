@@ -1,4 +1,4 @@
-import type { Attribute, EnumerableAttribute, TextAttribute } from '@labelu/interface';
+import type { Attribute, EnumerableAttribute, TextAttribute } from '@labels/interface';
 import { createContext, useContext } from 'react';
 
 import type { AnnotationsWithGlobal } from './annotation.context';

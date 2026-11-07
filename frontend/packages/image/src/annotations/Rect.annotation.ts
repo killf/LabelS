@@ -1,7 +1,7 @@
-import type { ILabel } from '@labelu/interface';
+import type { ILabel } from '@labels/interface';
 import Color from 'color';
 
-import uid from '@/utils/uid';
+import uid from '../utils/uid';
 
 import type { BasicImageAnnotation } from '../interface';
 import type { AnnotationParams } from './Annotation';

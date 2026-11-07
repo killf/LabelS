@@ -1,6 +1,6 @@
-import type { ImageAnnotatorProps } from '@labelu/image-annotator-react';
-import type { ToolName } from '@labelu/image';
-import { TOOL_NAMES } from '@labelu/image';
+import type { ImageAnnotatorProps } from '@labels/image-annotator-react';
+import type { ToolName } from '@labels/image';
+import { TOOL_NAMES } from '@labels/image';
 
 import type { ToolsConfigState } from '@/types/toolConfig';
 

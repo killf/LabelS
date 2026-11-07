@@ -1,6 +1,6 @@
 import { useParams, useRouteLoaderData } from 'react-router-dom';
-import { VideoCard, AudioCard } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { VideoCard, AudioCard } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 import { useMemo } from 'react';
 
 import type { SampleResponse } from '@/api/types';

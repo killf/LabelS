@@ -2,10 +2,10 @@ import { useState, useMemo, useCallback } from 'react';
 import { Modal, Select, Button, Table, message } from 'antd';
 import { FolderOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 import { Link } from 'react-router-dom';
-import formatter from '@labelu/formatter';
+import formatter from '@labels/formatter';
 
 import type { MediaType, S3ObjectItem } from '@/api/types';
 import { getDataSources, listS3Objects } from '@/api/services/datasource';

@@ -1,5 +1,5 @@
-import type { AnnotatorOptions } from '@/core/AnnotatorConfig';
-import AnnotatorConfig from '@/core/AnnotatorConfig';
+import type { AnnotatorOptions } from '../core/AnnotatorConfig';
+import AnnotatorConfig from '../core/AnnotatorConfig';
 
 let config: AnnotatorConfig | null = null;
 

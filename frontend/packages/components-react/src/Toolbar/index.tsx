@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 import { useEffect, useState } from 'react';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { getOS } from '../utils';
 import { Divider } from '../Divider';

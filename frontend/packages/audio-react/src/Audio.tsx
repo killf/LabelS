@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type WaveSurfer from 'wavesurfer.js';
 import styled from 'styled-components';
 import { useHotkeys } from 'react-hotkeys-hook';
-import type { MediaAnnotatorProps, MediaAnnotatorRef, PlayerControllerRef } from '@labelu/components-react';
+import type { MediaAnnotatorProps, MediaAnnotatorRef, PlayerControllerRef } from '@labels/components-react';
 import type {
   Attribute,
   AudioAnnotationType,
@@ -10,14 +10,14 @@ import type {
   AudioSegmentName,
   EnumerableAttribute,
   AudioAnnotationInUI,
-} from '@labelu/interface';
+} from '@labels/interface';
 import {
   AttributeOverlay,
   MediaAnnotationContext,
   MediaAnnotator,
   PlayerController,
   parseTime,
-} from '@labelu/components-react';
+} from '@labels/components-react';
 
 import { AudioPlayer } from './AudioPlayer';
 
@@ -89,7 +89,7 @@ export interface AudioAnnotatorProps {
 /**
  * 音频标注器
  *
- * @see [使用示例](https://github.com/opendatalab/labelU-Kit/tree/main/packages/audio-react/example)
+ * @see [使用示例](https://github.com/killf/LabelS)
  */
 export const AudioAnnotator = forwardRef<HTMLDivElement, AudioAnnotatorProps>(function ForwardAudioAnnotator(
   {

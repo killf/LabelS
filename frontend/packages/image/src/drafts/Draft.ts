@@ -1,13 +1,13 @@
 import EventEmitter from 'eventemitter3';
 import Color from 'color';
 
-import { cursorManager } from '@/singletons/cursorManager';
-import type { RectToolOptions } from '@/tools/Rect.tool';
-import type { LineToolOptions } from '@/tools/Line.tool';
-import type { CuboidToolOptions } from '@/tools/Cuboid.tool';
-import type { PolygonToolOptions } from '@/tools/Polygon.tool';
-import type { PointToolOptions } from '@/tools/Point.tool';
-import type { AllShape } from '@/shapes/types';
+import { cursorManager } from '../singletons/cursorManager';
+import type { RectToolOptions } from '../tools/Rect.tool';
+import type { LineToolOptions } from '../tools/Line.tool';
+import type { CuboidToolOptions } from '../tools/Cuboid.tool';
+import type { PolygonToolOptions } from '../tools/Polygon.tool';
+import type { PointToolOptions } from '../tools/Point.tool';
+import type { AllShape } from '../shapes/types';
 
 import { axis, eventEmitter } from '../singletons';
 import { EInternalEvent } from '../enums';
@@ -187,7 +187,7 @@ export class Draft<Data extends BasicImageAnnotation, Style extends Record<strin
 
     /**
      * 因为清除isMoved是异步的
-     * see https://github.com/opendatalab/labelU-Kit/blob/main/packages/image/src/core/Axis.ts#L230
+     * see https://github.com/killf/LabelS
      */
     if (!isUnderCursor && !axis?.isMoved) {
       this.group.emit(EInternalEvent.UnSelect, e, this);

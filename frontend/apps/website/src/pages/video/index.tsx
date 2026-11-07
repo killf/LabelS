@@ -1,6 +1,6 @@
-import { Annotator } from '@labelu/video-annotator-react';
-import type { VideoAnnotationType } from '@labelu/video-react';
-import type { AudioAndVideoAnnotatorRef } from '@labelu/audio-annotator-react';
+import { Annotator } from '@labels/video-annotator-react';
+import type { VideoAnnotationType } from '@labels/video-react';
+import type { AudioAndVideoAnnotatorRef } from '@labels/audio-annotator-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import type { TabsProps } from 'antd';
@@ -8,7 +8,7 @@ import { Button, Drawer, Form, Modal, Tabs } from 'antd';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { CodeOutlined, SettingOutlined } from '@ant-design/icons';
 import message from 'antd/es/message';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import FancyForm from '@/components/FancyForm';
 import videoSegmentTemplate from '@/constant/templates/videoSegment.template';

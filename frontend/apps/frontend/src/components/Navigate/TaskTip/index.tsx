@@ -1,7 +1,7 @@
 import { BulbOutlined } from '@ant-design/icons';
 import { Button, Popover } from 'antd';
 import { useRouteLoaderData } from 'react-router';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import type { TaskLoaderResult } from '@/loaders/task.loader';
 

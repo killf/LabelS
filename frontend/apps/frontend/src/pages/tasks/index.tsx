@@ -2,8 +2,8 @@ import { Alert, Button, Pagination, Popover } from 'antd';
 import { useNavigate, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import _ from 'lodash';
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import type { TaskListResponseWithStatics } from '@/api/types';
 import { ResponsiveGrid } from '@/components/ResponsiveGrid';
@@ -42,8 +42,8 @@ const TaskList = () => {
   const tasksResponse = _.get(routerLoaderData, 'data');
   const tasks = _.get(tasksResponse, 'data', []);
   const meta_data = _.get(tasksResponse, 'meta_data');
-  const labeluVersion = _.get(routerLoaderData, ['headers', 'labelu-version']);
-  const { t, i18n } = useTranslation();
+  const labelsVersion = _.get(routerLoaderData, ['headers', 'labels-version']);
+  const { t } = useTranslation();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const finalPageSize = searchParams.get('size') ? +searchParams.get('size')! : 16;
@@ -84,9 +84,7 @@ const TaskList = () => {
                 {t('demoTips')}
                 <a
                   data-wiz="local-deploy-alert"
-                  href={`https://opendatalab.github.io/labelU/${
-                    i18n.language.startsWith('en') ? 'en/' : ''
-                  }guide/install`}
+                  href="https://github.com/killf/LabelS#readme"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -117,7 +115,7 @@ const TaskList = () => {
       </FlexLayout.Content>
       <Footer flex="row" items="flex-between" justify="space-between">
         <AppVersion>
-          <Popover content={versionInfo}>labelu@{labeluVersion}</Popover>
+          <Popover content={versionInfo}>labels@{labelsVersion}</Popover>
         </AppVersion>
         {meta_data && searchParams && meta_data?.total > finalPageSize && (
           <Pagination

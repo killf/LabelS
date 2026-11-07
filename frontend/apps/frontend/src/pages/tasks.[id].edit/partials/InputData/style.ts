@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 
 export const Header = styled(FlexLayout.Header)`
   height: 44px;

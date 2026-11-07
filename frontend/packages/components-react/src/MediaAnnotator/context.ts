@@ -4,7 +4,7 @@ import type {
   VideoSegmentName,
   MediaAnnotationInUI,
   AttributeOption,
-} from '@labelu/interface';
+} from '@labels/interface';
 import { createContext, useContext } from 'react';
 
 export interface MediaAnnotationContextType {

@@ -1,10 +1,10 @@
 {
-  "name": "@labelu/image-annotator-react",
+  "name": "@labels/image-annotator-react",
   "version": "2.5.3",
   "description": "image annotator for react",
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "build": "vite build && npm run build:types",
     "build:types": "tsc -d --emitDeclarationOnly",
@@ -12,12 +12,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/opendatalab/labelU-Kit.git"
+    "url": "https://github.com/killf/LabelS"
   },
   "license": "Apache-2.0",
-  "publishConfig": {
-    "access": "public"
-  },
   "author": {
     "name": "gary-shen",
     "email": "shenguanlin@pjlab.org.cn"
@@ -29,10 +26,10 @@
     "react"
   ],
   "dependencies": {
-    "@labelu/components-react": "1.8.3",
-    "@labelu/image": "1.5.2",
-    "@labelu/interface": "1.3.1",
-    "@labelu/i18n": "1.1.2",
+    "@labels/components-react": "workspace:*",
+    "@labels/image": "workspace:*",
+    "@labels/interface": "workspace:*",
+    "@labels/i18n": "workspace:*",
     "lodash.clonedeep": "^4.5.0",
     "polished": "^4.2.2",
     "react-hotkeys-hook": "^4.4.1",

@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Link, useParams, useRevalidator, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Table, Select, Pagination, Button, Popconfirm, Tag, Tooltip, Avatar, Popover, Progress, message } from 'antd';
-import { VideoCard, FlexLayout } from '@labelu/components-react';
+import { VideoCard, FlexLayout } from '@labels/components-react';
 import _ from 'lodash-es';
-import formatter from '@labelu/formatter';
+import formatter from '@labels/formatter';
 import styled from 'styled-components';
 import { CheckCircleFilled, CloseCircleFilled, DownOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import type { DatasetSplit, PreAnnotationFileResponse, SampleResponse } from '@/api/types';
 import { MediaType, TaskStatus } from '@/api/types';
@@ -38,7 +38,7 @@ const Samples = () => {
   const metaData = routerData?.samples?.meta_data;
   const routeParams = useParams();
   const taskId = +routeParams.taskId!;
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const me = useMe();
   const isMeTheCreator = task?.created_by?.id === me?.data?.id;
 
@@ -223,9 +223,7 @@ const Samples = () => {
               <>
                 {t('preAnnotationDescription')}{' '}
                 <a
-                  href={`https://opendatalab.github.io/labelU/${
-                    i18n.language.startsWith('en') ? 'en/' : ''
-                  }schema/pre-annotation/json`}
+                  href="https://github.com/killf/LabelS#readme"
                   target="_blank"
                   rel="noreferrer"
                 >

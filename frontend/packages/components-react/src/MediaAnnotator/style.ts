@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components';
-import type { MediaAnnotationType } from '@labelu/interface';
+import type { MediaAnnotationType } from '@labels/interface';
 import type { SVGProps } from 'react';
 
 import sliceIcon from './cursor-segment.svg';

@@ -1,16 +1,16 @@
 import styled, { css } from 'styled-components';
 import type { PropsWithChildren } from 'react';
 import { useCallback, useMemo } from 'react';
-import { EllipsisText, secondsToMinute } from '@labelu/components-react';
-import type { MediaAnnotationInUI, MediaAnnotationWithTextAndTag } from '@labelu/interface';
+import { EllipsisText, secondsToMinute } from '@labels/components-react';
+import type { MediaAnnotationInUI, MediaAnnotationWithTextAndTag } from '@labels/interface';
 
-import { ReactComponent as SegmentIcon } from '@/assets/icons/segment.svg';
-import { ReactComponent as FrameIcon } from '@/assets/icons/frame.svg';
-import { ReactComponent as EditIcon } from '@/assets/icons/edit.svg';
-import { ReactComponent as DeleteIcon } from '@/assets/icons/delete.svg';
-import { ReactComponent as VisibilityIcon } from '@/assets/icons/visibility.svg';
-import { ReactComponent as VisibilityOffIcon } from '@/assets/icons/visibility-off.svg';
-import { useAnnotationCtx } from '@/context/annotation.context';
+import { ReactComponent as SegmentIcon } from '../assets/icons/segment.svg';
+import { ReactComponent as FrameIcon } from '../assets/icons/frame.svg';
+import { ReactComponent as EditIcon } from '../assets/icons/edit.svg';
+import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
+import { ReactComponent as VisibilityIcon } from '../assets/icons/visibility.svg';
+import { ReactComponent as VisibilityOffIcon } from '../assets/icons/visibility-off.svg';
+import { useAnnotationCtx } from '../context/annotation.context';
 
 import { openAttributeModal } from '../LabelSection';
 import { useTool } from '../context/tool.context';

@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'LabelUImage',
+      name: 'LabelSImage',
       formats: ['es', 'umd'],
       fileName: 'index',
     },

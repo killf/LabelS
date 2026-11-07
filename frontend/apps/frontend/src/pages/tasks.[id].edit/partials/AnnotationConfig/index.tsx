@@ -1,6 +1,6 @@
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import FormConfig from './formConfig';
 

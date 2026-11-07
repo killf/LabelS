@@ -3,8 +3,8 @@ import { useNavigate, useRouteLoaderData } from 'react-router';
 import { Button } from 'antd';
 import _ from 'lodash-es';
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import type { TaskLoaderResult } from '@/loaders/task.loader';
 import { MediaType } from '@/api/types';

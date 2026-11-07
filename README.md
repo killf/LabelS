@@ -1,18 +1,25 @@
 # LabelS 标注与训练
 
-用于独立算法数据集的图片标注。前后端基于 LabelU，离线训练代码位于 [training/](training/README.md)。不接入 CI 和自动 Review，测试按需运行。
+![LabelS](frontend/images/labels-logo.svg)
+
+用于独立算法数据集的图片标注。离线训练代码位于 [backend/training](backend/training/README.md)。不接入 CI 和自动 Review，测试按需运行。
 
 ## 目录
 
 ```text
 LabelS/
-├── labelu/          # FastAPI 后端、SQLite 模型与迁移
-├── frontend/        # LabelU-Kit 工作区，apps/frontend 为管理和标注页面
-├── training/        # 原 ego-quality，独立依赖、Dockerfile 和训练命令
-├── tests/           # 本地验证，S3 使用模拟对象存储
-├── Dockerfile       # 标注平台镜像，包含前端静态文件
-└── .env.example
+├── backend/                 # 独立 Python 后端项目，同时是 backend 包
+│   ├── main.py              # 服务与 CLI 入口
+│   ├── migrations/          # 001_init_db.py 完整初始化脚本
+│   ├── training/            # 离线训练模块，GPU 依赖按需安装
+│   ├── tests/               # SQLite / Moto S3 验证
+│   ├── pyproject.toml
+│   └── uv.lock
+├── frontend/                # 管理页面、标注组件及文档图片
+└── Dockerfile               # 包含前端静态文件的标注平台镜像
 ```
+
+## 参考项目
 
 后端基于 [LabelU](https://github.com/opendatalab/labelU)，提交 `8681ca4`，版本 1.5.6；前端复制自 [LabelU-Kit v5.12.0](https://github.com/opendatalab/labelU-Kit/tree/v5.12.0)，提交 `d06cb1f5`。两份 Apache-2.0 许可证分别保留在本目录与 `frontend/`。未引入上游 Git 仓库、发布流水线和模型权重。
 
@@ -48,27 +55,27 @@ LabelS/
 - 预测框只作为可编辑的预标注，不自动把样本标为完成；人工确认保存后才同步训练数据。
 - 每批只加载一次模型，逐张保存结果并记录成功、失败数量；重启后未完成批次标记为中断。
 - `AI_DEVICE` 留空时由 PyTorch 选择设备，验证时可显式设为 `cpu`。
-- 不再支持原上游的 HTTP 模型服务分支。AI 依赖复用 [training/](training/README.md) 的环境。
+- 不再支持原上游的 HTTP 模型服务分支。AI 预标注和离线训练使用同一组可选 `training` 依赖，默认 Web 安装不包含 PyTorch/Ultralytics。
 
 ## 本地运行
 
 后端使用本地 Python。仅运行标注界面时可使用独立轻量环境；启用 AI 标注时，在已有 PyTorch/Ultralytics 的训练环境中安装本项目。
 
 ```bash
-cd C:/Users/killf/github/LabelS
+cd C:/Users/killf/github/LabelS/backend
 uv sync --python 3.11 --frozen --group test
 cp .env.example .env
 # 填写 S3_*，设置固定 PASSWORD_SECRET_KEY 后启动
-uv run --env-file .env uvicorn labelu.main:app --host 127.0.0.1 --port 8002
+uv run --env-file .env uvicorn backend.main:app --host 127.0.0.1 --port 8002
 ```
 
 另一个终端启动前端：
 
 ```bash
 cd frontend
-pnpm install --frozen-lockfile --ignore-scripts
-pnpm --filter @labelu/frontend run postinstall
-pnpm --filter @labelu/frontend start --host 127.0.0.1
+pnpm --config.strictDepBuilds=false install --frozen-lockfile --ignore-scripts
+pnpm --filter @labels/frontend run postinstall
+pnpm --filter @labels/frontend start --host 127.0.0.1
 ```
 
 访问 `http://127.0.0.1:3004/`。开发服务器将 API 与 WebSocket 请求转发到本地 8002 端口。先在“数据源”中配置 S3 连接，再创建标注任务并选择目标数据源、填写数据集目录。
@@ -76,25 +83,38 @@ pnpm --filter @labelu/frontend start --host 127.0.0.1
 本地 MinIO 可以使用已有镜像启动，并把 S3 endpoint 设置为 `http://127.0.0.1:9000`，启用 path-style；桶需预先创建。以下命令只供本地合成数据使用：
 
 ```bash
-docker run -d --pull never --name labelu-minio \
+docker run -d --pull never --name labels-minio \
   -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 \
-  -e MINIO_ROOT_USER=labelu-local -e MINIO_ROOT_PASSWORD=labelu-local-only \
-  -v labelu-minio:/data minio/minio:latest server /data --console-address :9001
+  -e MINIO_ROOT_USER=labels-local -e MINIO_ROOT_PASSWORD=labels-local-only \
+  -v labels-minio:/data minio/minio:latest server /data --console-address :9001
 ```
+
+后端 Python 包为 `backend`，服务命令为 `labels`，训练命令为 `labels-train`，前端内部包使用 `@labels/*` 并链接本地源码，不从 npm 下载。已有数据库继续使用 `labelu.sqlite`；已有 `DATABASE_URL` 无需改动。浏览器语言与播放偏好键保持兼容。
 
 固定的 `PASSWORD_SECRET_KEY` 同时用于登录签名与 S3 数据源凭据加密，重启后应保留同一配置。
 
 ## 验证与构建
 
 ```bash
-uv run --group test pytest
-cd frontend
+cd backend
+uv run --no-sync pytest
+cd ../frontend
 pnpm build:frontend
 ```
 
 测试使用隔离 SQLite 和 Moto 模拟 S3，不读取实际凭据、不连接外部存储。实际 MinIO 与浏览器验证另行执行。
 
-上游前端在当前依赖下已有完整 TypeScript 检查错误，前端构建和浏览器运行结果需与类型检查结果分开报告。
+本地包的运行与类型入口都指向工作区源码。完整 TypeScript 检查仍有 74 条页面/组件类型错误，本轮已消除全部模块缺失错误；生产构建与完整类型检查的结果分开报告。
+
+Python 修改文件按 Black（Python 3.11、88 列）格式化，并用 Flake8 检查。前端工具函数使用现有 ESLint/Prettier 检查；`lint:*` 默认只检查，不自动修改文件。使用当前 Node 24 环境执行新增前端单元测试：
+
+```bash
+cd frontend
+pnpm --filter @labels/frontend test:unit
+pnpm --filter @labels/frontend type-check
+```
+
+安装命令明确跳过第三方生命周期脚本，`strictDepBuilds=false` 仅允许被跳过的脚本不使安装失败，不授予执行许可。前端的主题 CSS 仍通过前述显式 postinstall 命令生成。
 
 标注平台镜像从本目录构建：
 
@@ -102,10 +122,10 @@ pnpm build:frontend
 docker build -t labels:local .
 ```
 
-训练仍使用 `training/Dockerfile`，详细参数与 S3 模型、日志约定见 [训练说明](training/README.md)。
+训练镜像使用 `backend/Dockerfile.training`，构建上下文为 `backend/`，详细参数与 S3 模型、日志约定见 [训练说明](training/README.md)。
 
 ## SQLite 持久化
 
 `DATABASE_URL` 可设为 `sqlite:////data/labelu.sqlite`。部署到 K8s 时，将整个 `/data` 目录挂载到 PV，使数据库和 journal 一起持久化。部署由使用方维护，本项目不提供部署清单。
 
-迁移状态、验证证据与新会话接续入口见 [HANDOFF.md](HANDOFF.md)。
+后端版本为 `2.0.0`。`backend/migrations/versions/` 仅保留一份完整初始化脚本，启动时由 Alembic 建立空库表结构；不提供历史修订链升级或 SQLite 到 MySQL 的搬迁命令。

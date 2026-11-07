@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useState } from 'react';
-import { Annotator } from '@labelu/image';
+import { Annotator } from '@labels/image';
 
 export const useEngine = (containerRef: React.RefObject<HTMLDivElement>, options?: any) => {
   const [engine, setAnnotationEngine] = useState<any | null>(null);

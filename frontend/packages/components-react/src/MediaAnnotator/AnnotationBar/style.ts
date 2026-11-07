@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 import { darken, rgba } from 'polished';
-import type { MediaAnnotationType } from '@labelu/interface';
+import type { MediaAnnotationType } from '@labels/interface';
 
 export const Order = styled.div``;
 

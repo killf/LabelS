@@ -8,16 +8,16 @@ import type {
   TagAnnotationType,
   TextAttribute,
   EnumerableAttribute,
-} from '@labelu/interface';
-import { useRedoUndo } from '@labelu/components-react';
-import { TOOL_NAMES } from '@labelu/image';
+} from '@labels/interface';
+import { useRedoUndo } from '@labels/components-react';
+import { TOOL_NAMES } from '@labels/image';
 import type {
   AnnotationData,
   ToolName,
   Annotator as ImageAnnotatorClass,
   AnnotationToolData,
   EditType,
-} from '@labelu/image';
+} from '@labels/image';
 import cloneDeep from 'lodash.clonedeep';
 
 import Sidebar from './Sidebar';
@@ -68,7 +68,7 @@ function addToolNameToAnnotationData(annotationData: Partial<Record<ToolName, An
 const Wrapper = styled.div.attrs((props) => {
   return {
     ...props,
-    className: 'labelu-image-annotator',
+    className: 'labels-image-annotator',
   };
 })`
   display: flex;
@@ -77,7 +77,7 @@ const Wrapper = styled.div.attrs((props) => {
   flex-grow: 1;
   background-color: #fff;
 
-  .labelu-video-wrapper {
+  .labels-video-wrapper {
     flex: 1;
   }
 `;

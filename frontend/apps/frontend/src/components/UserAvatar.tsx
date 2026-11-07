@@ -1,7 +1,7 @@
 import type { TooltipProps } from 'antd';
 import { Avatar, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 
 import type { UserResponse } from '@/api/types';
 

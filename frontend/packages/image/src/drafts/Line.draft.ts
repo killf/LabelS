@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import uid from '@/utils/uid';
+import uid from '../utils/uid';
 
 import type { LineStyle } from '../shapes/Line.shape';
 import { Line } from '../shapes/Line.shape';

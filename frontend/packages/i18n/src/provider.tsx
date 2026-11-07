@@ -5,7 +5,7 @@ import { merge } from './utils';
 import { useLocalStorage } from './useLocalStorage';
 import { i18n } from './i18n';
 import { resources } from './locales';
-const LANG_CHANGE_EVENT = 'labelu-lang-change';
+const LANG_CHANGE_EVENT = 'labels-lang-change';
 
 export type I18nProviderProps = React.PropsWithChildren<{
   locales?: Record<string, Record<string, unknown> & { translation: Record<string, unknown> }>;

@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import type { VideoAnnotationData, Attribute, AudioAnnotationData, MediaAnnotationInUI } from '@labelu/interface';
+import type { VideoAnnotationData, Attribute, AudioAnnotationData, MediaAnnotationInUI } from '@labels/interface';
 import { useRef } from 'react';
 
 import { useMediaAnnotator } from './context';

@@ -1,10 +1,10 @@
 import styled from 'styled-components';
 import { useCallback } from 'react';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
-// import { useAnnotator } from '@/context';
+// import { useAnnotator } from '../context';
 
-import { useTool } from '@/context/tool.context';
+import { useTool } from '../context/tool.context';
 
 import Slider from './Slider';
 import { ReactComponent as StrokeWidthIcon } from './assets/stroke-width.svg';

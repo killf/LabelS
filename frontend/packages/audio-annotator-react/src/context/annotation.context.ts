@@ -7,7 +7,7 @@ import type {
   MediaAnnotationType,
   MediaAnnotationData,
   MediaAnnotationWithTextAndTag,
-} from '@labelu/interface';
+} from '@labels/interface';
 import { createContext, useContext } from 'react';
 
 export type GlobalAnnotation = TextAnnotationEntity | TagAnnotationEntity;

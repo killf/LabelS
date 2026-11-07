@@ -2,8 +2,8 @@ import { Form, Input } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import _ from 'lodash';
 import { useMutation } from '@tanstack/react-query';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import { signUp } from '@/api/services/user';
 import { ReactComponent as EmailIcon } from '@/assets/svg/email.svg';

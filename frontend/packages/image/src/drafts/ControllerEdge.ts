@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import { cursorManager } from '@/singletons/cursorManager';
-import type { CursorType } from '@/core/CursorManager';
+import { cursorManager } from '../singletons/cursorManager';
+import type { CursorType } from '../core/CursorManager';
 
 import { eventEmitter } from '../singletons';
 import { EInternalEvent } from '../enums';

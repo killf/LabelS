@@ -26,7 +26,7 @@ function RouteWithTitle({ children }: { children: React.ReactNode }) {
 
   return (
     // TODO：默认标题可配置（环境变量 or 常量）
-    <DocumentTitle title={title ? `${title} - LabelU` : 'LabelU'}>
+    <DocumentTitle title={title ? `${title} - LabelS` : 'LabelS'}>
       <>{children}</>
     </DocumentTitle>
   );

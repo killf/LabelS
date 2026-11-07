@@ -8,7 +8,7 @@ import {
   uid,
   FlexLayout,
   Tooltip,
-} from '@labelu/components-react';
+} from '@labels/components-react';
 import type {
   EnumerableAttribute,
   GlobalAnnotationType,
@@ -16,15 +16,15 @@ import type {
   TagAnnotationEntity,
   TextAnnotationEntity,
   TextAttribute,
-} from '@labelu/interface';
-import { useTranslation } from '@labelu/i18n';
+} from '@labels/interface';
+import { useTranslation } from '@labels/i18n';
 
-import { ReactComponent as DeleteIcon } from '@/assets/icons/delete.svg';
-import { useTool } from '@/context/tool.context';
-import type { GlobalAnnotation } from '@/context/annotation.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { useSample } from '@/context/sample.context';
-import { tooltipStyle } from '@/Toolbar';
+import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
+import { useTool } from '../context/tool.context';
+import type { GlobalAnnotation } from '../context/annotation.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { useSample } from '../context/sample.context';
+import { tooltipStyle } from '../Toolbar';
 
 import AsideAttributeItem, { AttributeAction, Header } from './AsideAttributeItem';
 

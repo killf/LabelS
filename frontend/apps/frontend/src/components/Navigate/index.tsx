@@ -1,8 +1,8 @@
 import Icon, { BellOutlined, DatabaseOutlined, PoweroffOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 import { Button, Divider, Dropdown, Popover, Tag } from 'antd';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { ReactComponent as LocalDeploy } from '@/assets/svg/local-deploy.svg';
 import { ReactComponent as ToolboxSvg } from '@/assets/svg/toolbox.svg';
@@ -11,7 +11,7 @@ import useMe from '@/hooks/useMe';
 
 import AppPanel from '../AppPanel';
 import Breadcrumb from '../Breadcrumb';
-import { LabeluLogo, NavigationWrapper } from './style';
+import { LabelSLogo, NavigationWrapper } from './style';
 import TaskTip from './TaskTip';
 import LanguageSwitcher from '../LangSwitcher';
 import { UserAvatar } from '../UserAvatar';
@@ -20,7 +20,7 @@ const Homepage = () => {
   const me = useMe();
   const navigate = useNavigate();
   const isSampleDetail = useMatch('/tasks/:taskId/samples/:sampleId');
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const logout = async (e: any) => {
     e.stopPropagation();
@@ -41,7 +41,7 @@ const Homepage = () => {
       <FlexLayout.Item flex items="center" gap={window.IS_ONLINE ? '.5rem' : '3rem'}>
         <Link to="/">
           <FlexLayout.Item flex items="center">
-            <LabeluLogo />
+            <LabelSLogo />
 
             {window.IS_ONLINE && (
               <Tag bordered={false} color="var(--color-fill-secondary)" style={{ color: 'var(--color-text)' }}>
@@ -69,7 +69,7 @@ const Homepage = () => {
         {window.IS_ONLINE && (
           <a
             data-wiz="local-deploy-top-right"
-            href={`https://opendatalab.github.io/labelU/${i18n.language.startsWith('en') ? 'en/' : ''}guide/install`}
+            href="https://github.com/killf/LabelS#readme"
           >
             <Button type="link" style={{ color: 'rgba(0, 0, 0, 0.85)' }} icon={<Icon component={LocalDeploy} />}>
               {t('localDeploy')}
@@ -85,7 +85,7 @@ const Homepage = () => {
           type="link"
           data-wiz="documentation"
           icon={<BellOutlined />}
-          href={`https://opendatalab.github.io/labelU/${i18n.language.startsWith('en') ? 'en/' : ''}guide/introduction`}
+          href="https://github.com/killf/LabelS#readme"
           style={{ color: 'rgba(0, 0, 0, 0.85)' }}
           target="_blank"
           rel="noreferrer"

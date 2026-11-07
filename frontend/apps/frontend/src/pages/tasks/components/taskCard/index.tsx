@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { Button, Progress, Tooltip } from 'antd';
 import { useNavigate, useRevalidator } from 'react-router';
 import Icon from '@ant-design/icons';
-import formatter from '@labelu/formatter';
-import { EllipsisText, FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import formatter from '@labels/formatter';
+import { EllipsisText, FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import { modal } from '@/StaticAnt';
 import { ReactComponent as DeleteIcon } from '@/assets/svg/delete.svg';

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouteLoaderData } from 'react-router-dom';
 import { Alert, Button, Checkbox, Modal, Pagination } from 'antd';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 import { CopyOutlined, ReloadOutlined, TeamOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { useCollaborators } from '@/api/queries/task';
 import { UserAvatar } from '@/components/UserAvatar';

@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash.clonedeep';
 import Color from 'color';
 
-import type { AllShape } from '@/shapes/types';
+import type { AllShape } from '../shapes/types';
 
 import type { LineStyle } from '../shapes/Line.shape';
 import type { PolygonData } from '../annotations';

@@ -1,5 +1,5 @@
-import type { AnnotatorOptions } from '@labelu/image';
-import { Annotator } from '@labelu/image';
+import type { AnnotatorOptions } from '@labels/image';
+import { Annotator } from '@labels/image';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ResizeObserver from 'resize-observer-polyfill';
 

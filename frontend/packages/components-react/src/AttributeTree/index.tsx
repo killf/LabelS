@@ -4,7 +4,7 @@ import type {
   TagAnnotationEntity,
   TextAnnotationEntity,
   TextAttribute,
-} from '@labelu/interface';
+} from '@labels/interface';
 import type { CollapseProps } from 'rc-collapse';
 import Collapse from 'rc-collapse';
 import { useEffect, useMemo } from 'react';

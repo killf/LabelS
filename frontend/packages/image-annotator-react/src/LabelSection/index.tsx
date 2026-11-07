@@ -1,16 +1,16 @@
 import React, { createRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DraggableModalRef, ValidationContextType } from '@labelu/components-react';
-import { Kbd, getOS, DraggableModel, AttributeForm, EllipsisText, FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
-import type { Attribute, AttributeValue, EnumerableAttribute, ILabel, TextAttribute } from '@labelu/interface';
-import type { AnnotationData, Annotator, ToolName } from '@labelu/image';
+import type { DraggableModalRef, ValidationContextType } from '@labels/components-react';
+import { Kbd, getOS, DraggableModel, AttributeForm, EllipsisText, FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
+import type { Attribute, AttributeValue, EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
+import type { AnnotationData, Annotator, ToolName } from '@labels/image';
 
-import { ReactComponent as MenuOpenIcon } from '@/assets/icons/menu-open.svg';
-import { ReactComponent as MenuCloseIcon } from '@/assets/icons/menu-close.svg';
-import { useTool } from '@/context/tool.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { ReactComponent as MouseRightClick } from '@/Toolbar/assets/mouse-right.svg';
+import { ReactComponent as MenuOpenIcon } from '../assets/icons/menu-open.svg';
+import { ReactComponent as MenuCloseIcon } from '../assets/icons/menu-close.svg';
+import { useTool } from '../context/tool.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { ReactComponent as MouseRightClick } from '../Toolbar/assets/mouse-right.svg';
 const os = getOS();
 export const dragModalRef = createRef<DraggableModalRef>();
 

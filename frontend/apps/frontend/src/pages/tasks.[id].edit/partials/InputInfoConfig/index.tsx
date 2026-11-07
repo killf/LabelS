@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Form, Input, Select } from 'antd';
 import styled from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
-import { useTranslation } from '@labelu/i18n';
+import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@labels/i18n';
 
 import { MediaType } from '@/api/types';
 import { getDataSources } from '@/api/services/datasource';

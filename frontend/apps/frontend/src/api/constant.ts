@@ -1,4 +1,4 @@
-import { i18n } from '@labelu/i18n';
+import { i18n } from '@labels/i18n';
 
 const COMMON_INIT_CODE = 30000;
 const USER_INIT_CODE = 40000;

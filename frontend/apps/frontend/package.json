@@ -1,18 +1,18 @@
 {
-  "name": "@labelu/frontend",
-  "version": "5.11.1",
+  "name": "@labels/frontend",
+  "version": "2.0.0",
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^4.6.2",
-    "@labelu/i18n": "1.1.2",
-    "@labelu/audio-annotator-react": "1.9.3",
-    "@labelu/components-react": "1.8.3",
-    "@labelu/image": "1.5.2",
-    "@labelu/formatter": "1.0.2",
-    "@labelu/image-annotator-react": "2.5.3",
-    "@labelu/interface": "1.3.1",
-    "@labelu/video-annotator-react": "1.5.3",
-    "@labelu/video-react": "1.6.3",
+    "@labels/i18n": "workspace:*",
+    "@labels/audio-annotator-react": "workspace:*",
+    "@labels/components-react": "workspace:*",
+    "@labels/image": "workspace:*",
+    "@labels/formatter": "workspace:*",
+    "@labels/image-annotator-react": "workspace:*",
+    "@labels/interface": "workspace:*",
+    "@labels/video-annotator-react": "workspace:*",
+    "@labels/video-react": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
     "antd": "5.10.1",
     "axios": "^1.3.4",
@@ -42,9 +42,9 @@
     "preview": "vite preview --port 3007",
     "build": "cross-env CI=false vite build",
     "package:dist": "cross-env DIST=true vite",
-    "release": "semantic-release",
     "type-check": "tsc --noEmit",
-    "openapi": "ts-node openapi.config.ts"
+    "openapi": "ts-node openapi.config.ts",
+    "test:unit": "node --experimental-strip-types --test src/utils/index.test.ts"
   },
   "author": "wuhui",
   "keywords": [
@@ -54,7 +54,7 @@
   ],
   "homepage": "/",
   "bugs": {
-    "url": "https://github.com/opendatalab/labelU.git",
+    "url": "https://github.com/killf/LabelS",
     "email": "751569801@qq.com"
   },
   "browserslist": {
@@ -70,12 +70,6 @@
     ]
   },
   "devDependencies": {
-    "@octokit/rest": "^19.0.7",
-    "@semantic-release/commit-analyzer": "^9.0.2",
-    "@semantic-release/exec": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^8.0.7",
-    "@semantic-release/release-notes-generator": "^10.0.3",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
@@ -93,22 +87,13 @@
     "@types/styled-components": "^5.1.26",
     "@types/uuid": "^9.0.0",
     "@vitejs/plugin-react": "^3.1.0",
-    "analyze-wiz": "^1.2.0-beta.2",
     "cross-env": "^7.0.3",
     "json-schema-library": "^9.1.2",
-    "minimist": "^1.2.7",
     "prettier": "^2.0.1",
     "sass": "^1.56.1",
-    "semantic-release": "^19.0.3",
-    "semantic-release-github-pullrequest": "^1.3.0",
-    "shelljs": "^0.8.5",
-    "simple-progress-webpack-plugin": "^2.0.0",
-    "terser-webpack-plugin": "^4.2.3",
     "typescript": "4.8.4",
     "vite": "^4.1.1",
     "vite-plugin-ejs": "^1.6.4",
-    "vite-plugin-imp": "^2.3.1",
-    "vite-plugin-svg-icons": "^2.0.1",
     "vite-plugin-svgr": "^2.4.0",
     "vite-plugin-ts-mono-alias": "^1.1.8"
   }

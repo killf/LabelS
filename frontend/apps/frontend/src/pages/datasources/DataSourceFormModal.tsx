@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Form, Input, InputNumber, Modal, Switch } from 'antd';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import type { DataSourceResponse, CreateDataSourceCommand, UpdateDataSourceCommand } from '@/api/types';
 

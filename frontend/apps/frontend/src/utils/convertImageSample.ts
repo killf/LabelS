@@ -1,8 +1,8 @@
 import _ from 'lodash';
-import type { ImageSample } from '@labelu/image-annotator-react';
+import type { ImageSample } from '@labels/image-annotator-react';
 import { omit } from 'lodash/fp';
-import type { ToolName } from '@labelu/image';
-import { TOOL_NAMES } from '@labelu/image';
+import type { ToolName } from '@labels/image';
+import { TOOL_NAMES } from '@labels/image';
 
 import type { ParsedResult, SampleResponse } from '@/api/types';
 

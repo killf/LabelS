@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash.clonedeep';
 import Color from 'color';
 
-import uid from '@/utils/uid';
+import uid from '../utils/uid';
 
 import type { BasicToolParams } from './Tool';
 import { Tool } from './Tool';

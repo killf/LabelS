@@ -38,7 +38,8 @@ export default defineConfig({
     react(),
     svgr(),
     ViteEjsPlugin(),
-    !process.env.DIST && process.env.NODE_ENV !== 'production' && tsMonoAlias(),
+    // 开发与生产构建均解析本地工作区源码。
+    tsMonoAlias(),
   ].filter(Boolean),
   resolve: {
     alias: {

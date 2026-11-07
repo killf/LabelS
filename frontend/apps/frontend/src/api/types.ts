@@ -1,6 +1,6 @@
 export type DatasetSplit = 'train' | 'test' | 'val';
 
-import type { EnumerableAttribute, ILabel, TextAttribute } from '@labelu/interface';
+import type { EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
 
 export interface AttachmentDeleteCommand {
   /** Attachment Ids description: attachment file id */

@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import styled, { css } from 'styled-components';
 
-import { ReactComponent as ExpandIcon } from '@/assets/icons/arrow.svg';
-import { useSample } from '@/context/sample.context';
+import { ReactComponent as ExpandIcon } from '../assets/icons/arrow.svg';
+import { useSample } from '../context/sample.context';
 
 const Cards = styled.div`
   display: flex;
@@ -109,7 +109,7 @@ export default function Sidebar({ renderSidebar }: SidebarProps) {
   }
 
   return (
-    <Wrapper collapsed={collapsed} className="labelu-image__sidebar">
+    <Wrapper collapsed={collapsed} className="labels-image__sidebar">
       {sidebar || (
         <Cards>
           {samples.map((sample, index) => {

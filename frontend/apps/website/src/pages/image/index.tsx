@@ -1,8 +1,8 @@
 import { CodeOutlined, SettingOutlined } from '@ant-design/icons';
-import type { AnnotatorRef } from '@labelu/image-annotator-react';
-import { Annotator as ImageAnnotator } from '@labelu/image-annotator-react';
-import type { Annotator, ToolName } from '@labelu/image';
-import { TOOL_NAMES } from '@labelu/image';
+import type { AnnotatorRef } from '@labels/image-annotator-react';
+import { Annotator as ImageAnnotator } from '@labels/image-annotator-react';
+import type { Annotator, ToolName } from '@labels/image';
+import { TOOL_NAMES } from '@labels/image';
 import type { TabsProps } from 'antd';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
@@ -10,7 +10,7 @@ import { Button, Drawer, Form, Tabs } from 'antd';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import Modal from 'antd/es/modal/Modal';
 import message from 'antd/es/message';
-import { i18n, useTranslation } from '@labelu/i18n';
+import { i18n, useTranslation } from '@labels/i18n';
 
 import lineTemplate from '@/constant/templates/line.template';
 import rectTemplate from '@/constant/templates/rect.template';

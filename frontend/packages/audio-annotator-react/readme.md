@@ -1,4 +1,6 @@
-# @labelu/audio-annotator-react
+# @labels/audio-annotator-react
+
+> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
 
 ![音频标注套件](./source/SCR-20231030-qcvf.png)
 
@@ -15,28 +17,26 @@
 - 支持侧边栏自定义
 - 支持撤回和重做
 
-如果你希望查看更详细的代码 API，请访问：[Audio Annotator API](https://opendatalab.github.io/labelU-Kit/interfaces/_labelu_audio_anntator_react.AnnotatorProps.html)
+如果你希望查看更详细的代码 API，请访问：[Audio Annotator API](https://github.com/killf/LabelS#readme)
 
 ## 安装
 
-[![npm](https://img.shields.io/npm/v/%40labelu/audio-annotator-react.svg)](https://www.npmjs.com/package/@labelu/audio-annotator-react)
 
 ```bash
-npm install @labelu/audio-annotator-react
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
 ## 使用
 
 ### 在线示例 👇🏻
 
-[![在线示例](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/opendatalab/labelU-Kit/tree/website/packages/audio-annotator-react/example)
 
 ### 首先
 
-你需要引入样式文件（这个样式文件主要包含 在 `@labelu/components-react` 中使用到的 [`rc-components`](http://react-component.github.io/badgeboard/) 的样式）：
+你需要引入样式文件（这个样式文件主要包含 在 `@labels/components-react` 中使用到的 [`rc-components`](http://react-component.github.io/badgeboard/) 的样式）：
 
 ```tsx
-import '@labelu/audio-annotator-react/dist/style.css';
+import '@labels/audio-annotator-react/dist/style.css';
 ```
 
 ### 然后
@@ -44,7 +44,7 @@ import '@labelu/audio-annotator-react/dist/style.css';
 你需要引入组件：
 
 ```tsx
-import { Annotator } from '@labelu/audio-annotator-react';
+import { Annotator } from '@labels/audio-annotator-react';
 ```
 
 ### 最后
@@ -55,8 +55,8 @@ import { Annotator } from '@labelu/audio-annotator-react';
 import React from 'react';
 import { useState } from 'react';
 
-import { Annotator } from '@labelu/audio-annotator-react';
-import '@labelu/audio-annotator-react/dist/style.css';
+import { Annotator } from '@labels/audio-annotator-react';
+import '@labels/audio-annotator-react/dist/style.css';
 
 const samples = [
   {
@@ -164,7 +164,7 @@ export default function App() {
 
 ## 配置
 
-查看 [API](https://github.com/opendatalab/labelU-Kit/blob/main/packages/audio-annotator-react/src/context.ts#L13)
+查看 [API](https://github.com/killf/LabelS)
 
 配置是针对四种标注类型而设定的，分别是：片断分割、时间戳、全局工具（文本分类、文本描述）。
 
@@ -174,8 +174,8 @@ export default function App() {
 import React from 'react';
 import { useState } from 'react';
 
-import { Annotator } from '@labelu/audio-annotator-react';
-import '@labelu/audio-annotator-react/dist/style.css';
+import { Annotator } from '@labels/audio-annotator-react';
+import '@labels/audio-annotator-react/dist/style.css';
 
 export default function App() {
   const [samples, setSamples] = useState([
@@ -258,7 +258,7 @@ export default function App() {
 
 ### 全局工具
 
-查看 [API](https://github.com/opendatalab/labelU-Kit/blob/main/packages/interface/src/configuration/attribute/index.ts#L62)
+查看 [API](https://github.com/killf/LabelS)
 
 ```tsx
 <Annotator

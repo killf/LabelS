@@ -3,7 +3,7 @@ import { Button, Form, Input, Tooltip, Badge } from 'antd';
 import { set, isEqual, size } from 'lodash/fp';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 import type { NamePath } from 'antd/es/form/interface';
 
 import ColorPalette from '@/classes/ColorPalette';

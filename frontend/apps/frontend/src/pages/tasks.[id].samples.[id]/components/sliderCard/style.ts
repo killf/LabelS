@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components';
-import { FlexLayout } from '@labelu/components-react';
+import { FlexLayout } from '@labels/components-react';
 
 export const ImageWrapper = styled(FlexLayout)`
   gap: 0.5rem;

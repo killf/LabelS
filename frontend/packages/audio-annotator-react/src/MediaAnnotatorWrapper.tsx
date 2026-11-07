@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import type { AudioAnnotatorProps } from '@labelu/audio-react';
+import type { AudioAnnotatorProps } from '@labels/audio-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type {
@@ -17,10 +17,9 @@ import type {
   MediaAnnotationType,
   AudioAnnotationType,
   AudioAnnotationInUI,
-} from '@labelu/interface';
-import type { EditType, MediaAnnotatorRef } from '@labelu/components-react';
-import { useRedoUndo } from '@labelu/components-react';
-import '@labelu/components-react/dist/style.css';
+} from '@labels/interface';
+import type { EditType, MediaAnnotatorRef } from '@labels/components-react';
+import { useRedoUndo } from '@labels/components-react';
 import cloneDeep from 'lodash.clonedeep';
 
 import Sidebar from './Sidebar';
@@ -96,7 +95,7 @@ function omit<T, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> {
 const Wrapper = styled.div.attrs((props) => {
   return {
     ...props,
-    className: 'labelu-audio-editor',
+    className: 'labels-audio-editor',
   };
 })`
   display: flex;
@@ -105,7 +104,7 @@ const Wrapper = styled.div.attrs((props) => {
   flex-grow: 1;
   background-color: #fff;
 
-  .labelu-audio-wrapper {
+  .labels-audio-wrapper {
     flex: 1;
   }
 `;

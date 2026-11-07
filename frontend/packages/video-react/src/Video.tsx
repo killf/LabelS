@@ -7,9 +7,9 @@ import type {
   VideoFrameName,
   EnumerableAttribute,
   VideoAnnotationInUI,
-} from '@labelu/interface';
-import type { MediaAnnotatorProps, MediaAnnotatorRef } from '@labelu/components-react';
-import { MediaAnnotator, MediaAnnotationContext, AttributeOverlay, parseTime } from '@labelu/components-react';
+} from '@labels/interface';
+import type { MediaAnnotatorProps, MediaAnnotatorRef } from '@labels/components-react';
+import { MediaAnnotator, MediaAnnotationContext, AttributeOverlay, parseTime } from '@labels/components-react';
 
 import { VideoPlayer } from './VideoPlayer';
 

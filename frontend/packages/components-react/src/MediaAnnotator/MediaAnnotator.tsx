@@ -1,4 +1,4 @@
-import type { MediaAnnotationData, MediaAnnotationInUI, MediaAnnotationType, MediaSegment } from '@labelu/interface';
+import type { MediaAnnotationData, MediaAnnotationInUI, MediaAnnotationType, MediaSegment } from '@labels/interface';
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 

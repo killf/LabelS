@@ -1,24 +1,24 @@
 import styled, { css } from 'styled-components';
 import { useCallback, useMemo } from 'react';
-import { EllipsisText } from '@labelu/components-react';
-import type { AnnotationData, ToolName } from '@labelu/image';
+import { EllipsisText } from '@labels/components-react';
+import type { AnnotationData, ToolName } from '@labels/image';
 
-import { ReactComponent as EditIcon } from '@/assets/icons/edit.svg';
-import { ReactComponent as DeleteIcon } from '@/assets/icons/delete.svg';
-import { ReactComponent as VisibilityIcon } from '@/assets/icons/visibility.svg';
-import { ReactComponent as VisibilityOffIcon } from '@/assets/icons/visibility-off.svg';
+import { ReactComponent as EditIcon } from '../assets/icons/edit.svg';
+import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
+import { ReactComponent as VisibilityIcon } from '../assets/icons/visibility.svg';
+import { ReactComponent as VisibilityOffIcon } from '../assets/icons/visibility-off.svg';
 // tool icons
-import { ReactComponent as PointToolIcon } from '@/assets/tools/point.svg';
-import { ReactComponent as LineToolIcon } from '@/assets/tools/line.svg';
-import { ReactComponent as RectToolIcon } from '@/assets/tools/rect.svg';
-import { ReactComponent as PolygonToolIcon } from '@/assets/tools/polygon.svg';
-import { ReactComponent as CuboidToolIcon } from '@/assets/tools/cuboid.svg';
-import { ReactComponent as RelationToolIcon } from '@/assets/tools/relation.svg';
-import { ReactComponent as UnknownIcon } from '@/assets/tools/unknown.svg';
-import { openAttributeModal } from '@/LabelSection';
-import type { AnnotationDataInUI } from '@/context/annotation.context';
-import { useAnnotationCtx } from '@/context/annotation.context';
-import { useTool } from '@/context/tool.context';
+import { ReactComponent as PointToolIcon } from '../assets/tools/point.svg';
+import { ReactComponent as LineToolIcon } from '../assets/tools/line.svg';
+import { ReactComponent as RectToolIcon } from '../assets/tools/rect.svg';
+import { ReactComponent as PolygonToolIcon } from '../assets/tools/polygon.svg';
+import { ReactComponent as CuboidToolIcon } from '../assets/tools/cuboid.svg';
+import { ReactComponent as RelationToolIcon } from '../assets/tools/relation.svg';
+import { ReactComponent as UnknownIcon } from '../assets/tools/unknown.svg';
+import { openAttributeModal } from '../LabelSection';
+import type { AnnotationDataInUI } from '../context/annotation.context';
+import { useAnnotationCtx } from '../context/annotation.context';
+import { useTool } from '../context/tool.context';
 
 const ToolIconMapping: Record<
   ToolName,

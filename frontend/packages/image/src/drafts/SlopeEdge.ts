@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash.clonedeep';
 
-import uid from '@/utils/uid';
+import uid from '../utils/uid';
 
 import { EInternalEvent } from '../enums';
 import type { AxisPoint, Point } from '../shapes';

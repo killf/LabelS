@@ -1,7 +1,7 @@
-import { type Attribute, type ILabel } from '@labelu/interface';
+import { type Attribute, type ILabel } from '@labels/interface';
 import cloneDeep from 'lodash.clonedeep';
 
-import type { RelationData } from '@/annotations/Relation.annotation';
+import type { RelationData } from '../annotations/Relation.annotation';
 
 import type { Annotation } from '../annotations/Annotation';
 import type { ToolName, BasicImageAnnotation, EditType, AnyTool } from '../interface';

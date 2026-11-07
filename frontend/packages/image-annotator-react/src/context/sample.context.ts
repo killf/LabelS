@@ -1,4 +1,4 @@
-import type { ToolName, AnnotationData } from '@labelu/image';
+import type { ToolName, AnnotationData } from '@labels/image';
 import { createContext, useContext } from 'react';
 
 import type { GlobalAnnotationPayload } from './annotation.context';

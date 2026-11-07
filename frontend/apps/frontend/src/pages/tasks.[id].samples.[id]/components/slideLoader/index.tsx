@@ -3,7 +3,7 @@ import styled from 'styled-components';
 
 import type { SampleResponse } from '@/api/types';
 import type { TaskInLoader } from '@/loaders/task.loader';
-import type { TaskCollaboratorInWs } from '@/hooks/useTaskWs';
+import type { TaskSampleUser } from '@/hooks/useSampleWs';
 
 import SliderCard from '../sliderCard';
 import { SAMPLE_CHANGED } from '../annotationRightCorner';
@@ -47,7 +47,7 @@ const SlideLoader = () => {
     taskConnections,
   } = useContext(AnnotationContext);
   const userSampleMapping = useMemo(() => {
-    const mapping: Record<string, TaskCollaboratorInWs[]> = {};
+    const mapping: Record<string, TaskSampleUser[]> = {};
     taskConnections.forEach((collaborator) => {
       if (!mapping[collaborator.sample_id]) {
         mapping[collaborator.sample_id] = [];

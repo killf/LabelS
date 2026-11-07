@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { useTranslation } from '@labelu/i18n';
+import { useTranslation } from '@labels/i18n';
 
 import { ReactComponent as NotFoundIcon } from '@/assets/svg/not-found.svg';
 import Navigate from '@/components/Navigate';

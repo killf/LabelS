@@ -1,8 +1,8 @@
 import React from 'react';
 import { useState } from 'react';
 
-import { AudioAnnotator, type AudioAnnotatorProps } from '@labelu/audio-react';
-import type { AudioAnnotationType, MediaAnnotationInUI } from '@labelu/interface';
+import { AudioAnnotator, type AudioAnnotatorProps } from '@labels/audio-react';
+import type { AudioAnnotationType, MediaAnnotationInUI } from '@labels/interface';
 
 const mockData: any[] = [
   {

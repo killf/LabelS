@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'LabelUI18n',
+      name: 'LabelSI18n',
       formats: ['es', 'umd'],
       fileName: 'index',
     },

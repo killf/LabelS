@@ -1,13 +1,10 @@
 {
-  "name": "@labelu/audio-react",
+  "name": "@labels/audio-react",
   "version": "1.6.3",
-  "description": "labelu audio annotation component for react",
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "description": "labels audio annotation component for react",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "build": "vite build && npm run build:types",
     "build:types": "tsc -d --emitDeclarationOnly",
@@ -15,10 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/opendatalab/labelU-Kit.git"
-  },
-  "publishConfig": {
-    "access": "public"
+    "url": "https://github.com/killf/LabelS"
   },
   "author": {
     "name": "gary",
@@ -26,7 +20,7 @@
   },
   "license": "Apache-2.0",
   "devDependencies": {
-    "@labelu/interface": "1.3.1",
+    "@labels/interface": "workspace:*",
     "@types/react": "^18.2.20",
     "@vitejs/plugin-react": "^3.1.0",
     "react": "^18.2.0",
@@ -40,7 +34,7 @@
     "vite-tsconfig-paths": "^3.5.0"
   },
   "dependencies": {
-    "@labelu/components-react": "1.8.3",
+    "@labels/components-react": "workspace:*",
     "polished": "^4.2.2",
     "react-hotkeys-hook": "^4.4.1",
     "styled-components": "^6.1.15",
