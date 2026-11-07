@@ -1,0 +1,15 @@
+.venv/
+data/
+training/
+tests/
+.env
+**/__pycache__/
+**/node_modules/
+**/dist/
+
+.git/
+.tmp/
+.pytest_cache/
+*.pt
+*.sqlite*
+*.log

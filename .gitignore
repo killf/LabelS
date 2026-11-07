@@ -1,0 +1,40 @@
+# 环境、凭据和本地运行文件。
+.env
+.env.*
+!.env.example
+.venv/
+.venv-*/
+.tmp/
+.cache/
+/data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.log
+
+# Python 与前端依赖、缓存和构建产物。
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# 模型权重和训练输出由对象存储管理。
+*.pt
+*.onnx
+*.engine
+
+# 前端静态资源在构建时生成。
+/labelu/internal/statics/*
+!/labelu/internal/statics/__init__.py
+
+.DS_Store
+Thumbs.db
