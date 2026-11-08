@@ -8,18 +8,15 @@ from sqlalchemy.orm import Session
 
 from backend.common.db import begin_transaction
 from backend.common.error_code import ErrorCode
-from backend.common.error_code import LabelSException
+from backend.common.error_code import YoloMcpException
 from backend.domain.models.user import User
 from backend.domain.models.project import Project
 from backend.domain.models.attachment import ProjectAttachment
 from backend.common.storage import get_storage, build_thumbnail_key
 from backend.domain.models.project import ProjectStatus
 from backend.domain.models.sample import SampleState
-from backend.application.service.access import assert_project_access
-from backend.application.service.dataset import (
-    dataset_classes,
-    sync_dataset,
-)
+from backend.application.service.access import assert_project_access, assert_owner
+from backend.application.service.dataset import dataset_classes
 from backend.adapter.persistence import crud_project, crud_user
 from backend.adapter.persistence import crud_sample
 from backend.application.command.project import BasicConfigCommand
@@ -31,6 +28,7 @@ from backend.application.response.project import ProjectStatics
 from backend.application.response.project import ProjectResponse
 from backend.application.response.project import ProjectResponseWithStatics
 from backend.inference import ANNOTATION_WEIGHTS
+from backend.clients.ws import sampleConnectionManager
 
 
 async def create(
@@ -59,7 +57,7 @@ async def create(
             project_directory = storage.path(new_project.dataset_prefix)
             project_directory.mkdir(parents=True, exist_ok=False)
             created_directories.append(project_directory)
-            for name in ("uploads", "images", "labels", "models", "runs"):
+            for name in ("images", "models", "runs"):
                 directory = project_directory / name
                 directory.mkdir()
                 created_directories.append(directory)
@@ -102,7 +100,10 @@ async def list_by(
 ) -> Tuple[List[ProjectResponseWithStatics], int]:
     # get project list
     projects, total_project = crud_project.list_by(
-        db=db, owner_id=current_user.id, page=page, size=size
+        db=db,
+        owner_id=None if current_user.is_admin else current_user.id,
+        page=page,
+        size=size,
     )
 
     # get progress
@@ -150,14 +151,15 @@ async def get(
 
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
     # not the collaborators
     if (
-        project.created_by != current_user.id
+        not current_user.is_admin
+        and project.created_by != current_user.id
         and current_user not in project.collaborators
     ):
         logger.error(
@@ -165,7 +167,7 @@ async def get(
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
@@ -208,15 +210,13 @@ async def get_collaborators(db: Session, project_id: int, current_user: User):
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    return [
-        UserResponse(id=user.id, username=user.username)
-        for user in project.collaborators
-    ]
+    assert_project_access(project, current_user)
+    return [UserResponse.model_validate(user) for user in project.collaborators]
 
 
 async def add_collaborator(
@@ -225,34 +225,34 @@ async def add_collaborator(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if project.created_by != current_user.id:
+    if project.created_by != current_user.id and not current_user.is_admin:
         logger.error(
             "cannot add collaborator, the project owner is:{}, the add operator is:{}",
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
     user = crud_user.get(db=db, id=user_id)
-    if not user:
+    if not user or not user.is_active:
         logger.error("cannot find user:{}", user_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_40002_USER_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
     # collaborator exists
-    if user in project.collaborators:
+    if user.id == project.created_by or user in project.collaborators:
         logger.error("collaborator already exists:{}", user_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50003_COLLABORATOR_ALREADY_EXISTS,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -260,7 +260,7 @@ async def add_collaborator(
     with begin_transaction(db):
         project.collaborators.append(user)
 
-    return UserResponse(id=user.id, username=user.username)
+    return UserResponse.model_validate(user)
 
 
 async def batch_add_collaborators(
@@ -269,18 +269,18 @@ async def batch_add_collaborators(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if project.created_by != current_user.id:
+    if project.created_by != current_user.id and not current_user.is_admin:
         logger.error(
             "cannot add collaborator, the project owner is:{}, the add operator is:{}",
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
@@ -291,9 +291,9 @@ async def batch_add_collaborators(
         - set([project.created_by])
     )
     users = crud_user.list_by_ids(db=db, ids=user_ids)
-    if len(users) != len(user_ids):
+    if len(users) != len(user_ids) or any(not user.is_active for user in users):
         logger.error("cannot find users:{}", user_ids)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_40002_USER_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -301,7 +301,7 @@ async def batch_add_collaborators(
     with begin_transaction(db):
         project.collaborators.extend(users)
 
-    return [UserResponse(id=user.id, username=user.username) for user in users]
+    return [UserResponse.model_validate(user) for user in users]
 
 
 async def remove_collaborator(
@@ -310,18 +310,18 @@ async def remove_collaborator(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if project.created_by != current_user.id:
+    if project.created_by != current_user.id and not current_user.is_admin:
         logger.error(
-            "cannot remove collaborator, the project owner is:{}, the remove operator is:{}",
+            "cannot remove collaborator, project owner:{}, operator:{}",
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
@@ -329,14 +329,14 @@ async def remove_collaborator(
     user = crud_user.get(db=db, id=user_id)
     if not user:
         logger.error("cannot find user:{}", user_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_40002_USER_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
     if user not in project.collaborators:
         logger.error("cannot find collaborator:{}", user_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50004_COLLABORATOR_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -344,6 +344,7 @@ async def remove_collaborator(
     with begin_transaction(db):
         project.collaborators.remove(user)
 
+    await sampleConnectionManager.close_user_connections(user_id, project_id)
     return CommonDataResp(ok=True)
 
 
@@ -353,18 +354,18 @@ async def batch_remove_collaborators(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if project.created_by != current_user.id:
+    if project.created_by != current_user.id and not current_user.is_admin:
         logger.error(
-            "cannot remove collaborator, the project owner is:{}, the remove operator is:{}",
+            "cannot remove collaborator, project owner:{}, operator:{}",
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
@@ -372,7 +373,7 @@ async def batch_remove_collaborators(
     users = crud_user.list_by_ids(db=db, ids=user_ids)
     if len(users) != len(user_ids):
         logger.error("cannot find users:{}", user_ids)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_40002_USER_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -382,6 +383,8 @@ async def batch_remove_collaborators(
             if user in project.collaborators:
                 project.collaborators.remove(user)
 
+    for user in users:
+        await sampleConnectionManager.close_user_connections(user.id, project_id)
     return CommonDataResp(ok=True)
 
 
@@ -393,12 +396,12 @@ async def update(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    assert_project_access(project, current_user)
+    assert_owner(project, current_user)
 
     # update
     obj_in = cmd.model_dump(exclude_unset=True)
@@ -429,9 +432,6 @@ async def update(
     with begin_transaction(db):
         updated_project = crud_project.update(db=db, db_obj=project, obj_in=obj_in)
 
-    if "config" in cmd.model_fields_set:
-        sync_dataset(db, updated_project)
-
     # response
     return ProjectResponse(
         id=updated_project.id,
@@ -459,18 +459,18 @@ async def delete(db: Session, project_id: int, current_user: User) -> CommonData
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if project.created_by != current_user.id:
+    if project.created_by != current_user.id and not current_user.is_admin:
         logger.error(
             "cannot delete project, the project owner is:{}, the delete operator is:{}",
             project.created_by,
             current_user.id,
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )

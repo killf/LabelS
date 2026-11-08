@@ -11,7 +11,7 @@ from backend.application.service.access import assert_project_access
 from backend.common.db import begin_transaction
 from backend.common.config import settings
 from backend.common.error_code import ErrorCode
-from backend.common.error_code import LabelSException
+from backend.common.error_code import YoloMcpException
 from backend.common.storage import (
     build_thumbnail_key,
     create_thumbnail_bytes,
@@ -19,6 +19,7 @@ from backend.common.storage import (
 )
 from backend.domain.models.user import User
 from backend.domain.models.attachment import ProjectAttachment
+from backend.domain.models.sample import ProjectSample
 from backend.adapter.persistence import crud_project
 from backend.adapter.persistence import crud_attachment
 from backend.application.command.attachment import AttachmentCommand
@@ -29,6 +30,7 @@ from backend.application.response.attachment import AttachmentResponse
 
 def build_attachment_response(
     attachment: ProjectAttachment | None,
+    current_user: User,
 ) -> AttachmentResponse | None:
     """为项目上传图片签发预览地址，空附件返回 None。"""
     if attachment is None:
@@ -36,10 +38,14 @@ def build_attachment_response(
 
     # 全部附件使用服务端统一的本地目录。
     storage = get_storage()
-    url = storage.get_read_url(attachment.path)
+    url = storage.get_read_url(
+        attachment.path, current_user.id, current_user.auth_version
+    )
     thumbnail_key = build_thumbnail_key(attachment.path)
     thumbnail_url = (
-        storage.get_read_url(thumbnail_key) if storage.exists(thumbnail_key) else None
+        storage.get_read_url(thumbnail_key, current_user.id, current_user.auth_version)
+        if storage.exists(thumbnail_key)
+        else None
     )
     return AttachmentResponse(
         id=attachment.id,
@@ -64,7 +70,7 @@ def _upload_key(project_id: int, filename: str) -> str:
         raise HTTPException(422, "上传文件名包含系统保留名称")
     directories = [part for part in parts[:-1] if part not in ("", ".", "..")]
     return str(
-        PurePosixPath("projects", str(project_id), "uploads", *directories, parts[-1])
+        PurePosixPath("projects", str(project_id), "images", *directories, parts[-1])
     )
 
 
@@ -75,7 +81,7 @@ async def create(
     # 1. 先验证项目，再访问存储；对象键只来自清理后的相对路径。
     project = crud_project.get(db=db, project_id=project_id)
     if project is None:
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -94,7 +100,7 @@ async def create(
     storage = get_storage()
     thumbnail_key = build_thumbnail_key(key)
     if storage.exists(key) or storage.exists(thumbnail_key):
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_51002_PROJECT_ATTACHMENT_ALREADY_EXISTS,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -103,7 +109,7 @@ async def create(
     thumbnail_bytes = None
     try:
         # 2. 分块写入临时目录，离开上下文时统一清理本地文件。
-        with tempfile.TemporaryDirectory(prefix="labels-upload-") as directory:
+        with tempfile.TemporaryDirectory(prefix="yolo-mcp-upload-") as directory:
             local_path = Path(directory) / ("upload" + PurePosixPath(key).suffix)
             total_size = 0
             async with aiofiles.open(local_path, "wb") as output:
@@ -150,19 +156,25 @@ async def create(
         logger.error(
             "Upload failed: project_id={}, error={}", project_id, type(error).__name__
         )
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_51000_CREATE_ATTACHMENT_ERROR,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         ) from None
 
     # 4. 使用本次写入结果构造响应，不重复查询对象是否存在。
     logger.info("File saved: project_id={}, size={}", project_id, total_size)
-    url = storage.get_read_url(key)
+    url = storage.get_read_url(key, current_user.id, current_user.auth_version)
     return AttachmentResponse(
         id=attachment.id,
         filename=attachment.filename,
         url=url,
-        thumbnail_url=storage.get_read_url(thumbnail_key) if thumbnail_bytes else None,
+        thumbnail_url=(
+            storage.get_read_url(
+                thumbnail_key, current_user.id, current_user.auth_version
+            )
+            if thumbnail_bytes
+            else None
+        ),
     )
 
 
@@ -174,29 +186,38 @@ async def delete(
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_51001_PROJECT_ATTACHMENT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-        )
-
-    if project.created_by != current_user.id:
-        logger.error(
-            "cannot delete attachment, the project owner is:{}, the delete operator is:{}",
-            project.created_by,
-            current_user.id,
-        )
-        raise LabelSException(
-            code=ErrorCode.CODE_30001_NO_PERMISSION,
-            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     # 本地文件删除失败时保留数据库记录，避免出现不可重试的悬空引用。
     attachments = crud_attachment.get_by_ids(db=db, attachment_ids=cmd.attachment_ids)
     if any(attachment.project_id != project_id for attachment in attachments):
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,
         )
+
+    if project.created_by != current_user.id and not current_user.is_admin:
+        assert_project_access(project, current_user)
+        referenced = (
+            db.query(ProjectSample.id)
+            .filter(
+                ProjectSample.file_id.in_(cmd.attachment_ids),
+                ProjectSample.deleted_at.is_(None),
+            )
+            .first()
+        )
+        # 协作者只能撤回本人尚未提交成样本的上传，不能删除正式数据。
+        if (
+            referenced
+            or not attachments
+            or any(item.created_by != current_user.id for item in attachments)
+        ):
+            raise YoloMcpException(
+                code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
+            )
 
     # 2. 先清理自有对象，成功后再移除数据库引用。
     storage = get_storage()

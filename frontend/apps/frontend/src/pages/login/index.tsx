@@ -1,12 +1,12 @@
 import type { FormProps } from 'antd';
 import { Input, Form } from 'antd';
 import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 import { useEffect } from 'react';
 
-import { login } from '@/api/services/user';
+import { login, getBootstrap } from '@/api/services/user';
 import { ReactComponent as EmailIcon } from '@/assets/svg/email.svg';
 import { ReactComponent as PasswordIcon } from '@/assets/svg/password.svg';
 import LanguageSwitcher from '@/components/LangSwitcher';
@@ -23,6 +23,7 @@ interface FormValues {
 const LoginPage = () => {
   const [form] = Form.useForm<FormValues>();
   const me = useMe();
+  const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: getBootstrap });
   const { t } = useTranslation();
   const loginMutation = useMutation({
     mutationFn: login,
@@ -92,7 +93,7 @@ const LoginPage = () => {
         </Form>
         <FlexLayout justify="space-between" items="center">
           <LanguageSwitcher />
-          <Link to="/register">{t('signUp')}</Link>
+          {bootstrap.data?.data.required && <Link to="/register">初始化管理员</Link>}
         </FlexLayout>
       </FormWrapper>
     </LoginWrapper>

@@ -303,8 +303,8 @@ export class DraftCuboid extends Draft<CuboidData, PolygonStyle | PointStyle> {
   }
 
   private _handleMouseOver = (e: MouseEvent) => {
-    const otherPerspective = document.getElementById('labels_cuboid_other_perspective');
-    const moreWrapper = document.getElementById('labels_cuboid_more');
+    const otherPerspective = document.getElementById('yolo_mcp_cuboid_other_perspective');
+    const moreWrapper = document.getElementById('yolo_mcp_cuboid_more');
     const target = e.target as HTMLElement;
 
     if (target && otherPerspective && moreWrapper?.contains(target)) {
@@ -317,7 +317,7 @@ export class DraftCuboid extends Draft<CuboidData, PolygonStyle | PointStyle> {
   };
 
   private _handleMouseLeave = () => {
-    const otherPerspective = document.getElementById('labels_cuboid_other_perspective');
+    const otherPerspective = document.getElementById('yolo_mcp_cuboid_other_perspective');
 
     if (otherPerspective) {
       this._timer = setTimeout(function () {
@@ -332,10 +332,10 @@ export class DraftCuboid extends Draft<CuboidData, PolygonStyle | PointStyle> {
   private _handleSwitchDirection = (e: MouseEvent) => {
     const { data } = this;
 
-    const frontBackSwitcher = document.getElementById('labels_cuboid_switch_front_back');
-    const leftSwitcher = document.getElementById('labels_cuboid_left');
-    const rightSwitcher = document.getElementById('labels_cuboid_right');
-    const topSwitcher = document.getElementById('labels_cuboid_top');
+    const frontBackSwitcher = document.getElementById('yolo_mcp_cuboid_switch_front_back');
+    const leftSwitcher = document.getElementById('yolo_mcp_cuboid_left');
+    const rightSwitcher = document.getElementById('yolo_mcp_cuboid_right');
+    const topSwitcher = document.getElementById('yolo_mcp_cuboid_top');
     const target = e.target as HTMLElement;
 
     if (frontBackSwitcher?.contains(target)) {

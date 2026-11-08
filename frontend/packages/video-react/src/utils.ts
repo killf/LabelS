@@ -1,4 +1,4 @@
-import type { VideoAnnotationData, VideoFrameAnnotation, VideoSegmentAnnotation } from '@labels/interface';
+import type { VideoAnnotationData, VideoFrameAnnotation, VideoSegmentAnnotation } from '@yolo-mcp/interface';
 
 /**
  * 把毫秒转换成时长

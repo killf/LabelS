@@ -1,4 +1,3 @@
-import { parseTrainingParameters, trainingFormValues } from '@/components/TrainingConfigFields';
 import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Button, Form } from 'antd';
 import { useLocation, useNavigate, useParams, useRevalidator, useRouteLoaderData } from 'react-router-dom';
@@ -7,10 +6,11 @@ import { omit } from 'lodash/fp';
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { Bridge } from 'iframe-message-bridge';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
+import { parseTrainingParameters, trainingFormValues } from '@/components/TrainingConfigFields';
 import { message, modal } from '@/StaticAnt';
 import type { OkRespCreateSampleResponse, ProjectResponse } from '@/api/types';
 import { MediaType, ProjectStatus } from '@/api/types';
@@ -21,6 +21,7 @@ import type { ProjectLoaderResult } from '@/loaders/project.loader';
 import { useAddProjectMutation, useUpdateProjectConfigMutation } from '@/api/mutations/project';
 import { convertImageConfig } from '@/utils/convertImageConfig';
 import type { ToolsConfigState } from '@/types/toolConfig';
+import useMe from '@/hooks/useMe';
 
 import type { QueuedFile } from './partials/InputData';
 import InputData from './partials/InputData';
@@ -102,6 +103,8 @@ const CreateProject = () => {
   const revalidator = useRevalidator();
   const routerLoaderData = useRouteLoaderData('project') as ProjectLoaderResult;
   const projectData = _.get(routerLoaderData, 'project');
+  const me = useMe();
+  const canManage = !!me.data?.is_admin || projectData?.created_by?.id === me.data?.id || !projectData?.id;
   const samples = _.get(routerLoaderData, 'samples');
   const toolsConfig = projectData?.config;
   const navigate = useNavigate();
@@ -134,6 +137,7 @@ const CreateProject = () => {
 
   const updateCurrentStep = useCallback(
     (step: StepEnum) => {
+      if (!canManage && step !== StepEnum.Upload) return;
       setCurrentStep(step);
       navigate({
         pathname: location.pathname,
@@ -141,7 +145,7 @@ const CreateProject = () => {
         search: location.search,
       });
     },
-    [location.pathname, location.search, navigate],
+    [canManage, location.pathname, location.search, navigate],
   );
 
   const stepTitleMapping = useMemo(
@@ -544,6 +548,30 @@ const CreateProject = () => {
   };
 
   const actionNodes = useMemo(() => {
+    if (!canManage) {
+      return (
+        <FlexLayout gap=".5rem">
+          <Button onClick={() => navigate(`/projects/${projectId}`)}>返回项目</Button>
+          <Button
+            type="primary"
+            loading={loading}
+            onClick={async () => {
+              const files = uploadFileList
+                .filter((file) => file.status === UploadStatus.Success && !file.refId)
+                .map((file) => ({ file_id: file.id!, data: { result: '{}' } }));
+              if (files.length) {
+                const result = await createSamples(projectId, files);
+                updateFileQueue(files, result.data?.ids);
+              }
+              navigate(`/projects/${projectId}`);
+              revalidator.revalidate();
+            }}
+          >
+            保存图片
+          </Button>
+        </FlexLayout>
+      );
+    }
     if (currentStep === StepEnum.Model) {
       return (
         <FlexLayout gap=".5rem">
@@ -588,6 +616,12 @@ const CreateProject = () => {
       </FlexLayout>
     );
   }, [
+    canManage,
+    navigate,
+    projectId,
+    uploadFileList,
+    updateFileQueue,
+    revalidator,
     currentStep,
     handleCancelConfirm,
     loading,
@@ -658,14 +692,18 @@ const CreateProject = () => {
     <FlexLayout.Content flex="column">
       <StepRow flex items="center" justify="space-between">
         <FlexLayout.Header>
-          <Step steps={stepDataSource} currentStep={currentStep} onNext={handleNextStep} onPrev={handlePrevStep} />
+          {canManage ? (
+            <Step steps={stepDataSource} currentStep={currentStep} onNext={handleNextStep} onPrev={handlePrevStep} />
+          ) : (
+            <b>上传图片</b>
+          )}
         </FlexLayout.Header>
         <FlexLayout.Footer>{actionNodes}</FlexLayout.Footer>
       </StepRow>
       <ContentWrapper scroll flex="column">
         <ProjectCreationContext.Provider value={projectCreationContextValue}>
           <FlexLayout.Content style={{ display: previewVisible ? 'none' : 'flex' }} flex="column">
-            {partials}
+            {canManage ? partials : <InputData />}
           </FlexLayout.Content>
 
           {previewVisible && (

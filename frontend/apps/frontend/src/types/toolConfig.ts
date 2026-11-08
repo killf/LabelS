@@ -1,4 +1,4 @@
-import type { Attribute } from '@labels/interface';
+import type { Attribute } from '@yolo-mcp/interface';
 
 export interface ToolsConfigState {
   tools: any[];

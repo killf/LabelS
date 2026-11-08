@@ -9,7 +9,7 @@
   "license": "ISC",
   "devDependencies": {
     "typescript": "4.8.4",
-    "@labels/interface": "file:../../interface",
+    "@yolo-mcp/interface": "file:../../interface",
     "@types/react": "^18.2.21",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.4",
@@ -19,7 +19,7 @@
     "vite-plugin-ts-mono-alias": "^1.1.0"
   },
   "dependencies": {
-    "@labels/audio-react": "file:..",
+    "@yolo-mcp/audio-react": "file:..",
     "react-router": "^6.16.0",
     "react-router-dom": "^6.16.0"
   }

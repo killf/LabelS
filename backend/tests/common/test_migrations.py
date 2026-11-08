@@ -86,7 +86,7 @@ def _run_isolated_app(tmp_path: Path, script: str) -> None:
         "TEMP": str(tmp_path),
         "TMP": str(tmp_path),
         "DATABASE_URL": f"sqlite:///{database.as_posix()}",
-        "PASSWORD_SECRET_KEY": "startup-test-only-key",
+        "DATA_DIR": str(database.parent),
     }
     result = subprocess.run(
         [sys.executable, "-c", script, str(database)],
@@ -132,10 +132,36 @@ assert not database.exists()
 with TestClient(app) as client:
     assert client.get('/openapi.json').json()['info']['version'] == '2.0.0'
     with sqlite3.connect(database) as connection:
-        connection.execute("INSERT INTO auto_label_job (id, status, model_name) VALUES (1, 'PENDING', 'fake.pt')")
+        connection.execute(
+            "INSERT INTO auto_label_job (id, status, model_name) "
+            "VALUES (1, 'PENDING', 'fake.pt')"
+        )
 with TestClient(app):
     with sqlite3.connect(database) as connection:
-        assert connection.execute('SELECT status FROM auto_label_job WHERE id = 1').fetchone() == ('FAILED',)
+        status = connection.execute(
+            'SELECT status FROM auto_label_job WHERE id = 1'
+        ).fetchone()
+        assert status == ('FAILED',)
+""",
+    )
+
+
+def test_first_registration_initializes_only_one_administrator(tmp_path: Path):
+    _run_isolated_app(
+        tmp_path,
+        """
+from fastapi.testclient import TestClient
+from backend.main import app
+with TestClient(app) as client:
+    assert client.get('/api/v1/users/bootstrap').json()['data']['required']
+    account = {'username': 'initial-admin@example.com', 'password': 'Bootstrap-123'}
+    response = client.post('/api/v1/users/signup', json=account)
+    assert response.status_code == 201, response.text
+    assert response.json()['data']['is_admin'] is True
+    assert client.get('/api/v1/users/bootstrap').json()['data']['required'] is False
+    assert client.post('/api/v1/users/signup', json=account).status_code == 403
+    token = client.post('/api/v1/users/login', json=account).json()['data']['token']
+    assert client.get('/api/v1/users', headers={'Authorization': token}).status_code == 200
 """,
     )
 
@@ -151,5 +177,73 @@ os.environ['DATABASE_URL'] = 'sqlite://'
 from backend.migrations.run_migrate import run_db_migrations
 run_db_migrations()
 assert not Path(sys.argv[1]).parent.exists()
+""",
+    )
+
+
+def test_concurrent_demotion_keeps_one_active_administrator(tmp_path: Path):
+    _run_isolated_app(
+        tmp_path,
+        """
+from concurrent.futures import ThreadPoolExecutor
+from fastapi.testclient import TestClient
+from backend.main import app
+with TestClient(app) as client:
+    account = {'username': 'first@example.com', 'password': 'Admin-test-123'}
+    first = client.post('/api/v1/users/signup', json=account).json()['data']
+    token = client.post('/api/v1/users/login', json=account).json()['data']['token']
+    second = client.post('/api/v1/users', headers={'Authorization': token}, json={'username': 'second@example.com', 'password': 'Admin-test-123', 'is_admin': True}).json()['data']
+    def demote(user):
+        return client.patch('/api/v1/users/' + str(user['id']), headers={'Authorization': token}, json={'is_admin': False}).status_code
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(demote, [first, second]))
+    assert outcomes.count(200) == 1 and all(code in (200, 403, 409) for code in outcomes), outcomes
+""",
+    )
+
+
+def test_login_and_image_signatures_survive_process_restart(tmp_path: Path):
+    _run_isolated_app(
+        tmp_path,
+        """
+import json
+import sys
+from pathlib import Path
+from fastapi.testclient import TestClient
+from backend.main import app
+from backend.common.storage import get_storage
+
+directory = Path(sys.argv[1]).parent
+with TestClient(app) as client:
+    account = {'username': 'restart@example.com', 'password': 'Restart-test-123'}
+    assert client.post('/api/v1/users/signup', json=account).status_code == 201
+    token = client.post('/api/v1/users/login', json=account).json()['data']['token']
+    assert client.post('/api/v1/projects', headers={'Authorization': token}, json={'name': 'restart', 'media_type': 'IMAGE'}).status_code == 201
+    storage = get_storage()
+    key = 'projects/1/images/restart.png'
+    storage.save_bytes(b'test-only-preview-content', key)
+    (directory / 'restart-proof.json').write_text(json.dumps({
+        'token': token, 'preview': storage.get_read_url(key, 1, 0),
+    }))
+    assert (directory / 'secret.key').is_file()
+""",
+    )
+    _run_isolated_app(
+        tmp_path,
+        """
+import json
+import sys
+from pathlib import Path
+from fastapi.testclient import TestClient
+from backend.main import app
+
+directory = Path(sys.argv[1]).parent
+proof = json.loads((directory / 'restart-proof.json').read_text())
+with TestClient(app) as client:
+    me = client.get('/api/v1/users/me', headers={'Authorization': proof['token']})
+    assert me.status_code == 200
+    preview = client.get(proof['preview'])
+    assert preview.status_code == 200
+    assert preview.content == b'test-only-preview-content'
 """,
     )

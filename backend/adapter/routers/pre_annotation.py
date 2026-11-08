@@ -10,7 +10,7 @@ from backend.domain.models.user import User
 from backend.application.service import pre_annotation as service
 from backend.application.response.base import MetaData, OkRespWithMeta
 from backend.application.response.pre_annotation import PreAnnotationResponse
-from backend.common.error_code import ErrorCode, LabelSException
+from backend.common.error_code import ErrorCode, YoloMcpException
 
 router = APIRouter(prefix="/projects", tags=["pre_annotations"])
 
@@ -39,7 +39,7 @@ async def list_by(
     """
 
     if len([i for i in (after, before, page) if i != None]) != 1:
-        raise LabelSException(
+        raise YoloMcpException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             code=ErrorCode.CODE_55000_SAMPLE_LIST_PARAMETERS_ERROR,
         )

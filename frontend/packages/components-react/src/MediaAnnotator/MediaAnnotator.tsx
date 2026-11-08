@@ -1,4 +1,4 @@
-import type { MediaAnnotationData, MediaAnnotationInUI, MediaAnnotationType, MediaSegment } from '@labels/interface';
+import type { MediaAnnotationData, MediaAnnotationInUI, MediaAnnotationType, MediaSegment } from '@yolo-mcp/interface';
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 

@@ -1,5 +1,5 @@
 {
-  "name": "@labels/formatter",
+  "name": "@yolo-mcp/formatter",
   "version": "1.0.2",
   "private": false,
   "description": "A collection of universal data formatting functions.",

@@ -4,7 +4,7 @@ import { set, isEqual, size } from 'lodash/fp';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import type { NamePath } from 'antd/es/form/interface';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import ColorPalette from '@/components/ColorPalette';
 import type { FancyInputProps } from '@/components/FancyInput/types';

@@ -1,5 +1,5 @@
 {
-  "name": "@labels/image-annotator-react",
+  "name": "@yolo-mcp/image-annotator-react",
   "version": "2.5.3",
   "description": "image annotator for react",
   "main": "./src/index.ts",
@@ -26,10 +26,10 @@
     "react"
   ],
   "dependencies": {
-    "@labels/components-react": "workspace:*",
-    "@labels/image": "workspace:*",
-    "@labels/interface": "workspace:*",
-    "@labels/i18n": "workspace:*",
+    "@yolo-mcp/components-react": "workspace:*",
+    "@yolo-mcp/image": "workspace:*",
+    "@yolo-mcp/interface": "workspace:*",
+    "@yolo-mcp/i18n": "workspace:*",
     "lodash.clonedeep": "^4.5.0",
     "polished": "^4.2.2",
     "react-hotkeys-hook": "^4.4.1",

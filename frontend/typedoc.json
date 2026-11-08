@@ -1,8 +1,8 @@
 {
   "entryPoints": ["packages/*"],
-  "name": "LabelS Components",
+  "name": "YOLO MCP Components",
   "navigationLinks": {
-    "LabelS": "https://github.com/killf/LabelS#readme"
+    "YOLO MCP": "https://github.com/killf/LabelS#readme"
   },
   "entryPointStrategy": "packages",
   "includeVersion": true

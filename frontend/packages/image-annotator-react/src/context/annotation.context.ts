@@ -1,10 +1,10 @@
-import type { AnnotationData, ToolName } from '@labels/image';
+import type { AnnotationData, ToolName } from '@yolo-mcp/image';
 import type {
   TextAnnotationEntity,
   TagAnnotationEntity,
   TextAnnotationType,
   TagAnnotationType,
-} from '@labels/interface';
+} from '@yolo-mcp/interface';
 import { createContext, useContext } from 'react';
 
 export type GlobalAnnotation = TextAnnotationEntity | TagAnnotationEntity;

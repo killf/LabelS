@@ -62,14 +62,14 @@ def _load_model(
     db: Session, project: Project, model_name: str, algorithm: str | None = None
 ) -> Iterator[Any]:
     """按项目选择在后端加载本地权重，在本批次内复用模型。"""
-    if not settings.AI_AUTO_LABEL_ENABLED:
+    if not settings.USE_AUTO_LABEL:
         raise HTTPException(400, "AI 标注未启用")
     if not model_name:
         raise HTTPException(400, "请在项目配置中选择 AI 模型")
     algorithm = algorithm or getattr(project, "ai_algorithm", "yolo")
     if algorithm != "yolo":
         try:
-            model = load_detector(algorithm, model_name, settings.AI_DEVICE)
+            model = load_detector(algorithm, model_name, settings.DEVICE)
         except ValueError as error:
             raise HTTPException(422, str(error)) from None
         except (ImportError, OSError):
@@ -130,7 +130,7 @@ def _predict(
                 image.convert("RGB"),
                 imgsz=1024,
                 conf=0.25,
-                device=settings.AI_DEVICE or None,
+                device=settings.DEVICE or None,
                 verbose=False,
             )[0]
             detections = [
@@ -277,7 +277,7 @@ async def create_batch_job(
 ) -> AutoLabelJobResponse:
     """保存待标注样本的批次记录并启动后台处理，返回初始进度。"""
     project = _project(db, project_id, current_user)
-    if not settings.AI_AUTO_LABEL_ENABLED or not project.ai_model_name:
+    if not settings.USE_AUTO_LABEL or not project.ai_model_name:
         raise HTTPException(400, "请启用 AI 标注并在项目配置中选择模型")
     dataset_classes(json.loads(project.config))
     sample_ids = [

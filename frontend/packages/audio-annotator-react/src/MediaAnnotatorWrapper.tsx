@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import type { AudioAnnotatorProps } from '@labels/audio-react';
+import type { AudioAnnotatorProps } from '@yolo-mcp/audio-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type {
@@ -17,9 +17,9 @@ import type {
   MediaAnnotationType,
   AudioAnnotationType,
   AudioAnnotationInUI,
-} from '@labels/interface';
-import type { EditType, MediaAnnotatorRef } from '@labels/components-react';
-import { useRedoUndo } from '@labels/components-react';
+} from '@yolo-mcp/interface';
+import type { EditType, MediaAnnotatorRef } from '@yolo-mcp/components-react';
+import { useRedoUndo } from '@yolo-mcp/components-react';
 import cloneDeep from 'lodash.clonedeep';
 
 import Sidebar from './Sidebar';
@@ -95,7 +95,7 @@ function omit<T, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> {
 const Wrapper = styled.div.attrs((props) => {
   return {
     ...props,
-    className: 'labels-audio-editor',
+    className: 'yolo-mcp-audio-editor',
   };
 })`
   display: flex;
@@ -104,7 +104,7 @@ const Wrapper = styled.div.attrs((props) => {
   flex-grow: 1;
   background-color: #fff;
 
-  .labels-audio-wrapper {
+  .yolo-mcp-audio-wrapper {
     flex: 1;
   }
 `;

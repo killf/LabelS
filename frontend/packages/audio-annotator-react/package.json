@@ -1,5 +1,5 @@
 {
-  "name": "@labels/audio-annotator-react",
+  "name": "@yolo-mcp/audio-annotator-react",
   "version": "1.9.3",
   "description": "audio annotator for react",
   "main": "./src/index.ts",
@@ -25,10 +25,10 @@
     "react"
   ],
   "dependencies": {
-    "@labels/i18n": "workspace:*",
-    "@labels/audio-react": "workspace:*",
-    "@labels/components-react": "workspace:*",
-    "@labels/interface": "workspace:*",
+    "@yolo-mcp/i18n": "workspace:*",
+    "@yolo-mcp/audio-react": "workspace:*",
+    "@yolo-mcp/components-react": "workspace:*",
+    "@yolo-mcp/interface": "workspace:*",
     "lodash.clonedeep": "^4.5.0",
     "polished": "^4.2.2",
     "react-hotkeys-hook": "^4.4.1",

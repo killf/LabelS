@@ -1,17 +1,18 @@
 import Icon, { PoweroffOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import { Button, Divider, Dropdown, Popover, Tag } from 'antd';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as LocalDeploy } from '@/assets/svg/local-deploy.svg';
 import { ReactComponent as ToolboxSvg } from '@/assets/svg/toolbox.svg';
 import { goAuth } from '@/utils/sso';
 import useMe from '@/hooks/useMe';
+import queryClient from '@/api/queryClient';
 
 import AppPanel from '../AppPanel';
 import Breadcrumb from '../Breadcrumb';
-import { LabelSLogo, NavigationWrapper } from './style';
+import { YoloMcpLogo, NavigationWrapper } from './style';
 import ProjectTip from './ProjectTip';
 import LanguageSwitcher from '../LangSwitcher';
 import { UserAvatar } from '../UserAvatar';
@@ -27,7 +28,8 @@ const Homepage = () => {
     e.nativeEvent.stopPropagation();
     e.preventDefault();
 
-    localStorage.setItem('token', '');
+    localStorage.removeItem('token');
+    queryClient.clear();
 
     if (window.IS_ONLINE) {
       await goAuth();
@@ -41,7 +43,7 @@ const Homepage = () => {
       <FlexLayout.Item flex items="center" gap={window.IS_ONLINE ? '.5rem' : '3rem'}>
         <Link to="/">
           <FlexLayout.Item flex items="center">
-            <LabelSLogo />
+            <YoloMcpLogo />
 
             {window.IS_ONLINE && (
               <Tag bordered={false} color="var(--color-fill-secondary)" style={{ color: 'var(--color-text)' }}>
@@ -78,6 +80,8 @@ const Homepage = () => {
           trigger={['click']}
           menu={{
             items: [
+              { key: 'tokens', label: <Link to="/tokens">访问令牌 / MCP</Link> },
+              ...(me.data?.is_admin ? [{ key: 'users', label: <Link to="/users">用户管理</Link> }] : []),
               {
                 label: (
                   <FlexLayout.Item onClick={logout} flex gap=".5rem" padding=".25rem 0">

@@ -1,6 +1,6 @@
 import styled from 'styled-components';
-import { Tooltip } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { Tooltip } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useCallback } from 'react';
 
@@ -27,7 +27,7 @@ const FooterBar = styled.div`
   font-size: 14px;
   user-select: none;
 
-  .labels-svg-icon {
+  .yolo-mcp-svg-icon {
     font-size: 1.25rem;
     color: #666;
   }
@@ -52,7 +52,7 @@ const BarItem = styled.div`
   &:hover {
     color: var(--color-primary);
 
-    .labels-svg-icon {
+    .yolo-mcp-svg-icon {
       color: var(--color-primary);
     }
   }
@@ -69,7 +69,7 @@ const ContentBody = styled.div`
     width: auto;
   }
 
-  .labels-svg-icon {
+  .yolo-mcp-svg-icon {
     font-size: 1.25rem;
   }
 `;
@@ -94,21 +94,21 @@ function Content() {
     <ContentBody>
       <PropertyWrapper>
         <TitleWrapper>
-          <SaturationIcon className="labels-svg-icon" />
+          <SaturationIcon className="yolo-mcp-svg-icon" />
           {t('saturation')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('saturation')} />
       </PropertyWrapper>
       <PropertyWrapper>
         <TitleWrapper>
-          <ContrastIcon className="labels-svg-icon" />
+          <ContrastIcon className="yolo-mcp-svg-icon" />
           {t('contrast')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('contrast')} />
       </PropertyWrapper>
       <PropertyWrapper>
         <TitleWrapper>
-          <BrightnessIcon className="labels-svg-icon" />
+          <BrightnessIcon className="yolo-mcp-svg-icon" />
           {t('exposure')}
         </TitleWrapper>
         <Slider type="normal" max={100} min={-100} value={0} onChange={handleAttrChange('brightness')} />
@@ -156,7 +156,7 @@ export default function Footer() {
         </label>
         <Tooltip overlay={<Content />} overlayStyle={tooltipStyle} placement="topLeft">
           <BarItem>
-            <SettingIcon className="labels-svg-icon" />
+            <SettingIcon className="yolo-mcp-svg-icon" />
             {t('adjustment')}
           </BarItem>
         </Tooltip>
@@ -167,7 +167,7 @@ export default function Footer() {
             engine?.fit();
           }}
         >
-          <FitContainerIcon className="labels-svg-icon" />
+          <FitContainerIcon className="yolo-mcp-svg-icon" />
           {t('fitContainer')}
         </BarItem>
         <BarItem
@@ -175,11 +175,11 @@ export default function Footer() {
             engine?.resetScale();
           }}
         >
-          <ScaleResetIcon className="labels-svg-icon" />
+          <ScaleResetIcon className="yolo-mcp-svg-icon" />
           {t('rawScale')}
         </BarItem>
         <BarItem onClick={handleRotate}>
-          <RotateIcon className="labels-svg-icon" />
+          <RotateIcon className="yolo-mcp-svg-icon" />
           {t('rotate')}
         </BarItem>
       </Right>

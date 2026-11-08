@@ -24,7 +24,7 @@ class Detection:
 
 
 def torch_device(configured: str) -> str:
-    """将已有 AI_DEVICE 配置转换为 PyTorch 设备，不修改运行时。"""
+    """将已有 DEVICE 配置转换为 PyTorch 设备，不修改运行时。"""
     import torch
 
     if configured:

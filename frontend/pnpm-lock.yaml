@@ -161,31 +161,31 @@ importers:
       '@ant-design/icons':
         specifier: ^4.6.2
         version: 4.8.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@labels/audio-annotator-react':
+      '@yolo-mcp/audio-annotator-react':
         specifier: workspace:*
         version: link:../../packages/audio-annotator-react
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../../packages/components-react
-      '@labels/formatter':
+      '@yolo-mcp/formatter':
         specifier: workspace:*
         version: link:../../packages/formatter
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@labels/image':
+      '@yolo-mcp/image':
         specifier: workspace:*
         version: link:../../packages/image
-      '@labels/image-annotator-react':
+      '@yolo-mcp/image-annotator-react':
         specifier: workspace:*
         version: link:../../packages/image-annotator-react
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../../packages/interface
-      '@labels/video-annotator-react':
+      '@yolo-mcp/video-annotator-react':
         specifier: workspace:*
         version: link:../../packages/video-annotator-react
-      '@labels/video-react':
+      '@yolo-mcp/video-react':
         specifier: workspace:*
         version: link:../../packages/video-react
       '@tanstack/react-query':
@@ -342,25 +342,25 @@ importers:
       '@codemirror/lang-json':
         specifier: ^6.0.1
         version: 6.0.2
-      '@labels/audio-annotator-react':
+      '@yolo-mcp/audio-annotator-react':
         specifier: workspace:*
         version: link:../../packages/audio-annotator-react
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../../packages/components-react
-      '@labels/formatter':
+      '@yolo-mcp/formatter':
         specifier: workspace:*
         version: link:../../packages/formatter
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@labels/image':
+      '@yolo-mcp/image':
         specifier: workspace:*
         version: link:../../packages/image
-      '@labels/image-annotator-react':
+      '@yolo-mcp/image-annotator-react':
         specifier: workspace:*
         version: link:../../packages/image-annotator-react
-      '@labels/video-annotator-react':
+      '@yolo-mcp/video-annotator-react':
         specifier: workspace:*
         version: link:../../packages/video-annotator-react
       '@loadable/component':
@@ -463,16 +463,16 @@ importers:
 
   packages/audio-annotator-react:
     dependencies:
-      '@labels/audio-react':
+      '@yolo-mcp/audio-react':
         specifier: workspace:*
         version: link:../audio-react
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../components-react
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       lodash.clonedeep:
@@ -524,7 +524,7 @@ importers:
 
   packages/audio-react:
     dependencies:
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../components-react
       polished:
@@ -540,7 +540,7 @@ importers:
         specifier: ^7.3.2
         version: 7.12.12
     devDependencies:
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       '@types/react':
@@ -579,7 +579,7 @@ importers:
 
   packages/components-react:
     dependencies:
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../i18n
       polished:
@@ -613,7 +613,7 @@ importers:
         specifier: ^6.1.15
         version: 6.6.0(css-to-react-native@3.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       '@types/react':
@@ -742,7 +742,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
     devDependencies:
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       '@types/color':
@@ -790,16 +790,16 @@ importers:
 
   packages/image-annotator-react:
     dependencies:
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../components-react
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@labels/image':
+      '@yolo-mcp/image':
         specifier: workspace:*
         version: link:../image
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       lodash.clonedeep:
@@ -863,19 +863,19 @@ importers:
 
   packages/video-annotator-react:
     dependencies:
-      '@labels/audio-annotator-react':
+      '@yolo-mcp/audio-annotator-react':
         specifier: workspace:*
         version: link:../audio-annotator-react
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../components-react
-      '@labels/i18n':
+      '@yolo-mcp/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
-      '@labels/video-react':
+      '@yolo-mcp/video-react':
         specifier: workspace:*
         version: link:../video-react
       polished:
@@ -921,7 +921,7 @@ importers:
 
   packages/video-react:
     dependencies:
-      '@labels/components-react':
+      '@yolo-mcp/components-react':
         specifier: workspace:*
         version: link:../components-react
       polished:
@@ -937,7 +937,7 @@ importers:
         specifier: ^8.3.0
         version: 8.24.2
     devDependencies:
-      '@labels/interface':
+      '@yolo-mcp/interface':
         specifier: workspace:*
         version: link:../interface
       '@types/react':

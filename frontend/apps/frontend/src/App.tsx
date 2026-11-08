@@ -1,7 +1,7 @@
 import { App as AntApp, ConfigProvider } from 'antd';
 import enUS from 'antd/es/locale/en_US';
 import zhCN from 'antd/es/locale/zh_CN';
-import { I18nProvider, useTranslation } from '@labels/i18n';
+import { I18nProvider, useTranslation } from '@yolo-mcp/i18n';
 import { useMemo } from 'react';
 
 import RouterContainer from './components/RouterContainer';

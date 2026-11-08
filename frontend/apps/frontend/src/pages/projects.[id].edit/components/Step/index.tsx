@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import Separator from '../Separator';
 import { IconWrapper, StepItemInner, StepItemWrapper } from './style';

@@ -1,7 +1,7 @@
 [project]
-name = "labels"
+name = "yolo-mcp"
 version = "2.0.0"
-description = "LabelS local image annotation and YOLO training"
+description = "YOLO MCP local image annotation and YOLO training"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [
@@ -27,6 +27,7 @@ dependencies = [
     "httpx>=0.27.0",
     "websockets>=10.0.0",
     "bcrypt==4.3.0",
+    "mcp==2.3.0",
 ]
 
 [project.optional-dependencies]
@@ -55,8 +56,8 @@ training = [
 repository = "https://github.com/killf/LabelS"
 
 [project.scripts]
-labels = "backend.main:cli"
-labels-train = "backend.training.train:main"
+yolo-mcp = "backend.main:cli"
+yolo-mcp-train = "backend.training.train:main"
 
 [dependency-groups]
 dev = [
@@ -74,7 +75,7 @@ dev-mode-dirs = [".."]
 
 [tool.hatch.build.targets.wheel]
 only-include = [
-    "__init__.py", "main.py", "version.py", "inference.py",
+    "__init__.py", "main.py", "version.py", "inference.py", "mcp_server.py",
     "adapter", "application", "clients", "common", "dependencies",
     "domain", "middleware", "statics", "migrations", "training",
 ]

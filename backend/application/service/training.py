@@ -19,7 +19,7 @@ from backend.adapter.persistence import crud_project
 from backend.application.command.training import StartTrainingCommand
 from backend.application.response.training import TrainingRunResponse
 from backend.application.service.access import assert_project_access
-from backend.application.service.dataset import sync_dataset
+from backend.application.service.dataset import create_run_dataset
 from backend.common.config import settings
 from backend.common.db import SessionLocal, begin_transaction
 from backend.common.storage import get_storage
@@ -118,7 +118,7 @@ def _cleanup_run(
     db: Session, project_id: int, run_id: int, user: User
 ) -> tuple[Project, TrainingRun]:
     project = _project(db, project_id, user)
-    if project.created_by != user.id:
+    if project.created_by != user.id and not user.is_admin:
         raise HTTPException(403, "只有项目创建者可以清理执行记录")
     run = db.get(TrainingRun, run_id)
     if run is None or run.project_id != project_id:
@@ -264,19 +264,32 @@ async def start(
     ):
         raise HTTPException(422, "请选择官方 YOLO26 权重或当前项目已有模型")
 
-    # 2. 训练前同步完整快照；未成功同步时不创建可启动的训练记录。
-    sync_dataset(db, project)
-    with begin_transaction(db):
-        run = TrainingRun(
-            project_id=project_id,
-            created_by=user.id,
-            initial_model=cmd.initial_model,
-            parameters=json.dumps(cmd.model_dump()),
-            status=TrainingStatus.PENDING.value,
-        )
-        db.add(run)
-        db.flush()
-        run_id = run.id
+    # 2. 分配记录 ID 后冻结输入；失败时回滚记录，仅清理本次新建的目录。
+    workspace_created = False
+    try:
+        with begin_transaction(db):
+            run = TrainingRun(
+                project_id=project_id,
+                created_by=user.id,
+                initial_model=cmd.initial_model,
+                parameters=json.dumps(cmd.model_dump()),
+                status=TrainingStatus.PENDING.value,
+            )
+            db.add(run)
+            db.flush()
+            run_id = run.id
+            _workspace(project_id, run_id).mkdir(parents=True, exist_ok=False)
+            workspace_created = True
+            create_run_dataset(db, project, _workspace(project_id, run_id) / "dataset")
+    except Exception as error:
+        if workspace_created:
+            try:
+                _remove_logs(project_id, run_id)
+            except OSError:
+                logger.error("Run dataset cleanup failed: run_id={}", run_id)
+        if isinstance(error, OSError):
+            raise HTTPException(500, "训练目录创建失败，请检查本地文件后重试") from None
+        raise
     response = _response(run)
     worker = asyncio.create_task(_run(run_id))
     _workers.add(worker)
@@ -323,7 +336,9 @@ async def _run(run_id: int) -> None:
                 "-m",
                 "backend.training.train",
                 "--data",
-                str(get_storage().path(prefix)),
+                str(workspace / "dataset"),
+                "--models-dir",
+                str(get_storage().path(f"{prefix}/models")),
                 "--work-dir",
                 str(workspace),
                 "--result-file",
@@ -339,8 +354,8 @@ async def _run(run_id: int) -> None:
                 "--workers",
                 "0",
             ]
-            if settings.AI_DEVICE:
-                args.extend(["--device", settings.AI_DEVICE])
+            if settings.DEVICE:
+                args.extend(["--device", settings.DEVICE])
             if parameters.get("lr0") is not None:
                 args.extend(["--lr0", str(parameters["lr0"])])
             if parameters.get("extra_params"):

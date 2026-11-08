@@ -1,4 +1,4 @@
-import type { ToolName, AnnotationData } from '@labels/image';
+import type { ToolName, AnnotationData } from '@yolo-mcp/image';
 import { createContext, useContext } from 'react';
 
 import type { GlobalAnnotationPayload } from './annotation.context';

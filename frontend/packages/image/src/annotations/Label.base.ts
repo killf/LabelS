@@ -1,4 +1,4 @@
-import type { AttributeOption, ILabel } from '@labels/interface';
+import type { AttributeOption, ILabel } from '@yolo-mcp/interface';
 
 import { DEFAULT_LABEL_COLOR, DEFAULT_LABEL_TEXT, DEFAULT_LABEL_VALUE } from '../constant';
 

@@ -2,7 +2,7 @@ import type { FormInstance } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 import { map, omit } from 'lodash/fp';
 import { v4 as uuid4 } from 'uuid';
-import { i18n } from '@labels/i18n';
+import { i18n } from '@yolo-mcp/i18n';
 
 export function wrapWithId(item: any) {
   return {

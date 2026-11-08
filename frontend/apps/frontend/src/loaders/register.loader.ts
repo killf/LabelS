@@ -2,6 +2,7 @@ import { redirect } from 'react-router';
 
 import { goRegister } from '@/utils/sso';
 import * as storage from '@/utils/storage';
+import { getBootstrap } from '@/api/services/user';
 
 export async function registerLoader() {
   if (storage.get('token')) {
@@ -14,5 +15,5 @@ export async function registerLoader() {
     return Promise.resolve();
   }
 
-  return null;
+  return (await getBootstrap()).data.required ? null : redirect('/login');
 }

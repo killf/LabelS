@@ -17,7 +17,9 @@ from backend.tests.utils.utils import random_lower_string
 
 
 class TestClassUserRouter:
-    def test_user_signup_successful(self, client: TestClient, db: Session):
+    def test_admin_creates_user_successful(
+        self, client: TestClient, db: Session, admin_token_headers
+    ):
 
         # prepare data
         username = random_username()
@@ -25,7 +27,9 @@ class TestClassUserRouter:
         data = {"username": username, "password": password}
 
         # run
-        r = client.post(f"{settings.API_V1_STR}/users/signup", json=data)
+        r = client.post(
+            f"{settings.API_V1_STR}/users", json=data, headers=admin_token_headers
+        )
 
         # check
         assert r.status_code == 201
@@ -34,7 +38,9 @@ class TestClassUserRouter:
         assert user
         assert user.username == created_user["data"]["username"]
 
-    def test_create_user_existing_username(self, client: TestClient, db: Session):
+    def test_create_user_existing_username(
+        self, client: TestClient, db: Session, admin_token_headers
+    ):
         # prepare data
         username = random_username()
         password = random_lower_string()
@@ -48,7 +54,9 @@ class TestClassUserRouter:
             )
 
         # run
-        r = client.post(f"{settings.API_V1_STR}/users/signup", json=data)
+        r = client.post(
+            f"{settings.API_V1_STR}/users", json=data, headers=admin_token_headers
+        )
 
         # check
         created_user = r.json()

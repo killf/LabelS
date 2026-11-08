@@ -17,10 +17,10 @@ from backend.common.config import settings
 
 
 class LocalStorage:
-    """在 BASE_DATA_DIR 内读写项目文件，拒绝越界路径和符号链接逃逸。"""
+    """在 DATA_DIR 内读写项目文件，拒绝越界路径和符号链接逃逸。"""
 
     def __init__(self) -> None:
-        self.root = Path(settings.BASE_DATA_DIR).resolve()
+        self.root = Path(settings.DATA_DIR).resolve()
 
     def path(self, key: str) -> Path:
         relative = PurePosixPath(key)
@@ -71,36 +71,49 @@ class LocalStorage:
             reverse=True,
         )
 
-    def _signature(self, key: str, expires: int) -> str:
-        value = f"{key}\n{expires}".encode("utf-8")
+    def _signature(
+        self, key: str, expires: int, user_id: int, auth_version: int
+    ) -> str:
+        value = f"{key}\n{expires}\n{user_id}\n{auth_version}".encode("utf-8")
         return hmac.new(
-            settings.PASSWORD_SECRET_KEY.encode("utf-8"), value, hashlib.sha256
+            settings.secret_key.encode("utf-8"), value, hashlib.sha256
         ).hexdigest()
 
-    def get_read_url(self, key: str, expires_in: int = 3600) -> str:
+    def get_read_url(
+        self, key: str, user_id: int, auth_version: int, expires_in: int = 3600
+    ) -> str:
         """图片只携带绑定当前文件的短时签名，不把登录令牌放入 URL。"""
         self.path(key)
         parts = PurePosixPath(key).parts
-        if len(parts) < 4 or parts[0] != "projects" or parts[2] != "uploads":
+        if (
+            len(parts) < 4
+            or parts[0] != "projects"
+            or parts[2] not in {"images", "uploads"}
+        ):
             raise ValueError("Only uploaded images may be previewed")
         expires = int(time.time()) + expires_in
         suffix = quote("/".join(parts[2:]), safe="/")
-        signature = self._signature(key, expires)
+        signature = self._signature(key, expires, user_id, auth_version)
         return (
             f"{settings.API_V1_STR}/projects/{parts[1]}/files/{suffix}"
             f"?expires={expires}&signature={signature}"
+            f"&user_id={user_id}&auth_version={auth_version}"
         )
 
-    def verify_read_url(self, key: str, expires: int, signature: str) -> bool:
+    def verify_read_url(
+        self, key: str, expires: int, signature: str, user_id: int, auth_version: int
+    ) -> bool:
         """验证文件路径、有效期和签名，签名不能用于其他文件。"""
         self.path(key)
         parts = PurePosixPath(key).parts
         return (
             len(parts) >= 4
             and parts[0] == "projects"
-            and parts[2] == "uploads"
+            and parts[2] in {"images", "uploads"}
             and int(time.time()) <= expires
-            and hmac.compare_digest(self._signature(key, expires), signature)
+            and hmac.compare_digest(
+                self._signature(key, expires, user_id, auth_version), signature
+            )
         )
 
 

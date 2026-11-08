@@ -1,5 +1,5 @@
 {
-  "name": "@labels/video-annotator-react",
+  "name": "@yolo-mcp/video-annotator-react",
   "version": "1.5.3",
   "description": "video annotator for react",
   "main": "./src/index.ts",
@@ -26,11 +26,11 @@
     "react"
   ],
   "dependencies": {
-    "@labels/components-react": "workspace:*",
-    "@labels/interface": "workspace:*",
-    "@labels/i18n": "workspace:*",
-    "@labels/audio-annotator-react": "workspace:*",
-    "@labels/video-react": "workspace:*",
+    "@yolo-mcp/components-react": "workspace:*",
+    "@yolo-mcp/interface": "workspace:*",
+    "@yolo-mcp/i18n": "workspace:*",
+    "@yolo-mcp/audio-annotator-react": "workspace:*",
+    "@yolo-mcp/video-react": "workspace:*",
     "polished": "^4.2.2",
     "react-hotkeys-hook": "^4.4.1",
     "styled-components": "^6.1.15"

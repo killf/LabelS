@@ -1,4 +1,4 @@
-import type { MediaAnnotatorConfig } from '@labels/audio-annotator-react';
+import type { MediaAnnotatorConfig } from '@yolo-mcp/audio-annotator-react';
 
 import type { ToolsConfigState } from '@/types/toolConfig';
 

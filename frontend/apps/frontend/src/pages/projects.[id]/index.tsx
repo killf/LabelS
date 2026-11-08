@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useRevalidator, useRouteLoaderData, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useRevalidator, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Table, Select, Pagination, Button, Popconfirm, Tooltip, Avatar, Popover, Progress, message } from 'antd';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import _ from 'lodash-es';
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 import styled from 'styled-components';
 import { CheckCircleFilled, CloseCircleFilled, DownOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import type { DatasetSplit, SampleResponse } from '@/api/types';
 import { MediaType, ProjectStatus } from '@/api/types';
@@ -18,6 +18,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import useMe from '@/hooks/useMe';
 
 import type { ProjectStatusProps } from './components/Statistical';
+import CollaboratorPortal from './components/CollaboratorModal';
 import Statistical, { ProjectStatus as ProjectStatusComponent } from './components/Statistical';
 import GoToEditProject from './components/GoToEditProject';
 import TrainingPanel from './components/TrainingPanel';
@@ -30,6 +31,7 @@ const HeaderWrapper = styled(FlexLayout.Header)`
 `;
 
 const Samples = () => {
+  const navigate = useNavigate();
   const routerData = useRouteLoaderData('project') as ProjectLoaderResult;
   const samples = _.get(routerData, 'samples.data');
   const revalidator = useRevalidator();
@@ -39,7 +41,7 @@ const Samples = () => {
   const projectId = +routeParams.projectId!;
   const { t } = useTranslation();
   const me = useMe();
-  const isMeTheCreator = project?.created_by?.id === me?.data?.id;
+  const isMeTheCreator = !!me.data?.is_admin || project?.created_by?.id === me?.data?.id;
 
   // 查询参数
   const [searchParams, setSearchParams] = useSearchParams(
@@ -419,8 +421,16 @@ const Samples = () => {
               <Statistical>{trainingActions}</Statistical>
             ) : (
               <FlexLayout justify="space-between" items="center">
-                <GoToEditProject projectStatus={projectStatus} />
-                {trainingActions}
+                {isMeTheCreator ? (
+                  <GoToEditProject projectStatus={projectStatus} />
+                ) : (
+                  <span>等待拥有者完成项目配置</span>
+                )}
+                <FlexLayout gap=".5rem">
+                  {isMeTheCreator && <CollaboratorPortal />}
+                  <Button onClick={() => navigate(`/projects/${projectId}/edit#upload`)}>上传图片</Button>
+                  {trainingActions}
+                </FlexLayout>
               </FlexLayout>
             )}
           </BlockContainer>

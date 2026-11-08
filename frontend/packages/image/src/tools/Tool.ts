@@ -1,4 +1,4 @@
-import { type Attribute, type ILabel } from '@labels/interface';
+import { type Attribute, type ILabel } from '@yolo-mcp/interface';
 import cloneDeep from 'lodash.clonedeep';
 
 import type { RelationData } from '../annotations/Relation.annotation';

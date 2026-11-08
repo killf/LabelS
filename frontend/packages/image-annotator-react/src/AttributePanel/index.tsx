@@ -8,16 +8,16 @@ import {
   uid,
   Tooltip,
   FlexLayout,
-} from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+} from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 import type {
   EnumerableAttribute,
   GlobalAnnotationType,
   TagAnnotationEntity,
   TextAnnotationEntity,
   TextAttribute,
-} from '@labels/interface';
-import { DEFAULT_LABEL_COLOR, DEFAULT_LABEL_TEXT } from '@labels/image';
+} from '@yolo-mcp/interface';
+import { DEFAULT_LABEL_COLOR, DEFAULT_LABEL_TEXT } from '@yolo-mcp/image';
 
 import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
 import type { AnnotationDataInUI, AnnotationWithTool, GlobalAnnotation } from '../context/annotation.context';

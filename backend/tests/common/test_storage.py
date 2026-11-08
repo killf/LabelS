@@ -26,27 +26,59 @@ def test_storage_rejects_paths_outside_root(key):
         get_storage().path(key)
 
 
-def test_preview_signature_is_bound_to_path_and_expiration():
+@pytest.mark.parametrize("directory", ["images", "uploads"])
+def test_preview_signature_is_bound_to_path_and_expiration(directory):
     storage = get_storage()
-    key = "projects/1/uploads/image.png"
-    url = storage.get_read_url(key)
+    key = f"projects/1/{directory}/image.png"
+    url = storage.get_read_url(key, 1, 0)
     query = parse_qs(urlsplit(url).query)
     expires = int(query["expires"][0])
     signature = query["signature"][0]
-    assert storage.verify_read_url(key, expires, signature)
+    assert storage.verify_read_url(key, expires, signature, 1, 0)
+    assert not storage.verify_read_url(key, expires, signature, 2, 0)
+    assert not storage.verify_read_url(key, expires, signature, 1, 1)
     assert not storage.verify_read_url(
-        "projects/2/uploads/image.png", expires, signature
+        "projects/2/uploads/image.png", expires, signature, 1, 0
     )
-    assert not storage.verify_read_url(key, expires - 86400, signature)
-    assert not storage.verify_read_url(key, expires, "modified")
+    assert not storage.verify_read_url(key, expires - 86400, signature, 1, 0)
+    assert not storage.verify_read_url(key, expires, "modified", 1, 0)
     with pytest.raises(ValueError):
-        storage.get_read_url("projects/1/models/model.pt")
+        storage.get_read_url("projects/1/models/model.pt", 1, 0)
 
 
 def test_default_database_follows_data_directory(tmp_path):
     from backend.common.config import Settings
 
-    configured = Settings(BASE_DATA_DIR=str(tmp_path), DATABASE_URL="")
+    configured = Settings(DATA_DIR=str(tmp_path), DATABASE_URL="")
     assert configured.DATABASE_URL == f"sqlite:///{tmp_path.as_posix()}/labels.sqlite"
-    explicit = Settings(BASE_DATA_DIR=str(tmp_path), DATABASE_URL="sqlite:///:memory:")
+    explicit = Settings(DATA_DIR=str(tmp_path), DATABASE_URL="sqlite:///:memory:")
     assert explicit.DATABASE_URL == "sqlite:///:memory:"
+
+
+def test_default_data_directory_is_under_user_home(tmp_path, monkeypatch):
+    from backend.common.config import Settings
+
+    monkeypatch.delenv("DATA_DIR", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    configured = Settings()
+    assert configured.DATA_DIR == tmp_path / ".yolo-mcp"
+    assert (
+        configured.DATABASE_URL
+        == f"sqlite:///{tmp_path.as_posix()}/.yolo-mcp/labels.sqlite"
+    )
+    assert not configured.DATA_DIR.exists()
+
+
+def test_new_environment_names_control_storage_and_inference(tmp_path, monkeypatch):
+    from backend.common.config import Settings
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "custom"))
+    monkeypatch.setenv("DATABASE_URL", "")
+    monkeypatch.setenv("USE_AUTO_LABEL", "false")
+    monkeypatch.setenv("DEVICE", "cpu")
+    configured = Settings()
+    assert configured.DATA_DIR == tmp_path / "custom"
+    assert configured.USE_AUTO_LABEL is False
+    assert configured.DEVICE == "cpu"
+    assert not configured.DATA_DIR.exists()

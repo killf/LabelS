@@ -207,13 +207,16 @@ def _dataset_file(directory: Path, value: str) -> Path:
 
 
 def prepare_dataset(dataset: Path, destination: Path, snapshot: Path) -> Path:
-    """复制本地训练快照并生成绝对路径清单，不改动项目的原始标注。"""
-    # 1. 保存原始清单，禁用数据配置中的下载脚本。
-    snapshot.mkdir(parents=True, exist_ok=True)
+    """准备独立训练数据；已有 run 快照原地校验，不重复复制图片和输入清单。"""
+    # 1. 外部数据复制到 run；页面已冻结的输入直接使用，禁用下载脚本。
+    in_place = dataset.resolve() == destination.resolve()
+    if not in_place:
+        snapshot.mkdir(parents=True, exist_ok=True)
     destination.mkdir(parents=True, exist_ok=True)
     original = _dataset_file(dataset, "data.yaml")
     data = yaml.safe_load(original.read_text(encoding="utf-8-sig"))
-    shutil.copy2(original, snapshot / "data.yaml")
+    if not in_place:
+        shutil.copy2(original, snapshot / "data.yaml")
     data.pop("download", None)
     data["path"] = str(destination.resolve())
 
@@ -225,7 +228,8 @@ def prepare_dataset(dataset: Path, destination: Path, snapshot: Path) -> Path:
         if filename != f"{split}.txt":
             raise ValueError(f"data.yaml {split} must reference {split}.txt")
         listing = _dataset_file(dataset, filename)
-        shutil.copy2(listing, snapshot / filename)
+        if not in_place:
+            shutil.copy2(listing, snapshot / filename)
         images = []
         for value in listing.read_text(encoding="utf-8-sig").splitlines():
             value = value.strip()
@@ -236,9 +240,12 @@ def prepare_dataset(dataset: Path, destination: Path, snapshot: Path) -> Path:
                 raise ValueError(f"{filename} must reference files under images/")
             source = _dataset_file(dataset, value)
             target = _dataset_file(destination, value)
+            if not source.is_file():
+                raise ValueError(f"Dataset image does not exist: {value!r}")
             if value not in copied:
                 target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source, target)
+                if not in_place:
+                    shutil.copy2(source, target)
                 label = str(
                     PurePosixPath("labels", *relative.parts[1:]).with_suffix(".txt")
                 )
@@ -246,11 +253,12 @@ def prepare_dataset(dataset: Path, destination: Path, snapshot: Path) -> Path:
                 if original_label.is_file():
                     target_label = _dataset_file(destination, label)
                     target_label.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(original_label, target_label)
+                    if not in_place:
+                        shutil.copy2(original_label, target_label)
                 else:
                     backgrounds += 1
                 copied.add(value)
-            images.append(str(target))
+            images.append(f"./{relative.as_posix()}")
         if not images:
             raise ValueError(f"{filename} contains no images")
         (destination / filename).write_text(
@@ -288,10 +296,12 @@ def run_training(
     parameters: dict[str, object],
     work_dir: Path | None = None,
     result_file: Path | None = None,
+    models_dir: Path | None = None,
 ) -> int:
     """冻结本地输入并训练，将最佳权重复制到项目 models/，日志留在 runs/。"""
     dataset = dataset.resolve()
-    run_id = _next_run_id(dataset)
+    models = (models_dir or dataset / "models").resolve()
+    run_id = _next_run_id(models.parent)
     if work_dir is None:
         parent = dataset / "runs"
         parent.mkdir(parents=True, exist_ok=True)
@@ -339,7 +349,6 @@ def run_training(
 
             # 3. 只发布最佳权重，其他训练文件保留在本次工作目录。
             best = Path(model.trainer.best)
-            models = dataset / "models"
             models.mkdir(parents=True, exist_ok=True)
             published = models / f"{run_id}.pt"
             shutil.copy2(best, published)
@@ -380,13 +389,19 @@ def main() -> int:
         "--data",
         type=Path,
         required=True,
-        help="本地项目目录，内含 data.yaml、train.txt、test.txt、images/ 和 labels/",
+        help="YOLO 数据目录，内含 data.yaml、train.txt、test.txt、images/ 和 labels/",
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=Path,
+        default=None,
+        help="产出模型目录，默认 --data 目录下的 models/；页面训练使用项目 models/",
     )
     parser.add_argument(
         "--work-dir",
         type=Path,
         default=None,
-        help="训练快照、权重和日志的本地保存目录，默认项目目录下的 runs/<编号>/",
+        help="训练快照、权重和日志目录，默认 --data 目录下的 runs/<编号>/",
     )
     parser.add_argument(
         "--result-file",
@@ -470,6 +485,7 @@ def main() -> int:
     # 2. 分离工作目录，未设置的可选参数不传给 YOLO。
     parameters = vars(args).copy()
     dataset = parameters.pop("data").resolve()
+    models_dir = parameters.pop("models_dir")
     work_dir = parameters.pop("work_dir")
     result_file = parameters.pop("result_file")
     extra_params = parameters.pop("extra_params")
@@ -493,7 +509,7 @@ def main() -> int:
         str((work_dir or dataset / "runs").resolve() / ".ultralytics"),
     )
     try:
-        return run_training(dataset, parameters, work_dir, result_file)
+        return run_training(dataset, parameters, work_dir, result_file, models_dir)
     except (Exception, KeyboardInterrupt) as exc:
         print(error_text(exc), file=sys.stderr)
         return 1

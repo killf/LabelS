@@ -1,6 +1,6 @@
 import styled from 'styled-components';
-import { useTranslation } from '@labels/i18n';
-import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import { ReactComponent as Logo } from '@/assets/svg/LOGO.svg';
 
@@ -15,8 +15,8 @@ const LogoTitle = () => {
     <FlexLayout flex="column" items="center" gap="1rem">
       <Logo />
       <Description>
-        <div>{t('labelSDescription')}</div>
-        <div>{t('labelSKeywords')}</div>
+        <div>{t('yoloMcpDescription')}</div>
+        <div>{t('yoloMcpKeywords')}</div>
       </Description>
     </FlexLayout>
   );

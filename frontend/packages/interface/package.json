@@ -1,7 +1,7 @@
 {
-  "name": "@labels/interface",
+  "name": "@yolo-mcp/interface",
   "version": "1.3.1",
-  "description": "typescript interfaces for labels annotations",
+  "description": "typescript interfaces for YOLO MCP annotations",
   "types": "./src/index.ts",
   "typings": "./src/index.ts",
   "repository": {

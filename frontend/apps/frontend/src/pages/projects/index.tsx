@@ -2,8 +2,8 @@ import { Alert, Button, Pagination, Popover } from 'antd';
 import { useNavigate, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import _ from 'lodash';
 import styled from 'styled-components';
-import { FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import type { ProjectListResponseWithStatics } from '@/api/types';
 import { ResponsiveGrid } from '@/components/ResponsiveGrid';
@@ -42,7 +42,7 @@ const ProjectList = () => {
   const projectsResponse = _.get(routerLoaderData, 'data');
   const projects = _.get(projectsResponse, 'data', []);
   const meta_data = _.get(projectsResponse, 'meta_data');
-  const labelsVersion = _.get(routerLoaderData, ['headers', 'labels-version']);
+  const labelsVersion = _.get(routerLoaderData, ['headers', 'yolo-mcp-version']);
   const { t } = useTranslation();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -115,7 +115,7 @@ const ProjectList = () => {
       </FlexLayout.Content>
       <Footer flex="row" items="flex-between" justify="space-between">
         <AppVersion>
-          <Popover content={versionInfo}>labels@{labelsVersion}</Popover>
+          <Popover content={versionInfo}>YOLO MCP @{labelsVersion}</Popover>
         </AppVersion>
         {meta_data && searchParams && meta_data?.total > finalPageSize && (
           <Pagination

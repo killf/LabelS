@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 import { useCallback } from 'react';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 // import { useAnnotator } from '../context';
 

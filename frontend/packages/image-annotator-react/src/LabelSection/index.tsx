@@ -1,10 +1,10 @@
 import React, { createRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DraggableModalRef, ValidationContextType } from '@labels/components-react';
-import { Kbd, getOS, DraggableModel, AttributeForm, EllipsisText, FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
-import type { Attribute, AttributeValue, EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
-import type { AnnotationData, Annotator, ToolName } from '@labels/image';
+import type { DraggableModalRef, ValidationContextType } from '@yolo-mcp/components-react';
+import { Kbd, getOS, DraggableModel, AttributeForm, EllipsisText, FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
+import type { Attribute, AttributeValue, EnumerableAttribute, ILabel, TextAttribute } from '@yolo-mcp/interface';
+import type { AnnotationData, Annotator, ToolName } from '@yolo-mcp/image';
 
 import { ReactComponent as MenuOpenIcon } from '../assets/icons/menu-open.svg';
 import { ReactComponent as MenuCloseIcon } from '../assets/icons/menu-close.svg';

@@ -1,11 +1,11 @@
-# LabelS 管理与标注页面
+# YOLO MCP 管理与标注页面
 
 在 `frontend/` 工作区安装和运行：
 
 ```bash
 pnpm --config.strictDepBuilds=false install --frozen-lockfile --ignore-scripts
-pnpm --filter @labels/frontend run postinstall
-pnpm --filter @labels/frontend start --host 127.0.0.1
+pnpm --filter @yolo-mcp/frontend run postinstall
+pnpm --filter @yolo-mcp/frontend start --host 127.0.0.1
 pnpm build:frontend
 ```
 

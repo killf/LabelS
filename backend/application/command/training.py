@@ -43,6 +43,7 @@ RESERVED_TRAINING_PARAMETERS = {
     "pretrained",
     "cfg",
     "work_dir",
+    "models_dir",
     "result_file",
     "extra_params",
 }

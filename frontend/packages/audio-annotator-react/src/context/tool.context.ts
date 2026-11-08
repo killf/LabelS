@@ -1,5 +1,5 @@
-import type { EditType } from '@labels/components-react';
-import type { EnumerableAttribute, TextAttribute, ILabel, MediaAnnotationType } from '@labels/interface';
+import type { EditType } from '@yolo-mcp/components-react';
+import type { EnumerableAttribute, TextAttribute, ILabel, MediaAnnotationType } from '@yolo-mcp/interface';
 import { createContext, useContext } from 'react';
 
 import type { MediaAnnotatorConfig } from './sample.context';

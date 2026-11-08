@@ -1,8 +1,8 @@
 import React, { memo, useContext } from 'react';
 import { Form, Input, Select } from 'antd';
 import styled from 'styled-components';
-import { FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { MediaType } from '@/api/types';
 

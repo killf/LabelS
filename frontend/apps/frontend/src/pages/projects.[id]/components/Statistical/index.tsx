@@ -3,14 +3,15 @@ import { useNavigate, useRouteLoaderData, useSearchParams } from 'react-router-d
 import { Button } from 'antd';
 import _ from 'lodash-es';
 import styled from 'styled-components';
-import { FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import type { ProjectLoaderResult } from '@/loaders/project.loader';
 import type { DatasetSplit } from '@/api/types';
 import useMe from '@/hooks/useMe';
 
 import commonController from '../../../../utils/common';
+import CollaboratorPortal from '../CollaboratorModal';
 
 const Circle = styled.div<{
   color: string;
@@ -59,7 +60,7 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
   const projectId = _.get(projectData, 'id');
   const { t } = useTranslation();
   const me = useMe();
-  const isMeTheCreator = projectData?.created_by?.id === me.data?.id;
+  const isMeTheCreator = !!me.data?.is_admin || projectData?.created_by?.id === me.data?.id;
 
   const samples = routerLoaderData.samples;
 
@@ -125,6 +126,7 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
         </Button>
       </FlexLayout>
       <FlexLayout gap=".5rem">
+        {isMeTheCreator && <CollaboratorPortal />}
         {isMeTheCreator && (
           <Button type="text" icon={<SettingOutlined />} onClick={handleGoConfig}>
             {t('projectConfig')}

@@ -1,6 +1,6 @@
 {
-  "short_name": "LabelS",
-  "name": "LabelS 图片标注与训练",
+  "short_name": "YOLO MCP",
+  "name": "YOLO MCP 图片标注与训练",
   "icons": [
     {
       "src": "favicon.svg",

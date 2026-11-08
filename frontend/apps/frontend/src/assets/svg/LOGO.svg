@@ -1,6 +1,6 @@
-<svg width="165" height="44" viewBox="0 0 165 44" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LabelS">
+<svg width="224" height="44" viewBox="0 0 224 44" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="YOLO MCP">
   <rect width="44" height="44" rx="10" fill="#1B67FF" />
   <path d="M9 15V9H15M29 9H35V15M35 29V35H29M15 35H9V29" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M28 15C24 12 16 12 16 18C16 23 28 20 28 26C28 32 20 33 15 29" stroke="white" stroke-width="3" stroke-linecap="round" fill="none" />
-  <text x="55" y="31" fill="#1B67FF" font-family="Arial, sans-serif" font-size="29" font-weight="700">LabelS</text>
+  <path d="M15 14L22 23L29 14M22 23V31" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="55" y="31" fill="#1B67FF" font-family="Arial, sans-serif" font-size="28" font-weight="700">YOLO MCP</text>
 </svg>

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import styled, { css } from 'styled-components';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as ArrowUpIcon } from './arrow-up.svg';
 import { ReactComponent as ArrowDownIcon } from './arrow-down.svg';

@@ -6,7 +6,7 @@ import { createGlobalStyle } from 'styled-components';
 import { Modal } from '../Modal';
 
 const GlobalStyle = createGlobalStyle`
-  .labels-draggable-modal {
+  .yolo-mcp-draggable-modal {
     overflow: hidden !important;
   }
 `;
@@ -219,7 +219,7 @@ const ForwardDraggableModel = (props: Iprops, ref: React.ForwardedRef<DraggableM
         visible={isVisible}
         onClose={handleCancel}
         width={width}
-        wrapClassName="labels-draggable-modal"
+        wrapClassName="yolo-mcp-draggable-modal"
       >
         {/* @ts-ignore */}
         {children}

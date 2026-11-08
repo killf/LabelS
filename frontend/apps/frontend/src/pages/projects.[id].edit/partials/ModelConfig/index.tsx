@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { Button, Form, Select } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import { getProjectModels } from '@/api/services/project';
 import TrainingConfigFields from '@/components/TrainingConfigFields';

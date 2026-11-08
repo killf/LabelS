@@ -1,5 +1,5 @@
 import { Button, Dropdown } from 'antd';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 import { useMemo } from 'react';
 import Icon from '@ant-design/icons';
 

@@ -7,9 +7,9 @@ import type {
   VideoFrameName,
   EnumerableAttribute,
   VideoAnnotationInUI,
-} from '@labels/interface';
-import type { MediaAnnotatorProps, MediaAnnotatorRef } from '@labels/components-react';
-import { MediaAnnotator, MediaAnnotationContext, AttributeOverlay, parseTime } from '@labels/components-react';
+} from '@yolo-mcp/interface';
+import type { MediaAnnotatorProps, MediaAnnotatorRef } from '@yolo-mcp/components-react';
+import { MediaAnnotator, MediaAnnotationContext, AttributeOverlay, parseTime } from '@yolo-mcp/components-react';
 
 import { VideoPlayer } from './VideoPlayer';
 

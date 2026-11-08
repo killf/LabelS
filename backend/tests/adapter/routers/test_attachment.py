@@ -44,10 +44,10 @@ def test_upload_preview_and_delete_local_attachment(
     )
     assert response.status_code == 201
     attachment = response.json()["data"]
-    key = f"projects/{project['id']}/uploads/sample.png"
+    key = f"projects/{project['id']}/images/sample.png"
     storage = get_storage()
     assert storage.read_bytes(key) == content.getvalue()
-    assert storage.exists(f"projects/{project['id']}/uploads/sample-thumbnail.png")
+    assert storage.exists(f"projects/{project['id']}/images/sample-thumbnail.png")
     assert client.get(attachment["url"]).status_code == 200
     assert client.get(attachment["thumbnail_url"]).status_code == 200
 
@@ -62,7 +62,7 @@ def test_upload_preview_and_delete_local_attachment(
     )
     assert response.status_code == 200
     assert not storage.exists(key)
-    assert not storage.exists(f"projects/{project['id']}/uploads/sample-thumbnail.png")
+    assert not storage.exists(f"projects/{project['id']}/images/sample-thumbnail.png")
 
 
 def _create_project(client: TestClient, headers: dict) -> int:
@@ -97,7 +97,7 @@ def test_upload_rejects_project_without_access(
         files={"file": ("private.txt", b"private", "text/plain")},
     )
     assert response.status_code == 403
-    assert not get_storage().exists(f"projects/{project_id}/uploads/private.txt")
+    assert not get_storage().exists(f"projects/{project_id}/images/private.txt")
 
 
 def test_delete_rejects_attachment_from_another_project(
@@ -120,7 +120,7 @@ def test_delete_rejects_attachment_from_another_project(
         json={"attachment_ids": [attachment_id]},
     )
     assert response.status_code == 403
-    assert get_storage().read_bytes(f"projects/{second}/uploads/keep.png") == _image()
+    assert get_storage().read_bytes(f"projects/{second}/images/keep.png") == _image()
 
 
 def test_upload_size_limit_does_not_leave_objects(
@@ -136,7 +136,7 @@ def test_upload_size_limit_does_not_leave_objects(
         files={"file": ("large.png", b"abc", "image/png")},
     )
     assert response.status_code == 413
-    assert not get_storage().exists(f"projects/{project_id}/uploads/large.png")
+    assert not get_storage().exists(f"projects/{project_id}/images/large.png")
 
 
 def test_database_failure_removes_uploaded_objects(
@@ -157,8 +157,8 @@ def test_database_failure_removes_uploaded_objects(
     )
     assert response.status_code == 500
     storage = get_storage()
-    assert not storage.exists(f"projects/{project_id}/uploads/failed.png")
-    assert not storage.exists(f"projects/{project_id}/uploads/failed-thumbnail.png")
+    assert not storage.exists(f"projects/{project_id}/images/failed.png")
+    assert not storage.exists(f"projects/{project_id}/images/failed-thumbnail.png")
 
 
 def test_cleanup_failure_does_not_replace_upload_error(

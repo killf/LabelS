@@ -1,4 +1,4 @@
-import type { EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
+import type { EnumerableAttribute, ILabel, TextAttribute } from '@yolo-mcp/interface';
 
 import type { TrainingParameters } from './services/training';
 
@@ -25,6 +25,8 @@ export interface GetUsersApiV1UsersGetParams {
 }
 
 export interface UserResponse {
+  is_admin?: boolean;
+  is_active?: boolean;
   /** Id */
   id?: number;
   /** Username */

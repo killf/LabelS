@@ -6,8 +6,8 @@ import { filter, isEqual, map, omit, set, size, update } from 'lodash/fp';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Icon, { CloseCircleFilled, PlusOutlined, StarFilled, SwapOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labels/components-react';
-import { i18n, useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { i18n, useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as TreeSwitcherIcon } from '@/assets/svg/tree-switcher.svg';
 import { ReactComponent as DeleteIcon } from '@/assets/svg/delete.svg';

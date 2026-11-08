@@ -1,5 +1,5 @@
 {
-  "name": "labels",
+  "name": "yolo-mcp",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -7,10 +7,10 @@
   ],
   "version": "2.0.0",
   "scripts": {
-    "build": "pnpm --filter @labels/interface --filter @labels/i18n --filter @labels/formatter --filter @labels/image --filter @labels/components-react --filter @labels/image-annotator-react --filter @labels/audio-react --filter @labels/video-react --filter @labels/audio-annotator-react --filter @labels/video-annotator-react build",
-    "clean": "pnpm --filter @labels/interface --filter @labels/i18n --filter @labels/formatter --filter @labels/image --filter @labels/components-react --filter @labels/image-annotator-react --filter @labels/audio-react --filter @labels/video-react --filter @labels/audio-annotator-react --filter @labels/video-annotator-react clean",
-    "build:frontend": "pnpm --filter @labels/frontend build",
-    "build:website": "pnpm --filter @labels/website build",
+    "build": "pnpm --filter @yolo-mcp/interface --filter @yolo-mcp/i18n --filter @yolo-mcp/formatter --filter @yolo-mcp/image --filter @yolo-mcp/components-react --filter @yolo-mcp/image-annotator-react --filter @yolo-mcp/audio-react --filter @yolo-mcp/video-react --filter @yolo-mcp/audio-annotator-react --filter @yolo-mcp/video-annotator-react build",
+    "clean": "pnpm --filter @yolo-mcp/interface --filter @yolo-mcp/i18n --filter @yolo-mcp/formatter --filter @yolo-mcp/image --filter @yolo-mcp/components-react --filter @yolo-mcp/image-annotator-react --filter @yolo-mcp/audio-react --filter @yolo-mcp/video-react --filter @yolo-mcp/audio-annotator-react --filter @yolo-mcp/video-annotator-react clean",
+    "build:frontend": "pnpm --filter @yolo-mcp/frontend build",
+    "build:website": "pnpm --filter @yolo-mcp/website build",
     "lint:frontend": "pnpm lint ./apps/frontend --ext .js,.jsx,.ts,.tsx",
     "lint:packages": "pnpm lint ./packages --ext .js,.jsx,.ts,.tsx",
     "lint:style": "stylelint '**/*.less'",

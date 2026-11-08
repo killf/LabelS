@@ -1,5 +1,5 @@
 import cloneDeep from 'lodash.clonedeep';
-import type { ILabel } from '@labels/interface';
+import type { ILabel } from '@yolo-mcp/interface';
 import Color from 'color';
 
 import uid from '../utils/uid';
