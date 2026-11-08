@@ -1,57 +1,18 @@
-import { useMemo, useCallback, useContext, useState } from 'react';
-import type { TableColumnType } from 'antd';
-import { Popconfirm, Button, Table, Tooltip, Tag } from 'antd';
-import _ from 'lodash-es';
-import formatter from '@labels/formatter';
-import {
-  FileOutlined,
-  FolderOpenOutlined,
-  CloudServerOutlined,
-  QuestionCircleOutlined,
-  UploadOutlined,
-} from '@ant-design/icons';
+import { useContext, useState } from 'react';
+import { Button, Popconfirm, Table, Tag } from 'antd';
+import { FileOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/lib/upload/interface';
 import { FlexLayout } from '@labels/components-react';
 import { useRevalidator } from 'react-router';
-import { useTranslation } from '@labels/i18n';
 
-import IconText from '@/components/IconText';
-import type { StatusType } from '@/components/Status';
-import Status from '@/components/Status';
-import { ReactComponent as FileIcon } from '@/assets/svg/file.svg';
-import commonController from '@/utils/common';
 import NativeUpload from '@/components/NativeUpload';
-import { deleteFile } from '@/api/services/task';
-import { ReactComponent as UploadBg } from '@/assets/svg/upload-bg.svg';
-import { MediaType } from '@/api/types';
-import { FileExtensionText, FileMimeType } from '@/constants/mediaType';
-import type { TaskInLoader } from '@/loaders/task.loader';
 import { useUploadFileMutation } from '@/api/mutations/attachment';
+import { deleteFile } from '@/api/services/task';
 import { deleteSamples } from '@/api/services/samples';
-import { deletePreAnnotationFile } from '@/api/services/preAnnotations';
+import { message } from '@/StaticAnt';
 
 import { TaskCreationContext } from '../../taskCreation.context';
-import { Bar, ButtonWrapper, Header, Left, Right, Spot, UploadArea, Wrapper } from './style';
-import imageSchema from './imagePreAnnotationJsonl.schema.json';
-import imageJsonSchema from './imagePreAnnotationJson.schema.json';
-import audioJsonSchema from './audioPreAnnotationJson.schema.json';
-import videoJsonSchema from './videoPreAnnotationJson.schema.json';
-import audioSchema from './audioPreAnnotationJsonl.schema.json';
-import videoSchema from './videoPreAnnotationJsonl.schema.json';
-import { isCorrectFiles, isPreAnnotationFile, normalizeFiles, readFile, UploadStatus } from './utils';
-import S3ImportModal from './S3ImportModal';
-
-const jsonlMapping = {
-  [MediaType.IMAGE]: imageSchema,
-  [MediaType.VIDEO]: videoSchema,
-  [MediaType.AUDIO]: audioSchema,
-};
-
-const jsonMapping = {
-  [MediaType.IMAGE]: imageJsonSchema,
-  [MediaType.VIDEO]: videoJsonSchema,
-  [MediaType.AUDIO]: audioJsonSchema,
-};
+import { normalizeFiles, UploadStatus } from './utils';
 
 export interface QueuedFile {
   id?: number;
@@ -62,471 +23,124 @@ export interface QueuedFile {
   status: UploadStatus;
   reason?: string;
   file: File;
-  // sample id or pre-annotation id
   refId?: number;
 }
 
-const InputData = () => {
-  // 上传队列，包括成功和失败的任务
-  const {
-    uploadFileList: fileQueue,
-    setUploadFileList: setFileQueue,
-    task = {} as NonNullable<TaskInLoader>,
-  } = useContext(TaskCreationContext);
-  const uploadMutation = useUploadFileMutation();
-  const revalidator = useRevalidator();
-  const { t } = useTranslation();
-  const [s3ImportOpen, setS3ImportOpen] = useState(false);
-
-  const statusTextMapping = useMemo(
-    () => ({
-      [UploadStatus.Uploading]: t('uploading'),
-      [UploadStatus.Waiting]: t('uploadPending'),
-      [UploadStatus.Success]: t('uploadSuccess'),
-      [UploadStatus.Fail]: t('uploadFailed'),
-      [UploadStatus.Error]: t('parseError'),
-    }),
-    [t],
-  );
-
-  const taskId = task.id;
-
-  const amountMapping = useMemo(() => {
-    let succeeded = 0;
-    let failed = 0;
-    let uploading = 0;
-
-    for (const file of fileQueue) {
-      switch (file.status) {
-        case UploadStatus.Success:
-          succeeded++;
-          break;
-        case UploadStatus.Fail:
-          failed++;
-          break;
-        case UploadStatus.Uploading:
-          uploading++;
-          break;
-        default:
-          break;
-      }
-    }
-    return {
-      succeeded,
-      failed,
-      uploading,
-    };
-  }, [fileQueue]);
-
-  const processUpload = useCallback(
-    async (files: QueuedFile[], mediaType: MediaType) => {
-      // 开始上传
-      setFileQueue((pre) => _.uniqBy([...pre, ...files], 'uid'));
-      let succeed = 0;
-      let failed = 0;
-
-      const { Draft07 } = await import('json-schema-library');
-      const jsonSchema = new Draft07(jsonlMapping[mediaType]);
-
-      for (const file of files) {
-        const { file: fileBlob } = file;
-
-        // jsonl需要校验文件内容
-        if (fileBlob.name.endsWith('.jsonl')) {
-          try {
-            const content = await readFile(fileBlob, 'text');
-
-            for (const line of content.split('\n')) {
-              const jsonLine = JSON.parse(line as string);
-
-              // 校验 jsonl 文件格式
-              const errors = jsonSchema.validate(jsonLine);
-
-              if (errors.length > 0) {
-                throw new Error(errors.map((error) => error.message).join('; \n'));
-              }
-            }
-          } catch (error: any) {
-            setFileQueue((pre) =>
-              pre.map((item) => {
-                if (item.uid === file.uid) {
-                  return {
-                    ...item,
-                    status: UploadStatus.Error,
-                    reason: error.message,
-                  };
-                }
-                return item;
-              }),
-            );
-
-            continue;
-          }
-        }
-
-        // 解析labels导出的json文件
-        if (fileBlob.name.endsWith('.json')) {
-          try {
-            const preAnnotationJsonSchema = new Draft07(jsonMapping[mediaType]);
-            const content = await readFile(fileBlob, 'text');
-            const json = JSON.parse(content);
-
-            if (!Array.isArray(json)) {
-              throw new Error(t('mustBeLabelSJson') as string);
-            }
-
-            for (let i = 0; i < json.length; i += 1) {
-              if (typeof json[i].result === 'string') {
-                json[i].result = JSON.parse(json[i].result);
-              } else {
-                throw new Error('result should be a string');
-              }
-
-              const errors = preAnnotationJsonSchema.validate(json[i]);
-
-              if (errors.length > 0) {
-                throw new Error(errors.map((error) => error.message).join('; \n'));
-              }
-            }
-          } catch (error: any) {
-            setFileQueue((pre) =>
-              pre.map((item) => {
-                if (item.uid === file.uid) {
-                  return {
-                    ...item,
-                    status: UploadStatus.Error,
-                    reason: error.message,
-                  };
-                }
-                return item;
-              }),
-            );
-
-            continue;
-          }
-        }
-
-        if ([UploadStatus.Success, UploadStatus.Uploading].includes(file.status)) {
-          continue;
-        }
-
-        try {
-          const { data } = await uploadMutation.mutateAsync({
-            task_id: taskId!,
-            file: fileBlob,
-          });
-
-          succeed += 1;
-
-          await setFileQueue((pre) =>
-            pre.map((item) => {
-              if (item.uid === file.uid) {
-                return {
-                  ...item,
-                  ...data,
-                  status: UploadStatus.Success,
-                };
-              }
-              return item;
-            }),
-          );
-        } catch (error) {
-          failed += 1;
-          await setFileQueue((pre) =>
-            pre.map((item) => {
-              if (item.uid === file.uid) {
-                return {
-                  ...item,
-                  status: UploadStatus.Fail,
-                };
-              }
-              return item;
-            }),
-          );
-        }
-      }
-
-      if (succeed > 0 && failed > 0) {
-        commonController.notificationWarnMessage(
-          { message: `${succeed} ${t('filesUploaded')}${failed} ${t('filesFailed')}` },
-          3,
-        );
-      } else if (succeed > 0 && failed === 0) {
-        commonController.notificationSuccessMessage({ message: `${succeed} ${t('filesUploaded')}` }, 3);
-      } else if (failed > 0 && succeed === 0) {
-        commonController.notificationWarnMessage({ message: `${failed} ${t('filesFailed')}` }, 3);
-      }
-    },
-    [setFileQueue, taskId, uploadMutation, t],
-  );
-
-  const handleFilesChange = (files: RcFile[]) => {
-    const isCorrectCondition = isCorrectFiles(files, task.media_type!);
-
-    if (!isCorrectCondition) {
-      return;
-    } else {
-      commonController.notificationSuccessMessage({ message: t('added') + files.length + t('filesToList') }, 3);
-    }
-
-    processUpload(normalizeFiles(files), task.media_type!);
-  };
-
-  const handleFileDelete = useCallback(
-    async (file: QueuedFile) => {
-      if (file.status === UploadStatus.Success) {
-        await deleteFile(
-          { task_id: taskId! },
-          {
-            attachment_ids: [file.id!],
-          },
-        );
-      }
-
-      if (file.refId) {
-        if (isPreAnnotationFile(file.name)) {
-          // 删除预标注
-          await deletePreAnnotationFile({
-            task_id: taskId!,
-            file_id: file.refId,
-          });
-        } else {
-          // 删除样本
-          await deleteSamples(
-            {
-              task_id: taskId!,
-            },
-            { sample_ids: [file.refId] },
-          );
-        }
-      }
-
-      setFileQueue((pre) => pre.filter((item) => item.uid !== file.uid));
-      commonController.notificationSuccessMessage({ message: t('fileDeleted') }, 3);
-      revalidator.revalidate();
-    },
-    [revalidator, setFileQueue, taskId, t],
-  );
-
-  const tableColumns = useMemo(() => {
-    return [
-      {
-        title: t('filename'),
-        dataIndex: 'name',
-        align: 'left',
-        responsive: ['md', 'lg', 'sm'],
-        key: 'name',
-        render: (text: string) => {
-          return (
-            <IconText icon={<FileIcon />}>
-              <div>
-                {formatter.format('ellipsis', text, { maxWidth: 540, type: 'tooltip' })}
-                &nbsp;
-                {isPreAnnotationFile(text) && <Tag color="processing">{t('preAnnotation')}</Tag>}
-              </div>
-            </IconText>
-          );
-        },
-      },
-      {
-        title: 'Url',
-        dataIndex: 'url',
-        align: 'left',
-        responsive: ['md', 'lg'],
-        key: 'url',
-        render: (text: string) => {
-          if (!text) return '-';
-          return formatter.format('ellipsis', `${location.protocol}//${location.host}${text}`, {
-            maxWidth: 160,
-            type: 'tooltip',
-          });
-        },
-      },
-      {
-        title: t('status'),
-        dataIndex: 'status',
-        align: 'left',
-        responsive: ['md', 'lg', 'sm'],
-        width: 160,
-        key: 'status',
-        render: (text: UploadStatus, record: QueuedFile) => {
-          return (
-            <FlexLayout.Item flex gap="0.5rem">
-              <Status type={_.lowerCase(record.status) as StatusType} icon={<Spot />}>
-                {statusTextMapping[text]}
-              </Status>
-              {record.reason && (
-                <Tooltip title={record.reason}>
-                  <QuestionCircleOutlined />
-                </Tooltip>
-              )}
-            </FlexLayout.Item>
-          );
-        },
-      },
-      {
-        title: t('actions'),
-        dataIndex: 'action',
-        align: 'left',
-        responsive: ['md', 'lg'],
-        width: 160,
-        key: 'action',
-        render: (text: string, record: QueuedFile) => {
-          return (
-            <>
-              {record.status === UploadStatus.Fail && (
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => {
-                    processUpload(fileQueue, task.media_type!);
-                  }}
-                >
-                  {t('reupload')}
-                </Button>
-              )}
-              <Popconfirm
-                title={t('deleteConfirm')}
-                onConfirm={() => {
-                  handleFileDelete(record);
-                }}
-              >
-                <Button type="link" size="small" danger>
-                  {t('delete')}
-                </Button>
-              </Popconfirm>
-            </>
-          );
-        },
-      },
-    ] as TableColumnType<QueuedFile>[];
-  }, [t, statusTextMapping, processUpload, fileQueue, task.media_type, handleFileDelete]);
-
-  return (
-    <Wrapper flex="column" full>
-      <Header flex items="center">
-        <Bar />
-        <h3>{t('uploadData')}</h3>
-      </Header>
-      <FlexLayout.Content flex items="stretch" gap="1.5rem">
-        <Left flex="column">
-          <h4>{t('filesUpload')}</h4>
-          <UploadArea flex="column" gap="1rem" items="center">
-            <UploadBg />
-
-            <FlexLayout gap="1rem">
-              <NativeUpload
-                type="primary"
-                icon={<FileOutlined />}
-                onChange={handleFilesChange}
-                directory={false}
-                multiple={true}
-                accept={FileMimeType[task.media_type!]}
-              >
-                {t('uploadFile')}
-              </NativeUpload>
-              <NativeUpload
-                type="primary"
-                ghost
-                icon={<FolderOpenOutlined />}
-                onChange={handleFilesChange}
-                directory={true}
-                accept={FileMimeType[task.media_type!]}
-              >
-                {t('uploadFolder')}
-              </NativeUpload>
-            </FlexLayout>
-            <ButtonWrapper flex="column" items="center" gap="0.25rem">
-              <div>
-                {t('fileTypeSupportsInclude')}
-                {FileExtensionText[task.media_type!]}
-              </div>
-            </ButtonWrapper>
-          </UploadArea>
-          <h4>{t('preAnnotationFileUpload')}</h4>
-          <FlexLayout.Item flex="column" items="flex-start" gap="0.5rem">
-            <NativeUpload
-              icon={<UploadOutlined />}
-              onChange={handleFilesChange}
-              directory={false}
-              multiple={true}
-              accept={'.jsonl, .json'}
-            >
-              {t('uploadFile')}
-            </NativeUpload>
-            <div style={{ color: '#999', fontSize: 12 }}>
-              {t('preAnnotationFileUploadDescription')}
-              <a
-                target="_blank"
-                href="https://github.com/killf/LabelS#readme"
-                rel="noreferrer"
-              >
-                {t('example')}
-              </a>
-            </div>
-          </FlexLayout.Item>
-          <h4>{t('importFromS3')}</h4>
-          <FlexLayout.Item flex="column" items="flex-start" gap="0.5rem">
-            <Button icon={<CloudServerOutlined />} onClick={() => setS3ImportOpen(true)}>
-              {t('browseS3')}
-            </Button>
-            <div style={{ color: '#999', fontSize: 12 }}>{t('importFromS3Description')}</div>
-          </FlexLayout.Item>
-        </Left>
-        <Right flex="column" gap="1rem">
-          {fileQueue.length > 0 && (
-            <FlexLayout.Header items="center" gap="0.25rem" flex>
-              <b>{t('uploadQueue')}</b>
-              <div>{t('uploading')}</div>
-              <FlexLayout gap=".25rem">
-                <span style={{ display: 'inline-block', color: 'var(--color-primary)' }}>
-                  {amountMapping.uploading}
-                </span>
-              </FlexLayout>
-              <FlexLayout gap=".25rem">
-                <span>{t('uploadSuccess')}</span>
-                <Status type="success" icon={null} style={{ display: 'inline-block' }}>
-                  {amountMapping.succeeded}
-                </Status>
-                <span>{t('uploadSuccessCount')}</span>
-              </FlexLayout>
-              <FlexLayout gap=".25rem">
-                <span>{t('uploadFailed')}</span>
-                <Status type="failed" icon={null} style={{ display: 'inline-block' }}>
-                  {amountMapping.failed}
-                </Status>
-              </FlexLayout>
-            </FlexLayout.Header>
-          )}
-          <FlexLayout.Content scroll>
-            <Table columns={tableColumns} dataSource={fileQueue} rowKey={(record) => record.uid} />
-          </FlexLayout.Content>
-        </Right>
-      </FlexLayout.Content>
-      {taskId && task.media_type && (
-        <S3ImportModal
-          open={s3ImportOpen}
-          onClose={() => setS3ImportOpen(false)}
-          taskId={taskId}
-          mediaType={task.media_type}
-          onImportSuccess={(fileNames, sampleIds) => {
-            setFileQueue((prev) => [
-              ...prev,
-              ...fileNames.map((name, index) => ({
-                uid: `s3-${Date.now()}-${name}`,
-                name,
-                size: 0,
-                status: UploadStatus.Success,
-                file: new File([], name),
-                refId: sampleIds[index],
-              })),
-            ]);
-            revalidator.revalidate();
-          }}
-        />
-      )}
-    </Wrapper>
-  );
+const statusText = {
+  [UploadStatus.Waiting]: '等待上传',
+  [UploadStatus.Uploading]: '上传中',
+  [UploadStatus.Success]: '上传成功',
+  [UploadStatus.Fail]: '上传失败',
+  [UploadStatus.Error]: '文件错误',
 };
 
-export default InputData;
+export default function InputData() {
+  const { uploadFileList: files, setUploadFileList, task } = useContext(TaskCreationContext);
+  const upload = useUploadFileMutation();
+  const revalidator = useRevalidator();
+  const [uploading, setUploading] = useState(false);
+
+  const update = (uid: string, changes: Partial<QueuedFile>) => {
+    setUploadFileList((previous) => previous.map((file) => (file.uid === uid ? { ...file, ...changes } : file)));
+  };
+
+  // 1. 只接受图片，按队列上传；失败项保留，供用户明确重试。
+  const process = async (queue: QueuedFile[]) => {
+    setUploading(true);
+    try {
+      for (const file of queue) {
+        update(file.uid, { status: UploadStatus.Uploading, reason: undefined });
+        try {
+          const { data } = await upload.mutateAsync({ task_id: task.id!, file: file.file });
+          update(file.uid, { id: data.id, url: data.url, status: UploadStatus.Success });
+        } catch {
+          update(file.uid, { status: UploadStatus.Fail, reason: '上传失败，请重试' });
+        }
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onFiles = (selected: RcFile[]) => {
+    const supported = /\.(jpe?g|png|bmp|webp|tiff?)$/i;
+    const images = selected.filter((file) => supported.test(file.name));
+    if (images.length !== selected.length) message.warning('已忽略非图片文件，仅支持 JPG、PNG、BMP、WEBP、TIFF');
+    if (!images.length) return;
+    const queue = normalizeFiles(images);
+    setUploadFileList((previous) => [...previous, ...queue]);
+    void process(queue);
+  };
+
+  // 2. 已创建样本通过样本接口清理，未提交队列只清理上传附件。
+  const remove = async (file: QueuedFile) => {
+    if (file.refId) {
+      await deleteSamples({ task_id: task.id! }, { sample_ids: [file.refId] });
+    } else if (file.id) {
+      await deleteFile({ task_id: task.id! }, { attachment_ids: [file.id] });
+    }
+    setUploadFileList((previous) => previous.filter((item) => item.uid !== file.uid));
+    revalidator.revalidate();
+  };
+
+  return (
+    <FlexLayout flex="column" padding="1.5rem" gap="1rem">
+      <h2>图片上传</h2>
+      <FlexLayout gap="1rem">
+        <NativeUpload
+          type="primary"
+          icon={<FileOutlined />}
+          multiple
+          directory={false}
+          disabled={uploading}
+          accept=".jpg,.jpeg,.png,.bmp,.webp,.tif,.tiff"
+          onChange={onFiles}
+        >
+          上传图片
+        </NativeUpload>
+        <NativeUpload
+          icon={<FolderOpenOutlined />}
+          directory
+          disabled={uploading}
+          accept=".jpg,.jpeg,.png,.bmp,.webp,.tif,.tiff"
+          onChange={onFiles}
+        >
+          上传图片文件夹
+        </NativeUpload>
+      </FlexLayout>
+      <span>支持 JPG、PNG、BMP、WEBP、TIFF，单张图片最大 200 MB。</span>
+      <Table<QueuedFile>
+        rowKey="uid"
+        dataSource={files}
+        pagination={{ pageSize: 10 }}
+        columns={[
+          { title: '文件名', dataIndex: 'name' },
+          { title: '大小', render: (_, file) => `${(file.size / 1024).toFixed(1)} KB` },
+          {
+            title: '状态',
+            render: (_, file) => (
+              <Tag color={file.status === UploadStatus.Success ? 'success' : undefined}>{statusText[file.status]}</Tag>
+            ),
+          },
+          {
+            title: '操作',
+            render: (_, file) => (
+              <>
+                {file.status === UploadStatus.Fail && (
+                  <Button type="link" disabled={uploading} onClick={() => void process([file])}>
+                    重试
+                  </Button>
+                )}
+                <Popconfirm title="确定删除这张图片？" onConfirm={() => remove(file)}>
+                  <Button type="link" danger disabled={uploading}>
+                    删除
+                  </Button>
+                </Popconfirm>
+              </>
+            ),
+          },
+        ]}
+      />
+    </FlexLayout>
+  );
+}

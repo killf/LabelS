@@ -10,16 +10,15 @@ from backend.common.error_code import ErrorCode
 from backend.common.error_code import LabelSException
 from backend.common.storage import (
     build_thumbnail_key,
-    get_storage_backend,
+    get_storage,
 )
-from backend.application.service.access import assert_task_access, assert_owner
+from backend.application.service.access import assert_task_access
 from backend.adapter.persistence import (
     crud_attachment,
     crud_pre_annotation,
     crud_task,
 )
 from backend.adapter.persistence import crud_sample
-from backend.adapter.persistence import crud_datasource
 from backend.domain.models.user import User
 from backend.domain.models.task import Task
 from backend.domain.models.task import TaskStatus
@@ -27,7 +26,6 @@ from backend.domain.models.sample import TaskSample
 from backend.domain.models.sample import SampleState
 from backend.application.command.sample import PatchSampleCommand
 from backend.application.command.sample import CreateSampleCommand
-from backend.application.command.datasource import ImportS3SamplesCommand
 from backend.application.response.base import UserResp
 from backend.application.response.base import CommonDataResp
 from backend.application.response.sample import CreateSampleResponse
@@ -102,141 +100,6 @@ async def create(
     # response
     ids = [s.id for s in new_samples]
     return CreateSampleResponse(ids=ids)
-
-
-MAX_IMPORT_KEYS = 10000
-
-
-def _collect_s3_keys(ds, prefix: str, extension: str | None) -> list[str]:
-    """List all matching S3 object keys under *prefix*, paginating internally."""
-    from backend.application.service.datasource import _build_s3_client
-
-    client = _build_s3_client(ds)
-    full_prefix = prefix if prefix else (ds.prefix or "")
-
-    allowed_exts = None
-    if extension:
-        allowed_exts = {
-            ("." + e.strip().lower().lstrip("."))
-            for e in extension.split(",")
-            if e.strip()
-        }
-
-    keys: list[str] = []
-    continuation_token = None
-
-    while True:
-        kwargs = {"Bucket": ds.bucket, "Prefix": full_prefix, "MaxKeys": 1000}
-        if continuation_token:
-            kwargs["ContinuationToken"] = continuation_token
-
-        try:
-            resp = client.list_objects_v2(**kwargs)
-        except Exception as exc:
-            logger.opt(exception=exc).error(
-                "S3 list_objects_v2 failed for datasource {}", ds.id
-            )
-            raise LabelSException(
-                code=ErrorCode.CODE_62002_S3_REQUEST_FAILED,
-                status_code=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        for obj in resp.get("Contents", []):
-            key: str = obj["Key"]
-            if key.endswith("/"):
-                continue
-            if allowed_exts:
-                ext = ("." + key.rsplit(".", 1)[-1].lower()) if "." in key else ""
-                if ext not in allowed_exts:
-                    continue
-            keys.append(key)
-            if len(keys) > MAX_IMPORT_KEYS:
-                raise LabelSException(
-                    code=ErrorCode.CODE_62000_S3_IMPORT_TOO_MANY,
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-        if not resp.get("IsTruncated"):
-            break
-        continuation_token = resp.get("NextContinuationToken")
-
-    return keys
-
-
-async def import_from_s3(
-    db: Session,
-    task_id: int,
-    cmd: ImportS3SamplesCommand,
-    current_user: User,
-) -> CreateSampleResponse:
-    """Import S3 objects as task samples (no file copy — stores reference only)."""
-    from backend.domain.models.attachment import TaskAttachment
-
-    with begin_transaction(db):
-        task = crud_task.get(db=db, task_id=task_id, lock=True)
-        if not task:
-            raise LabelSException(
-                code=ErrorCode.CODE_50002_TASK_NOT_FOUND,
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        assert_task_access(task, current_user)
-
-        ds = crud_datasource.get(db=db, ds_id=cmd.data_source_id)
-        if not ds:
-            raise LabelSException(
-                code=ErrorCode.CODE_61000_NO_DATA,
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-        assert_owner(ds, current_user)
-
-        # Resolve object keys: either from explicit list or by listing S3 prefix
-        object_keys = cmd.object_keys
-        if not object_keys and cmd.prefix is not None:
-            object_keys = _collect_s3_keys(ds, cmd.prefix, cmd.extension)
-
-        if not object_keys:
-            raise LabelSException(
-                code=ErrorCode.CODE_62001_S3_IMPORT_NO_MATCH,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-
-        attachments = []
-        for key in object_keys:
-            filename = key.rsplit("/", 1)[-1] if "/" in key else key
-            att = TaskAttachment(
-                path=key,
-                url="",
-                filename=filename,
-                task_id=task_id,
-                data_source_id=ds.id,
-                created_by=current_user.id,
-                updated_by=current_user.id,
-            )
-            db.add(att)
-            attachments.append(att)
-        db.flush()
-
-        samples = [
-            TaskSample(
-                inner_id=task.last_sample_inner_id + i + 1,
-                task_id=task_id,
-                file_id=att.id,
-                created_by=current_user.id,
-                updated_by=current_user.id,
-                data=json.dumps({}),
-            )
-            for i, att in enumerate(attachments)
-        ]
-        obj_in = {
-            Task.last_sample_inner_id.key: task.last_sample_inner_id + len(samples)
-        }
-        if task.status == TaskStatus.DRAFT.value:
-            obj_in[Task.status.key] = TaskStatus.IMPORTED
-        crud_task.update(db=db, db_obj=task, obj_in=obj_in)
-        new_samples = crud_sample.batch(db=db, samples=samples)
-
-    return CreateSampleResponse(ids=[s.id for s in new_samples])
 
 
 def _sample_response(db: Session, sample: TaskSample) -> SampleResponse:
@@ -373,7 +236,7 @@ async def patch(
                 else SampleState.DONE.value
             )
 
-    # 3. SQLite 保留可编辑标注，S3 保存训练端直接使用的数据集。
+    # 3. SQLite 保留可编辑标注，本地目录保存训练端直接使用的数据集。
     with begin_transaction(db):
         if annotation_changed and current_user not in sample.updaters:
             sample.updaters.append(current_user)
@@ -423,7 +286,7 @@ async def patch(
 async def delete(
     db: Session, sample_ids: List[int], current_user: User
 ) -> CommonDataResp:
-    storage = get_storage_backend()
+    storage = get_storage()
 
     with begin_transaction(db):
         # delete media
@@ -436,8 +299,6 @@ async def delete(
         attachment_ids = [sample.file_id for sample in samples if sample.file_id]
         attachments = crud_attachment.get_by_ids(db=db, attachment_ids=attachment_ids)
         for attachment in attachments:
-            if attachment.data_source_id:
-                continue
             storage.delete(attachment.path)
             thumbnail_key = build_thumbnail_key(attachment.path)
             if storage.exists(thumbnail_key):

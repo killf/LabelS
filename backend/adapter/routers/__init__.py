@@ -6,7 +6,7 @@ from backend.adapter.routers import task
 from backend.adapter.routers import sample
 from backend.adapter.routers import attachment
 from backend.adapter.routers import pre_annotation
-from backend.adapter.routers import datasource
+from backend.adapter.routers import training
 
 
 def add_router(app: FastAPI):
@@ -15,4 +15,4 @@ def add_router(app: FastAPI):
     app.include_router(attachment.router, prefix=settings.API_V1_STR)
     app.include_router(sample.router, prefix=settings.API_V1_STR)
     app.include_router(pre_annotation.router, prefix=settings.API_V1_STR)
-    app.include_router(datasource.router, prefix=settings.API_V1_STR)
+    app.include_router(training.router, prefix=settings.API_V1_STR)

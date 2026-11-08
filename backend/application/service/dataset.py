@@ -1,37 +1,22 @@
-"""把图片标注保存为 S3 上可直接用于训练的 YOLO 数据集。"""
+"""将任务图片与人工标注同步到本地 YOLO 数据集目录。"""
 
 import json
 from io import BytesIO
 from pathlib import PurePosixPath
 
 import yaml
-from botocore.exceptions import BotoCoreError, ClientError
-from botocore.client import BaseClient
 from fastapi import HTTPException
 from loguru import logger
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from backend.adapter.persistence import crud_datasource
-from backend.application.service.access import assert_owner
-from backend.application.service.datasource import _build_s3_client
-from backend.common.storage import get_storage_backend
-from backend.domain.models.data_source import DataSource
+from backend.common.storage import LocalStorage, get_storage
 from backend.domain.models.sample import DatasetSplit, SampleState, TaskSample
 from backend.domain.models.task import Task
-from backend.domain.models.user import User
-
-
-def assert_dataset_destination(db: Session, data_source_id: int, user: User) -> None:
-    """任务只能选用创建者自己的数据源作为数据集目标。"""
-    source = crud_datasource.get(db=db, ds_id=data_source_id)
-    if source is None:
-        raise HTTPException(404, "数据集的 S3 数据源不存在")
-    assert_owner(source, user)
 
 
 def dataset_classes(config: dict) -> list[dict]:
-    """类别顺序同时用于 YOLO 类别编号和 data.yaml，修改配置时整体同步。"""
+    """按配置顺序返回检测类别，顺序决定 YOLO 类别编号。"""
     tools = config.get("tools", [])
     if any(tool["tool"] != "rectTool" for tool in tools):
         raise HTTPException(422, "当前 YOLO 数据集使用图片矩形框标注")
@@ -45,19 +30,17 @@ def dataset_classes(config: dict) -> list[dict]:
 
 
 def _image_name(sample: TaskSample) -> str:
-    # 样本 ID 避免不同源目录中的同名图片互相覆盖。
     return f"{sample.id}{PurePosixPath(sample.file.filename).suffix.lower()}"
 
 
 def _label_text(result: dict, classes: list[dict], width: int, height: int) -> str:
-    """裁剪并归一化有效矩形框；背景样本返回空标签，非法框返回 422。"""
+    """裁剪并归一化有效框；背景样本返回空标签，非法框返回 422。"""
     class_ids = {attribute["value"]: index for index, attribute in enumerate(classes)}
     lines = []
     for box in result.get("rectTool", {}).get("result", []):
         if not box.get("valid", True):
             continue
-        x1 = max(0, box["x"])
-        y1 = max(0, box["y"])
+        x1, y1 = max(0, box["x"]), max(0, box["y"])
         x2 = min(width, box["x"] + box["width"])
         y2 = min(height, box["y"] + box["height"])
         if x2 <= x1 or y2 <= y1:
@@ -69,96 +52,66 @@ def _label_text(result: dict, classes: list[dict], width: int, height: int) -> s
             f"{(y1 + y2) / (2 * height):.8f} {(x2 - x1) / width:.8f} "
             f"{(y2 - y1) / height:.8f}"
         )
-
     return "\n".join(lines) + ("\n" if lines else "")
 
 
 def _write_sample(
-    client: BaseClient,
-    source: DataSource,
-    prefix: str,
-    sample: TaskSample,
-    classes: list[dict],
+    storage: LocalStorage, prefix: str, sample: TaskSample, classes: list[dict]
 ) -> None:
-    """读取已完成样本并写入 YOLO 图片和标签，其他状态移除训练对象。"""
+    """同步一个完成样本；跳过或删除的样本移除训练副本。"""
     image_key = f"{prefix}images/{_image_name(sample)}"
     label_key = f"{prefix}labels/{sample.id}.txt"
     if sample.deleted_at or sample.state != SampleState.DONE.value:
-        client.delete_object(Bucket=source.bucket, Key=image_key)
-        client.delete_object(Bucket=source.bucket, Key=label_key)
+        storage.delete(image_key)
+        storage.delete(label_key)
         return
 
-    # 1. 从附件所属的 S3 读取原图；外部数据源只读取，不修改源对象。
-    attachment = sample.file
-    if attachment.data_source_id:
-        origin = attachment.data_source
-        origin_client = _build_s3_client(origin)
-        response = origin_client.get_object(Bucket=origin.bucket, Key=attachment.path)
-        with response["Body"] as body:
-            content = body.read()
-    else:
-        content = get_storage_backend().read_bytes(attachment.path)
-
-    # 2. 图片与框使用同一旋转方向，再按实际图片尺寸归一化框坐标。
+    # 1. 原图与标注使用相同旋转方向，再按照实际图片尺寸归一化。
+    content = storage.read_bytes(sample.file.path)
     result = json.loads(json.loads(sample.data)["result"])
-    with Image.open(BytesIO(content)) as image:
-        image_format = image.format
+    with Image.open(BytesIO(content)) as original:
+        image_format = original.format
         if result.get("rotate"):
-            image = image.rotate(result["rotate"], expand=True)
-            buffer = BytesIO()
-            image.save(buffer, format=image_format)
-            content = buffer.getvalue()
-        width, height = image.size
+            image = original.rotate(result["rotate"], expand=True)
+            try:
+                buffer = BytesIO()
+                image.save(buffer, format=image_format)
+                content = buffer.getvalue()
+                width, height = image.size
+            finally:
+                image.close()
+        else:
+            width, height = original.size
+    label = _label_text(result, classes, width, height)
 
-    label_text = _label_text(result, classes, width, height)
-
-    # 3. 背景图片保留空标签文件，图片和标签统一使用样本 ID 命名。
-    client.put_object(
-        Bucket=source.bucket,
-        Key=image_key,
-        Body=content,
-        ContentType=Image.MIME[image_format],
-    )
-    client.put_object(
-        Bucket=source.bucket,
-        Key=label_key,
-        Body=label_text.encode("utf-8"),
-        ContentType="text/plain",
-    )
+    # 2. 当前样本标签校验通过后才写入本地目录，背景图片保留空标签。
+    storage.save_bytes(content, image_key)
+    storage.save_bytes(label.encode("utf-8"), label_key)
 
 
 def sync_dataset(
     db: Session, task: Task, changed_samples: list[TaskSample] | None = None
 ) -> None:
-    """保存后同步变更样本及划分清单；配置变化时重新同步全部样本。"""
+    """同步变更图片及训练、测试清单；YOLO 验证与测试使用同一清单。"""
     if not task.config:
         return
 
-    # 1. 从任务配置取得目标目录和类别，不维护额外的同步任务或状态文件。
+    # 1. 类别和目录仅从任务取得，根目录由服务端统一提供。
     classes = dataset_classes(json.loads(task.config))
-    source = crud_datasource.get(db=db, ds_id=task.dataset_data_source_id)
-    if source is None:
-        raise HTTPException(404, "数据集的 S3 数据源不存在")
-    prefix = "/".join(
-        part.strip("/")
-        for part in (source.prefix or "", task.dataset_prefix)
-        if part.strip("/")
-    )
-    prefix = f"{prefix}/" if prefix else ""
+    prefix = f"{task.dataset_prefix}/"
     samples = (
         db.query(TaskSample)
         .filter(TaskSample.task_id == task.id, TaskSample.deleted_at.is_(None))
         .order_by(TaskSample.id)
         .all()
     )
-    client = _build_s3_client(source)
-
+    storage = get_storage()
     try:
-        # 2. 只重写本次变化的图片和标签；任务配置变化时整体重写类别编号。
+        # 2. 标注变化只重写相关图片；配置变化时重写全部类别编号。
         for sample in samples if changed_samples is None else changed_samples:
-            _write_sample(client, source, prefix, sample, classes)
+            _write_sample(storage, prefix, sample, classes)
 
-        # 3. 三个清单只包含已完成的样本，训练端可直接下载标准 YOLO 目录。
+        # 3. 只维护 train.txt 和 test.txt，未完成人工确认的样本不进入清单。
         for split in DatasetSplit:
             lines = [
                 f"images/{_image_name(sample)}"
@@ -166,29 +119,21 @@ def sync_dataset(
                 if sample.state == SampleState.DONE.value
                 and sample.split == split.value
             ]
-            client.put_object(
-                Bucket=source.bucket,
-                Key=f"{prefix}{split.value}.txt",
-                Body=("\n".join(lines) + ("\n" if lines else "")).encode("utf-8"),
-                ContentType="text/plain",
-            )
-
+            listing = "\n".join(lines) + ("\n" if lines else "")
+            storage.save_bytes(listing.encode("utf-8"), f"{prefix}{split.value}.txt")
         data = {
             "path": ".",
             "train": "train.txt",
-            "val": "val.txt",
+            "val": "test.txt",
             "test": "test.txt",
             "names": [attribute["key"] for attribute in classes],
         }
-        client.put_object(
-            Bucket=source.bucket,
-            Key=f"{prefix}data.yaml",
-            Body=yaml.safe_dump(data, allow_unicode=True).encode("utf-8"),
-            ContentType="application/yaml",
+        storage.save_bytes(
+            yaml.safe_dump(data, allow_unicode=True).encode("utf-8"),
+            f"{prefix}data.yaml",
         )
-    except (BotoCoreError, ClientError):
-        # 不记录凭据或签名 URL；标注已写入 SQLite，可重新保存以重试同步。
+    except OSError:
         logger.error("YOLO dataset synchronization failed: task_id={}", task.id)
         raise HTTPException(
-            502, "标注已保存，S3 数据集同步失败，请重新保存重试"
+            500, "标注已保存，本地数据集同步失败，请重新保存重试"
         ) from None

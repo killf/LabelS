@@ -4,6 +4,7 @@ from loguru import logger
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from backend.common.config import settings
@@ -163,21 +164,6 @@ class ErrorCode(Enum):
         "No data",
     )
 
-    CODE_62000_S3_IMPORT_TOO_MANY = (
-        EXPORT_INIT_CODE + 2000,
-        "Too many files to import (max 10000)",
-    )
-
-    CODE_62001_S3_IMPORT_NO_MATCH = (
-        EXPORT_INIT_CODE + 2001,
-        "No matching files found under the specified prefix",
-    )
-
-    CODE_62002_S3_REQUEST_FAILED = (
-        EXPORT_INIT_CODE + 2002,
-        "Failed to connect to S3 storage service",
-    )
-
 
 def _public_error_message(default_message: str, exc: Exception) -> str:
     if settings.EXPOSE_INTERNAL_ERRORS:
@@ -264,7 +250,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "msg": ErrorCode.CODE_30002_VALIDATION_ERROR.value[1],
             "err_code": ErrorCode.CODE_30002_VALIDATION_ERROR.value[0],
-            "errors": exc.errors(),
+            "errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str}),
         },
     )
 

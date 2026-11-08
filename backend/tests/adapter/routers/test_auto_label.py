@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from backend.adapter.persistence import crud_auto_label_job
 from backend.application.service import auto_label
 from backend.common.db import begin_transaction
-from backend.common.storage import get_storage_backend
+from backend.common.storage import get_storage
 from backend.domain.models.auto_label_job import AutoLabelJob
 from backend.domain.models.sample import TaskSample
 from backend.tests.conftest import TestingSessionLocal
@@ -31,7 +31,6 @@ def ai_task(client: TestClient, testuser_token_headers: dict) -> tuple[int, int]
         json={
             "name": "AI detection",
             "media_type": "IMAGE",
-            "dataset_data_source_id": 1,
         },
     ).json()["data"]
     config = {
@@ -185,8 +184,8 @@ def test_list_dataset_model_weights(
     client: TestClient, testuser_token_headers: dict, ai_task: tuple[int, int]
 ) -> None:
     task_id, _ = ai_task
-    get_storage_backend().save_bytes(
-        b"synthetic weight", "datasets/models/20261107-1.pt"
+    get_storage().save_bytes(
+        b"synthetic weight", f"tasks/{ai_task[0]}/models/20261107-1.pt"
     )
     response = client.get(
         f"/api/v1/tasks/{task_id}/models", headers=testuser_token_headers

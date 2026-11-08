@@ -1,6 +1,7 @@
 from typing import List
 
 from sqlalchemy.orm import Session
+from fastapi.responses import FileResponse
 from fastapi import APIRouter, status, Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -24,6 +25,25 @@ from backend.application.response.task import TaskResponse
 from backend.application.response.task import TaskResponseWithStatics
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+@router.get("/{task_id}/models/{model_name}", response_class=FileResponse)
+async def download_model(
+    task_id: int,
+    model_name: str,
+    db: Session = Depends(db_module.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """以附件形式下载本任务权重，不暴露本地目录或无关文件。"""
+    from backend.application.service.training import model_file
+
+    path = model_file(db, task_id, model_name, current_user)
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/octet-stream",
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.post(

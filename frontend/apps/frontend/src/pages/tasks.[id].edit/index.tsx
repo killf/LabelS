@@ -19,30 +19,35 @@ import { convertAudioAndVideoConfig } from '@/utils/convertAudioAndVideoConfig';
 import type { TaskLoaderResult } from '@/loaders/task.loader';
 import { useAddTaskMutation, useUpdateTaskConfigMutation } from '@/api/mutations/task';
 import { convertImageConfig } from '@/utils/convertImageConfig';
-import { createPreAnnotations } from '@/api/services/preAnnotations';
 import type { ToolsConfigState } from '@/types/toolConfig';
 
 import type { QueuedFile } from './partials/InputData';
 import InputData from './partials/InputData';
 import AnnotationConfig from './partials/AnnotationConfig';
 import InputInfoConfig from './partials/InputInfoConfig';
+import ModelConfig from './partials/ModelConfig';
 import type { StepData } from './components/Step';
 import Step from './components/Step';
 import commonController from '../../utils/common';
 import { TaskCreationContext } from './taskCreation.context';
 import { ContentWrapper, PreviewFrame, StepRow } from './style';
-import { isPreAnnotationFile, UploadStatus } from './partials/InputData/utils';
+import { UploadStatus } from './partials/InputData/utils';
 
 enum StepEnum {
   Basic = 'basic',
+
   Upload = 'upload',
+
   Config = 'config',
+
+  Model = 'model',
 }
 
 const partialMapping = {
   [StepEnum.Basic]: InputInfoConfig,
   [StepEnum.Upload]: InputData,
   [StepEnum.Config]: AnnotationConfig,
+  [StepEnum.Model]: ModelConfig,
 };
 
 const StyledFooter = styled.div`
@@ -103,6 +108,7 @@ const CreateTask = () => {
   const location = useLocation();
   const [annotationFormInstance] = Form.useForm();
   const [basicFormInstance] = Form.useForm();
+  const [modelFormInstance] = Form.useForm();
   const modalRef = useRef<any>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
   const bridgeRef = useRef<Bridge | null>(null);
@@ -142,6 +148,7 @@ const CreateTask = () => {
       [StepEnum.Basic]: t('basicConfig'),
       [StepEnum.Upload]: t('uploadData'),
       [StepEnum.Config]: t('annotationConfig'),
+      [StepEnum.Model]: '模型设置',
     }),
     [t],
   );
@@ -178,8 +185,13 @@ const CreateTask = () => {
         value: StepEnum.Config,
         isFinished: [TaskStatus.CONFIGURED, TaskStatus.FINISHED, TaskStatus.INPROGRESS].includes(taskStatus),
       },
+      {
+        title: stepTitleMapping[StepEnum.Model],
+        value: StepEnum.Model,
+        isFinished: Boolean(taskData?.ai_model_name),
+      },
     ],
-    [isExistTask, stepTitleMapping, taskStatus],
+    [isExistTask, stepTitleMapping, taskStatus, taskData?.ai_model_name],
   );
 
   useEffect(() => {
@@ -197,7 +209,11 @@ const CreateTask = () => {
 
   useEffect(() => {
     basicFormInstance.setFieldsValue(taskData);
-  }, [annotationFormInstance, basicFormInstance, taskData]);
+    modelFormInstance.setFieldsValue({
+      ai_algorithm: taskData?.ai_algorithm ?? 'yolo',
+      ai_model_name: taskData?.ai_model_name,
+    });
+  }, [annotationFormInstance, basicFormInstance, modelFormInstance, taskData]);
 
   useEffect(() => {
     if (isEmpty(toolsConfig?.tools)) {
@@ -248,6 +264,8 @@ const CreateTask = () => {
         .mutateAsync({
           ...taskData,
           ...basicFormInstance.getFieldsValue(),
+          ...modelFormInstance.getFieldsValue(),
+          ai_model_name: modelFormInstance.getFieldValue('ai_model_name') ?? null,
           config: JSON.stringify(annotationConfig),
         })
         .then(() => {
@@ -255,7 +273,17 @@ const CreateTask = () => {
           revalidator.revalidate();
         });
     },
-    [annotationFormInstance, basicFormInstance, currentStep, navigate, revalidator, t, taskData, updateTaskConfig],
+    [
+      annotationFormInstance,
+      basicFormInstance,
+      modelFormInstance,
+      currentStep,
+      navigate,
+      revalidator,
+      t,
+      taskData,
+      updateTaskConfig,
+    ],
   );
 
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -312,14 +340,9 @@ const CreateTask = () => {
       }
 
       const mediaFileList = [];
-      const preAnnotationFiles = [];
 
       for (const file of uploadFileList) {
-        if (isPreAnnotationFile(file.file.name) && file.status === UploadStatus.Success && _.isNil(file.refId)) {
-          preAnnotationFiles.push({
-            file_id: file.id!,
-          });
-        } else if (file.status === UploadStatus.Success && _.isNil(file.refId)) {
+        if (file.status === UploadStatus.Success && _.isNil(file.refId)) {
           mediaFileList.push({
             file_id: file.id!,
             data: {
@@ -337,12 +360,6 @@ const CreateTask = () => {
 
             updateFileQueue(mediaFileList, response?.data?.ids);
           }
-
-          if (!_.isEmpty(preAnnotationFiles)) {
-            response = await createPreAnnotations(taskId, preAnnotationFiles);
-
-            updateFileQueue(preAnnotationFiles, response?.data?.ids);
-          }
         }
 
         const annotationConfig = annotationFormInstance.getFieldsValue();
@@ -354,6 +371,8 @@ const CreateTask = () => {
           .mutateAsync({
             ...taskData,
             ...basicFormValues,
+            ...modelFormInstance.getFieldsValue(),
+            ai_model_name: modelFormInstance.getFieldValue('ai_model_name') ?? null,
             status: taskData?.status === TaskStatus.DRAFT ? TaskStatus.IMPORTED : taskData?.status,
             config: isCreateNewTask ? null : JSON.stringify(config),
           })
@@ -380,6 +399,7 @@ const CreateTask = () => {
       addTask,
       annotationFormInstance,
       basicFormInstance,
+      modelFormInstance,
       currentStep,
       isCreateNewTask,
       isExistTask,
@@ -442,7 +462,7 @@ const CreateTask = () => {
             onClick={async () => {
               modalRef.current.destroy();
 
-              if (currentStep !== StepEnum.Config) {
+              if (![StepEnum.Config, StepEnum.Model].includes(currentStep)) {
                 await submitForm(true);
               } else {
                 await handleSave(true);
@@ -474,12 +494,11 @@ const CreateTask = () => {
         }
       }
 
-      // 如果是从「数据导入」到下一步，没有文件时不可进入下一步
+      // 如果是从「图片上传」到下一步，没有文件时不可进入下一步
       if (
         currentStep === StepEnum.Upload &&
         isEmpty(samples?.data) &&
-        filter(uploadFileList, (item) => item.status === UploadStatus.Success && !isPreAnnotationFile(item.name))
-          .length === 0
+        filter(uploadFileList, (item) => item.status === UploadStatus.Success).length === 0
       ) {
         message.error(t('atLeastUploadAFile'));
         return;
@@ -533,6 +552,16 @@ const CreateTask = () => {
   };
 
   const actionNodes = useMemo(() => {
+    if (currentStep === StepEnum.Model) {
+      return (
+        <FlexLayout gap=".5rem">
+          <Button onClick={handleCancelConfirm}>{t('cancel')}</Button>
+          <Button loading={loading} type="primary" onClick={() => void handleSave()}>
+            {t('save')}
+          </Button>
+        </FlexLayout>
+      );
+    }
     if (currentStep === StepEnum.Config) {
       if (previewVisible) {
         return (
@@ -551,8 +580,8 @@ const CreateTask = () => {
             <ArrowRightOutlined />
           </Button>
           <Button onClick={handleCancelConfirm}>{t('cancel')}</Button>
-          <Button loading={loading} type="primary" onClick={commonController.debounce(handleSave, 200)}>
-            {t('save')}
+          <Button loading={loading} type="primary" onClick={commonController.debounce(handleNextStep, 200)}>
+            {t('nextStep')}
           </Button>
         </FlexLayout>
       );
@@ -587,10 +616,19 @@ const CreateTask = () => {
       selectedTemplate: template,
       onTemplateSelect: setTemplate,
       basicFormInstance,
+      modelFormInstance,
       task: taskData as NonNullable<TaskLoaderResult['task']>,
       onAnnotationFormChange,
     }),
-    [uploadFileList, annotationFormInstance, template, basicFormInstance, taskData, onAnnotationFormChange],
+    [
+      uploadFileList,
+      annotationFormInstance,
+      template,
+      basicFormInstance,
+      modelFormInstance,
+      taskData,
+      onAnnotationFormChange,
+    ],
   );
 
   useLayoutEffect(() => {

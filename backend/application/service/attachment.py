@@ -15,7 +15,7 @@ from backend.common.error_code import LabelSException
 from backend.common.storage import (
     build_thumbnail_key,
     create_thumbnail_bytes,
-    get_storage_backend,
+    get_storage,
 )
 from backend.domain.models.user import User
 from backend.domain.models.attachment import TaskAttachment
@@ -30,28 +30,12 @@ from backend.application.response.attachment import AttachmentResponse
 def build_attachment_response(
     attachment: TaskAttachment | None,
 ) -> AttachmentResponse | None:
-    """根据附件的数据源签发预览地址，空附件返回 None。"""
+    """为任务上传图片签发预览地址，空附件返回 None。"""
     if attachment is None:
         return None
 
-    # External data source attachment — use the data source's own credentials
-    if getattr(attachment, "data_source_id", None) and getattr(
-        attachment, "data_source", None
-    ):
-        from backend.application.service.datasource import get_presigned_url
-
-        url = get_presigned_url(attachment.data_source, attachment.path)
-        return AttachmentResponse(
-            id=attachment.id,
-            filename=attachment.filename,
-            url=url,
-            thumbnail_url=None,
-            stream_url=url,
-            storage_backend="s3",
-        )
-
-    # 上传附件由全局 S3 保存，预览和视频流均使用对象签名地址。
-    storage = get_storage_backend()
+    # 全部附件使用服务端统一的本地目录。
+    storage = get_storage()
     url = storage.get_read_url(attachment.path)
     thumbnail_key = build_thumbnail_key(attachment.path)
     thumbnail_url = (
@@ -62,29 +46,30 @@ def build_attachment_response(
         filename=attachment.filename,
         url=url,
         thumbnail_url=thumbnail_url,
-        stream_url=url,
-        storage_backend=storage.backend_name,
     )
 
 
 def _upload_key(task_id: int, filename: str) -> str:
-    """清理上传文件的相对路径，返回固定使用正斜杠的任务 S3 对象键。"""
+    """清理上传文件名，返回任务目录内使用正斜杠的相对路径。"""
     parts = [
         re.sub(r'[\\/*?:"<>|#]', "_", part.replace("%", "_pct_"))
         for part in filename.split("/")
     ]
     if parts[-1] in ("", ".", ".."):
         raise HTTPException(422, "上传文件必须提供有效文件名")
+    if any(
+        re.match(r"(?i)^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", part)
+        for part in parts
+    ):
+        raise HTTPException(422, "上传文件名包含系统保留名称")
     directories = [part for part in parts[:-1] if part not in ("", ".", "..")]
-    return str(
-        PurePosixPath(settings.UPLOAD_DIR, str(task_id), *directories, parts[-1])
-    )
+    return str(PurePosixPath("tasks", str(task_id), "uploads", *directories, parts[-1]))
 
 
 async def create(
     db: Session, task_id: int, cmd: AttachmentCommand, current_user: User
 ) -> AttachmentResponse:
-    """验证任务访问权，将上传文件和缩略图写入 S3，并保存附件记录。"""
+    """验证任务访问权，将上传文件和缩略图写入本地目录，并保存附件记录。"""
     # 1. 先验证任务，再访问存储；对象键只来自清理后的相对路径。
     task = crud_task.get(db=db, task_id=task_id)
     if task is None:
@@ -94,14 +79,24 @@ async def create(
         )
     assert_task_access(task, current_user)
     key = _upload_key(task_id, cmd.file.filename or "")
-    storage = get_storage_backend()
-    if storage.exists(key):
+    if PurePosixPath(key).suffix.lower() not in {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".bmp",
+        ".tif",
+        ".tiff",
+    }:
+        raise HTTPException(422, "仅支持上传图片文件")
+    storage = get_storage()
+    thumbnail_key = build_thumbnail_key(key)
+    if storage.exists(key) or storage.exists(thumbnail_key):
         raise LabelSException(
             code=ErrorCode.CODE_51002_TASK_ATTACHMENT_ALREADY_EXISTS,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    thumbnail_key = build_thumbnail_key(key)
     attempted_keys = []
     thumbnail_bytes = None
     try:
@@ -116,15 +111,15 @@ async def create(
                         raise HTTPException(413, "上传文件超过允许的大小")
                     await output.write(chunk)
 
-            if cmd.file.content_type and cmd.file.content_type.startswith("image/"):
+            try:
                 thumbnail_bytes = create_thumbnail_bytes(local_path)
+            except (OSError, ValueError):
+                raise HTTPException(422, "上传内容不是有效图片") from None
             attempted_keys.append(key)
-            storage.save_file(local_path, key, cmd.file.content_type)
+            storage.save_file(local_path, key)
             if thumbnail_bytes:
                 attempted_keys.append(thumbnail_key)
-                storage.save_bytes(
-                    thumbnail_bytes, thumbnail_key, cmd.file.content_type
-                )
+                storage.save_bytes(thumbnail_bytes, thumbnail_key)
 
         # 3. 存储写入成功后保存记录；数据库失败也清理本次对象。
         with begin_transaction(db):
@@ -132,7 +127,6 @@ async def create(
                 db=db,
                 attachment=TaskAttachment(
                     path=key,
-                    url="",
                     filename=PurePosixPath(key).name,
                     created_by=current_user.id,
                     updated_by=current_user.id,
@@ -166,16 +160,14 @@ async def create(
         id=attachment.id,
         filename=attachment.filename,
         url=url,
-        stream_url=url,
         thumbnail_url=storage.get_read_url(thumbnail_key) if thumbnail_bytes else None,
-        storage_backend=storage.backend_name,
     )
 
 
 async def delete(
     db: Session, task_id: int, cmd: AttachmentDeleteCommand, current_user: User
 ) -> CommonDataResp:
-    """由任务创建者删除附件；外部数据源仅删除引用，保留原对象。"""
+    """由任务创建者删除本任务上传图片和缩略图。"""
     # 1. 验证任务创建者及待删除附件的归属。
     task = crud_task.get(db=db, task_id=task_id)
     if not task:
@@ -196,7 +188,7 @@ async def delete(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    # 外部数据源只移除引用，不删除源文件；全局 S3 删除失败时保留数据库记录。
+    # 本地文件删除失败时保留数据库记录，避免出现不可重试的悬空引用。
     attachments = crud_attachment.get_by_ids(db=db, attachment_ids=cmd.attachment_ids)
     if any(attachment.task_id != task_id for attachment in attachments):
         raise LabelSException(
@@ -205,13 +197,13 @@ async def delete(
         )
 
     # 2. 先清理自有对象，成功后再移除数据库引用。
+    storage = get_storage()
     for attachment in attachments:
-        if not attachment.data_source_id:
-            storage = get_storage_backend()
-            storage.delete(attachment.path)
-            thumbnail_key = build_thumbnail_key(attachment.path)
-            if storage.exists(thumbnail_key):
-                storage.delete(thumbnail_key)
+        storage.delete(attachment.path)
+        thumbnail_key = build_thumbnail_key(attachment.path)
+        if storage.exists(thumbnail_key):
+            storage.delete(thumbnail_key)
+
     # delete
     with begin_transaction(db):
         crud_attachment.delete(

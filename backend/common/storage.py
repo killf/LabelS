@@ -1,127 +1,141 @@
+"""本地任务文件存储与短时图片访问地址。"""
+
 from __future__ import annotations
 
+import hashlib
+import hmac
+import shutil
+import time
 from functools import lru_cache
 from io import BytesIO
-from pathlib import Path
-from typing import Optional
+from pathlib import Path, PurePosixPath
+from urllib.parse import quote
 
-from botocore.exceptions import ClientError
 from PIL import Image
 
 from backend.common.config import settings
 
 
-class S3StorageBackend:
-    """通过 S3 兼容接口保存附件和缩略图，并签发下载地址。"""
+class LocalStorage:
+    """在 BASE_DATA_DIR 内读写任务文件，拒绝越界路径和符号链接逃逸。"""
 
     def __init__(self) -> None:
-        import boto3
-        from botocore.config import Config
+        self.root = Path(settings.BASE_DATA_DIR).resolve()
 
-        if not settings.S3_BUCKET:
-            raise ValueError("S3_BUCKET must be configured")
+    def path(self, key: str) -> Path:
+        relative = PurePosixPath(key)
+        if (
+            not key
+            or relative.is_absolute()
+            or ".." in relative.parts
+            or any(character in key for character in ("\\", ":", "\x00"))
+        ):
+            raise ValueError("Invalid task-relative path")
+        target = (self.root / relative).resolve()
+        if not target.is_relative_to(self.root) or target == self.root:
+            raise ValueError("Path is outside the data directory")
+        return target
 
-        self._bucket = settings.S3_BUCKET
-        client_config = {}
-        if settings.S3_REGION:
-            client_config["region_name"] = settings.S3_REGION
-        client_config["config"] = Config(
-            s3={"addressing_style": "path" if settings.S3_PATH_STYLE else "auto"}
-        )
+    def save_file(self, local_path: Path, key: str) -> None:
+        target = self.path(key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(local_path, target)
 
-        self._client = boto3.client(
-            "s3",
-            endpoint_url=settings.S3_ENDPOINT or None,
-            aws_access_key_id=settings.S3_ACCESS_KEY_ID or None,
-            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY or None,
-            use_ssl=settings.S3_USE_SSL,
-            **client_config,
-        )
-
-    @property
-    def backend_name(self) -> str:
-        return "s3"
-
-    def save_file(
-        self, local_path: Path, key: str, content_type: Optional[str] = None
-    ) -> None:
-        extra_args = {}
-        if content_type:
-            extra_args["ContentType"] = content_type
-        if extra_args:
-            self._client.upload_file(
-                str(local_path), self._bucket, key, ExtraArgs=extra_args
-            )
-        else:
-            self._client.upload_file(str(local_path), self._bucket, key)
-
-    def save_bytes(
-        self, content: bytes, key: str, content_type: Optional[str] = None
-    ) -> None:
-        kwargs = {"Bucket": self._bucket, "Key": key, "Body": content}
-        if content_type:
-            kwargs["ContentType"] = content_type
-        self._client.put_object(**kwargs)
+    def save_bytes(self, content: bytes, key: str) -> None:
+        target = self.path(key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
 
     def delete(self, key: str) -> None:
-        self._client.delete_object(Bucket=self._bucket, Key=key)
+        self.path(key).unlink(missing_ok=True)
 
     def exists(self, key: str) -> bool:
-        try:
-            self._client.head_object(Bucket=self._bucket, Key=key)
-            return True
-        except ClientError as error:
-            # 只有对象不存在才返回 False；权限或连接错误交由调用方处理。
-            if error.response["Error"]["Code"] in {"404", "NoSuchKey", "NotFound"}:
-                return False
-            raise
+        return self.path(key).is_file()
 
     def read_text(self, key: str, encoding: str = "utf-8") -> str:
-        return self.read_bytes(key).decode(encoding)
+        return self.path(key).read_text(encoding=encoding)
 
     def read_bytes(self, key: str) -> bytes:
-        result = self._client.get_object(Bucket=self._bucket, Key=key)
-        with result["Body"] as body:
-            return body.read()
+        return self.path(key).read_bytes()
 
-    def get_read_url(self, key: str, expires_in: Optional[int] = None) -> str:
-        expires = expires_in or settings.S3_PRESIGN_EXPIRE_SECONDS
-        return self._client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": self._bucket, "Key": key},
-            ExpiresIn=expires,
+    def list_models(self, prefix: str) -> list[str]:
+        directory = self.path(prefix)
+        if not directory.is_dir():
+            return []
+        return sorted(
+            (
+                file.name
+                for file in directory.glob("*.pt")
+                if file.is_file() and file.resolve().is_relative_to(self.root)
+            ),
+            reverse=True,
+        )
+
+    def _signature(self, key: str, expires: int) -> str:
+        value = f"{key}\n{expires}".encode("utf-8")
+        return hmac.new(
+            settings.PASSWORD_SECRET_KEY.encode("utf-8"), value, hashlib.sha256
+        ).hexdigest()
+
+    def get_read_url(self, key: str, expires_in: int = 3600) -> str:
+        """图片只携带绑定当前文件的短时签名，不把登录令牌放入 URL。"""
+        self.path(key)
+        parts = PurePosixPath(key).parts
+        if len(parts) < 4 or parts[0] != "tasks" or parts[2] != "uploads":
+            raise ValueError("Only uploaded images may be previewed")
+        expires = int(time.time()) + expires_in
+        suffix = quote("/".join(parts[2:]), safe="/")
+        signature = self._signature(key, expires)
+        return (
+            f"{settings.API_V1_STR}/tasks/{parts[1]}/files/{suffix}"
+            f"?expires={expires}&signature={signature}"
+        )
+
+    def verify_read_url(self, key: str, expires: int, signature: str) -> bool:
+        """验证文件路径、有效期和签名，签名不能用于其他文件。"""
+        self.path(key)
+        parts = PurePosixPath(key).parts
+        return (
+            len(parts) >= 4
+            and parts[0] == "tasks"
+            and parts[2] == "uploads"
+            and int(time.time()) <= expires
+            and hmac.compare_digest(self._signature(key, expires), signature)
         )
 
 
 def build_thumbnail_key(key: str) -> str:
-    path = Path(key)
-    return str(path.with_name(f"{path.stem}-thumbnail{path.suffix}")).replace("\\", "/")
+    path = PurePosixPath(key)
+    return str(path.with_name(f"{path.stem}-thumbnail{path.suffix}"))
 
 
 def create_thumbnail_bytes(local_path: Path) -> bytes:
-    """读取本地图片并返回缩略图字节，函数返回前关闭图片文件。"""
-    with Image.open(local_path) as image:
-        image.thumbnail(
+    """读取本地图片并生成缩略图，返回前关闭全部图像资源。"""
+    with Image.open(local_path) as source:
+        source.thumbnail(
             (
-                round(image.width / image.height * settings.THUMBNAIL_HEIGH_PIXEL),
+                round(source.width / source.height * settings.THUMBNAIL_HEIGH_PIXEL),
                 settings.THUMBNAIL_HEIGH_PIXEL,
-            ),
+            )
         )
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-
-        buffer = BytesIO()
-        extension_to_format = {
-            ".jpg": "JPEG",
-            ".jpeg": "JPEG",
-            ".png": "PNG",
-            ".webp": "WEBP",
-        }
-        format_name = extension_to_format.get(local_path.suffix.lower(), "PNG")
-        image.save(buffer, format=format_name)
-        return buffer.getvalue()
+        image = source.convert("RGB")
+        try:
+            buffer = BytesIO()
+            formats = {
+                ".jpg": "JPEG",
+                ".jpeg": "JPEG",
+                ".png": "PNG",
+                ".webp": "WEBP",
+                ".bmp": "BMP",
+                ".tif": "TIFF",
+                ".tiff": "TIFF",
+            }
+            image.save(buffer, format=formats[local_path.suffix.lower()])
+            return buffer.getvalue()
+        finally:
+            image.close()
 
 
 @lru_cache(maxsize=1)
-def get_storage_backend() -> S3StorageBackend:
-    return S3StorageBackend()
+def get_storage() -> LocalStorage:
+    return LocalStorage()

@@ -3,16 +3,13 @@
 import asyncio
 import json
 import os
-import tempfile
 import time
 import uuid
 from contextlib import contextmanager
 from io import BytesIO
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Iterator
 
-from botocore.client import BaseClient
-from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from loguru import logger
 from PIL import Image
@@ -20,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from backend.adapter.persistence import (
     crud_auto_label_job,
-    crud_datasource,
     crud_pre_annotation,
     crud_sample,
     crud_task,
@@ -31,10 +27,9 @@ from backend.application.response.auto_label import (
 )
 from backend.application.service.access import assert_task_access
 from backend.application.service.dataset import dataset_classes
-from backend.application.service.datasource import _build_s3_client
 from backend.common.config import settings
 from backend.common.db import SessionLocal, begin_transaction
-from backend.common.storage import get_storage_backend
+from backend.common.storage import get_storage
 from backend.domain.models.auto_label_job import AutoLabelJob, AutoLabelStatus
 from backend.domain.models.pre_annotation import TaskPreAnnotation
 from backend.domain.models.sample import SampleState, TaskSample
@@ -51,35 +46,15 @@ def _task(db: Session, task_id: int, user: User) -> Task:
     return task
 
 
-def _model_storage(db: Session, task: Task) -> tuple[BaseClient, str, str]:
-    """返回任务模型目录所用的 S3 客户端、桶与对象前缀。"""
-    source = crud_datasource.get(db=db, ds_id=task.dataset_data_source_id)
-    if source is None:
-        raise HTTPException(400, "请先配置数据集 S3 数据源")
-    parts = (source.prefix or "", task.dataset_prefix, "models")
-    prefix = "/".join(part.strip("/") for part in parts if part.strip("/")) + "/"
-    return _build_s3_client(source), source.bucket, prefix
-
-
 def list_models(db: Session, task_id: int, user: User) -> list[str]:
-    """列出任务数据集 models/ 目录下的平面 .pt 权重文件名。"""
+    """验证任务访问权，列出本任务目录直属的模型权重。"""
     task = _task(db, task_id, user)
-    client, bucket, prefix = _model_storage(db, task)
-    names = []
-    for page in client.get_paginator("list_objects_v2").paginate(
-        Bucket=bucket, Prefix=prefix, Delimiter="/"
-    ):
-        names.extend(
-            PurePosixPath(obj["Key"]).name
-            for obj in page.get("Contents", [])
-            if obj["Key"].endswith(".pt")
-        )
-    return sorted(names, reverse=True)
+    return get_storage().list_models(f"{task.dataset_prefix}/models/")
 
 
 @contextmanager
 def _load_model(db: Session, task: Task, model_name: str) -> Iterator[Any]:
-    """下载并加载选定权重，退出上下文时删除本次临时文件。"""
+    """加载本任务选定的本地权重，在本批次内复用模型。"""
     if not settings.AI_AUTO_LABEL_ENABLED:
         raise HTTPException(400, "AI 标注未启用")
     if not model_name:
@@ -100,33 +75,22 @@ def _load_model(db: Session, task: Task, model_name: str) -> Iterator[Any]:
             503, "AI 标注需要 Ultralytics，请使用已安装训练依赖的 Python 环境"
         ) from None
 
-    # 2. 权重仅在本次单张或批量推理期间保存在临时目录。
-    client, bucket, prefix = _model_storage(db, task)
-    with tempfile.TemporaryDirectory(prefix="labels-yolo-") as directory:
-        weights = Path(directory) / model_name
-        try:
-            client.download_file(bucket, prefix + model_name, str(weights))
-        except (BotoCoreError, ClientError):
-            raise HTTPException(502, "无法从 S3 读取所选模型权重") from None
-        yield YOLO(str(weights))
+    # 2. 仅加载当前任务目录内已存在的本地权重。
+    storage = get_storage()
+    weights = storage.path(f"{task.dataset_prefix}/models/{model_name}")
+    if not weights.is_file():
+        raise HTTPException(404, "所选模型文件不存在")
+    yield YOLO(str(weights))
 
 
 def _image_content(sample: TaskSample) -> bytes:
-    """从附件所属的全局或外部 S3 数据源读取原图字节。"""
-    attachment = sample.file
-    if not attachment.data_source_id:
-        return get_storage_backend().read_bytes(attachment.path)
-    source = attachment.data_source
-    response = _build_s3_client(source).get_object(
-        Bucket=source.bucket, Key=attachment.path
-    )
-    with response["Body"] as body:
-        return body.read()
+    """从本地目录读取本任务上传的原图。"""
+    return get_storage().read_bytes(sample.file.path)
 
 
 def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dict:
-    # 1. 类别显示名和内部值均可匹配，覆盖训练 data.yaml 与标注工具的命名差异。
     """使用所选模型推理图片，将匹配类别的框转换为可编辑预标注。"""
+    # 1. 类别显示名和内部值均可匹配，覆盖训练 data.yaml 与标注工具的命名差异。
     attributes = dataset_classes(json.loads(task.config))
     labels = {
         name: attribute["value"]
@@ -190,11 +154,11 @@ def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dic
 def _save_prediction(
     db: Session, task: Task, sample: TaskSample, payload: dict, user_id: int
 ) -> int:
-    """替换当前样本的 AI 预标注并提交，保留人工导入结果。"""
+    """替换当前样本的 AI 预标注并提交。"""
     existing, _ = crud_pre_annotation.list_by(
         db=db, task_id=task.id, sample_name=sample.file.filename, page=0, size=None
     )
-    # 仅替换当前样本的 AI 结果，保留人工导入的预标注和同名的其他样本。
+    # 仅替换当前样本的 AI 结果，保留同名其他样本的预标注。
     previous_ai = []
     for item in existing:
         meta = json.loads(item.data).get("meta", {})

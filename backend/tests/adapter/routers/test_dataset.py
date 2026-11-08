@@ -7,12 +7,11 @@ import pytest
 import yaml
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 from PIL import Image
 
 from backend.application.service import dataset
-from backend.common.storage import get_storage_backend
+from backend.common.storage import get_storage
 
 
 @pytest.fixture
@@ -26,8 +25,6 @@ def annotated_sample(
         json={
             "name": "YOLO dataset",
             "media_type": "IMAGE",
-            "dataset_data_source_id": 1,
-            "dataset_prefix": "ego-quality",
         },
     ).json()["data"]
     config = {
@@ -79,7 +76,7 @@ def annotated_sample(
 
 
 def _read(key: str) -> str:
-    return get_storage_backend().read_text(f"datasets/ego-quality/{key}")
+    return get_storage().read_text(f"tasks/1/{key}")
 
 
 def test_annotation_and_split_update_preserve_yolo_dataset(
@@ -91,15 +88,18 @@ def test_annotation_and_split_update_preserve_yolo_dataset(
     assert _read(f"labels/{sample_id}.txt") == (
         "0 0.30000000 0.37500000 0.40000000 0.25000000\n"
     )
-    assert yaml.safe_load(_read("data.yaml"))["names"] == ["Object"]
+    config = yaml.safe_load(_read("data.yaml"))
+    assert config["names"] == ["Object"]
+    assert config["val"] == config["test"] == "test.txt"
+    assert not get_storage().exists(f"tasks/{task_id}/val.txt")
 
-    for split in ["test", "val", "train"]:
+    for split in ["test", "train"]:
         response = client.patch(
             path, headers=testuser_token_headers, json={"split": split}
         )
         assert response.status_code == 200
         assert response.json()["data"]["data"] == original["data"]
-        for name in ["train", "test", "val"]:
+        for name in ["train", "test"]:
             expected = f"images/{sample_id}.png\n" if name == split else ""
             assert _read(f"{name}.txt").strip() == expected.strip()
 
@@ -115,9 +115,7 @@ def test_skipped_sample_is_removed_from_training_files(
     )
     assert response.status_code == 200
     assert _read("train.txt").strip() == ""
-    assert not get_storage_backend().exists(
-        f"datasets/ego-quality/labels/{sample_id}.txt"
-    )
+    assert not get_storage().exists(f"tasks/{task_id}/labels/{sample_id}.txt")
 
 
 def test_sync_failure_keeps_annotation_and_can_be_retried(
@@ -129,15 +127,13 @@ def test_sync_failure_keeps_annotation_and_can_be_retried(
     task_id, sample_id = annotated_sample
     path = f"/api/v1/tasks/{task_id}/samples/{sample_id}"
     failed_client = Mock()
-    failed_client.put_object.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "denied"}}, "PutObject"
-    )
+    failed_client.save_bytes.side_effect = OSError("test disk failure")
     with monkeypatch.context() as patch:
-        patch.setattr(dataset, "_build_s3_client", lambda source: failed_client)
+        patch.setattr(dataset, "get_storage", lambda: failed_client)
         response = client.patch(
             path, headers=testuser_token_headers, json={"split": "test"}
         )
-        assert response.status_code == 502
+        assert response.status_code == 500
         saved = client.get(path, headers=testuser_token_headers).json()["data"]
         assert saved["split"] == "test" and saved["state"] == "DONE"
 

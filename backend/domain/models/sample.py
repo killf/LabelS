@@ -25,8 +25,6 @@ class DatasetSplit(str, Enum):
 
     TEST = "test"
 
-    VAL = "val"
-
 
 class TaskSample(Base):
     __tablename__ = "task_sample"
@@ -40,7 +38,7 @@ class TaskSample(Base):
         nullable=False,
         default=DatasetSplit.TRAIN.value,
         server_default="train",
-        comment="训练、测试或评估集",
+        comment="训练集或测试集",
     )
     created_by = Column(Integer, ForeignKey("user.id"), index=True)
     updated_by = Column(Integer, ForeignKey("user.id"))

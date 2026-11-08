@@ -1,20 +1,18 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useRevalidator, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import type { ColumnsType, TableProps } from 'antd/es/table';
-import { Table, Select, Pagination, Button, Popconfirm, Tag, Tooltip, Avatar, Popover, Progress, message } from 'antd';
-import { VideoCard, FlexLayout } from '@labels/components-react';
+import { Table, Select, Pagination, Button, Popconfirm, Tooltip, Avatar, Popover, Progress, message } from 'antd';
+import { FlexLayout } from '@labels/components-react';
 import _ from 'lodash-es';
 import formatter from '@labels/formatter';
 import styled from 'styled-components';
 import { CheckCircleFilled, CloseCircleFilled, DownOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from '@labels/i18n';
 
-import type { DatasetSplit, PreAnnotationFileResponse, SampleResponse } from '@/api/types';
+import type { DatasetSplit, SampleResponse } from '@/api/types';
 import { MediaType, TaskStatus } from '@/api/types';
 import type { TaskLoaderResult } from '@/loaders/task.loader';
 import BlockContainer from '@/layouts/BlockContainer';
-import { downloadFromUrl } from '@/utils';
-import { deletePreAnnotationFile } from '@/api/services/preAnnotations';
 import { deleteSamples, updateSampleState, createAutoLabelJob, getAutoLabelJobStatus } from '@/api/services/samples';
 import { UserAvatar } from '@/components/UserAvatar';
 import useMe from '@/hooks/useMe';
@@ -22,6 +20,7 @@ import useMe from '@/hooks/useMe';
 import type { TaskStatusProps } from './components/Statistical';
 import Statistical, { TaskStatus as TaskStatusComponent } from './components/Statistical';
 import GoToEditTask from './components/GoToEditTask';
+import TrainingPanel from './components/TrainingPanel';
 import type { TaskSampleUser } from '../../hooks/useSampleWs';
 
 const HeaderWrapper = styled(FlexLayout.Header)`
@@ -33,7 +32,6 @@ const Samples = () => {
   const routerData = useRouteLoaderData('task') as TaskLoaderResult;
   const samples = _.get(routerData, 'samples.data');
   const revalidator = useRevalidator();
-  const preAnnotations = _.get(routerData, 'preAnnotations.data') as any;
   const task = routerData.task;
   const metaData = routerData?.samples?.meta_data;
   const routeParams = useParams();
@@ -57,7 +55,6 @@ const Samples = () => {
     task?.config &&
     Object.keys(task?.config).length > 0;
   const [enterRowId, setEnterRowId] = useState<any>(undefined);
-  const [selectedSampleIds, setSelectedSampleIds] = useState<any>([]);
 
   // Batch auto-label state
   const [batchProgress, setBatchProgress] = useState<{
@@ -125,15 +122,6 @@ const Samples = () => {
     return () => stopPolling();
   }, [stopPolling]);
 
-  const handleDeleteJsonl = async (id: number) => {
-    await deletePreAnnotationFile({
-      task_id: taskId,
-      file_id: id,
-    });
-
-    revalidator.revalidate();
-  };
-
   const handleDeleteSample = async (ids: number[]) => {
     await deleteSamples({ task_id: taskId }, { sample_ids: ids });
     revalidator.revalidate();
@@ -144,7 +132,7 @@ const Samples = () => {
     revalidator.revalidate();
   };
 
-  const columns: ColumnsType<SampleResponse | PreAnnotationFileResponse> = [
+  const columns: ColumnsType<SampleResponse> = [
     {
       title: t('innerId'),
       dataIndex: 'inner_id',
@@ -157,37 +145,21 @@ const Samples = () => {
       dataIndex: ['file', 'filename'],
       key: 'filename',
       align: 'left',
-      render: (filename, record) => {
-        const _filename = (record as SampleResponse).file?.filename ?? '';
-
-        if ((record as PreAnnotationFileResponse).sample_names) {
-          return (
-            <span>
-              {formatter.format('ellipsis', _.get(record, 'filename'), { maxWidth: 160, type: 'tooltip' })}
-              &nbsp;
-              <Tag color="processing">{t('preAnnotation')}</Tag>
-            </span>
-          );
-        }
-        return formatter.format('ellipsis', _filename, { maxWidth: 160, type: 'tooltip' });
-      },
+      render: (filename) => formatter.format('ellipsis', filename ?? '', { maxWidth: 160, type: 'tooltip' }),
     },
     {
       title: '数据集划分',
       dataIndex: 'split',
       key: 'split',
       render: (split: DatasetSplit, record) => {
-        if ((record as PreAnnotationFileResponse).sample_names) return '-';
-
         return (
           <Select
             aria-label="数据集划分"
             value={split}
             style={{ width: 100 }}
             options={[
-              { value: 'train', label: '训练' },
-              { value: 'test', label: '测试' },
-              { value: 'val', label: '评估' },
+              { value: 'train', label: '训练集' },
+              { value: 'test', label: '测试集' },
             ]}
             onChange={(value) => handleSplitChange(record.id!, value)}
           />
@@ -199,19 +171,9 @@ const Samples = () => {
       dataIndex: 'file',
       key: 'file',
       align: 'left',
-      render: (data, record) => {
-        if ((record as PreAnnotationFileResponse).sample_names) {
-          return '-';
-        }
-
-        if (task!.media_type === MediaType.IMAGE) {
-          const thumbnailUrl = data.thumbnail_url || data.url;
-          return <img src={thumbnailUrl} style={{ width: '116px', height: '70px', objectFit: 'cover' }} />;
-        } else if (task!.media_type === MediaType.AUDIO) {
-          return <audio src={data?.url} controls />;
-        } else {
-          return <VideoCard size={{ width: 116, height: 70 }} src={data?.url} showPlayIcon showDuration />;
-        }
+      render: (data) => {
+        const thumbnailUrl = data.thumbnail_url || data.url;
+        return <img src={thumbnailUrl} style={{ width: '116px', height: '70px', objectFit: 'cover' }} />;
       },
     },
     {
@@ -222,11 +184,7 @@ const Samples = () => {
             title={
               <>
                 {t('preAnnotationDescription')}{' '}
-                <a
-                  href="https://github.com/killf/LabelS#readme"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a href="https://github.com/killf/LabelS#readme" target="_blank" rel="noreferrer">
                   {t('example')}
                 </a>
               </>
@@ -239,15 +197,7 @@ const Samples = () => {
       dataIndex: 'is_pre_annotated',
       key: 'is_pre_annotated',
       align: 'left',
-      render: (value: boolean, record) => {
-        const sampleNames = _.get(record, 'sample_names');
-
-        if (sampleNames) {
-          return '';
-        }
-
-        return value ? t('yes') : '';
-      },
+      render: (value: boolean) => (value ? t('yes') : ''),
     },
     {
       title: t('annotationState'),
@@ -255,11 +205,7 @@ const Samples = () => {
       key: 'state',
       align: 'left',
       width: 90,
-      render: (text, record) => {
-        if (record.file?.filename?.endsWith('.jsonl')) {
-          return '-';
-        }
-
+      render: (text) => {
         if (!isTaskReadyToAnnotate) {
           return '-';
         }
@@ -274,12 +220,6 @@ const Samples = () => {
       key: 'annotated_count',
       align: 'left',
       render: (_unused, record) => {
-        const sampleNames = _.get(record, 'sample_names');
-
-        if (sampleNames) {
-          return '';
-        }
-
         let result = 0;
         const resultJson = record?.data?.result ? JSON.parse(record?.data?.result) : {};
         for (const key in resultJson) {
@@ -306,13 +246,7 @@ const Samples = () => {
       dataIndex: 'updaters',
       key: 'updaters',
       align: 'center',
-      render: (updaters: TaskSampleUser[], record) => {
-        const sampleNames = _.get(record, 'sample_names');
-
-        if (sampleNames) {
-          return '-';
-        }
-
+      render: (updaters: TaskSampleUser[]) => {
         if (!isTaskReadyToAnnotate) {
           return '-';
         }
@@ -365,13 +299,7 @@ const Samples = () => {
       key: 'updated_at',
       align: 'left',
       sorter: true,
-      render: (updated_at, record) => {
-        const sampleNames = _.get(record, 'sample_names');
-
-        if (sampleNames) {
-          return '-';
-        }
-
+      render: (updated_at) => {
         if (!isTaskReadyToAnnotate) {
           return '';
         }
@@ -387,27 +315,8 @@ const Samples = () => {
       align: 'center',
       fixed: 'right',
       render: (x, record) => {
-        const sampleNames = _.get(record, 'sample_names');
-
         if (record.id !== enterRowId) {
           return '';
-        }
-
-        if (sampleNames) {
-          return (
-            <FlexLayout items="center">
-              <Button type="link" onClick={() => downloadFromUrl(record.url, record?.filename)}>
-                {t('download')}
-              </Button>
-              {isMeTheCreator && (
-                <Popconfirm title={t('deleteConfirm')} onConfirm={() => handleDeleteJsonl(record.id!)}>
-                  <Button type="link" danger>
-                    {t('delete')}
-                  </Button>
-                </Popconfirm>
-              )}
-            </FlexLayout>
-          );
         }
 
         return (
@@ -432,9 +341,6 @@ const Samples = () => {
 
   const rowSelection: TableProps<SampleResponse>['rowSelection'] = {
     columnWidth: 58,
-    onChange: (selectedKeys) => {
-      setSelectedSampleIds(selectedKeys);
-    },
   };
 
   const handleTableChange: TableProps<SampleResponse>['onChange'] = (pagination, filters, sorter) => {
@@ -505,8 +411,8 @@ const Samples = () => {
   }, [task?.media_type]);
 
   const data = useMemo(() => {
-    return [...(preAnnotations ?? []), ...(samples ?? [])];
-  }, [preAnnotations, samples]);
+    return samples ?? [];
+  }, [samples]);
 
   return (
     <FlexLayout flex="column" full gap="2rem">
@@ -520,6 +426,7 @@ const Samples = () => {
 
       <FlexLayout.Content scroll>
         <FlexLayout justify="space-between" flex="column" gap="1rem" padding="0 1.5rem 1.5rem">
+          <TrainingPanel taskId={taskId} canClean={isMeTheCreator} />
           <Table
             columns={columns}
             dataSource={data}

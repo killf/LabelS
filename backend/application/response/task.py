@@ -7,9 +7,9 @@ from backend.application.response.base import UserResp
 
 
 class TaskResponse(BaseModel):
-    ai_model_name: str | None = None
-    dataset_data_source_id: int | None = None
+    ai_algorithm: str = "yolo"
     dataset_prefix: str = ""
+    ai_model_name: str | None = None
     id: Union[int, None] = Field(default=None, description="description: task id")
     name: Union[str, None] = Field(default=None, description="description: task name")
     description: Union[str, None] = Field(

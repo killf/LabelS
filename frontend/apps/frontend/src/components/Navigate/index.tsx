@@ -1,4 +1,4 @@
-import Icon, { BellOutlined, DatabaseOutlined, PoweroffOutlined } from '@ant-design/icons';
+import Icon, { BellOutlined, PoweroffOutlined } from '@ant-design/icons';
 import { FlexLayout } from '@labels/components-react';
 import { Button, Divider, Dropdown, Popover, Tag } from 'antd';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
@@ -67,20 +67,12 @@ const Homepage = () => {
           </Popover>
         )}
         {window.IS_ONLINE && (
-          <a
-            data-wiz="local-deploy-top-right"
-            href="https://github.com/killf/LabelS#readme"
-          >
+          <a data-wiz="local-deploy-top-right" href="https://github.com/killf/LabelS#readme">
             <Button type="link" style={{ color: 'rgba(0, 0, 0, 0.85)' }} icon={<Icon component={LocalDeploy} />}>
               {t('localDeploy')}
             </Button>
           </a>
         )}
-        <Link to="/datasources">
-          <Button type="link" icon={<DatabaseOutlined />} style={{ color: 'rgba(0, 0, 0, 0.85)' }}>
-            {t('dataSources')}
-          </Button>
-        </Link>
         <Button
           type="link"
           data-wiz="documentation"

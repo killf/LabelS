@@ -43,19 +43,18 @@ class Task(Base):
     name = Column(String(64), index=True)
     description = Column(String(1024), comment="task description")
     tips = Column(String(1024), comment="task tips")
-    dataset_data_source_id = Column(
-        Integer, ForeignKey("data_source.id"), comment="YOLO 数据集的目标 S3 数据源"
-    )
-    dataset_prefix = Column(
-        String(1024),
-        nullable=False,
-        default="",
-        server_default="",
-        comment="相对于数据源前缀的数据集目录",
-    )
     ai_model_name = Column(
         String(1024), nullable=True, comment="models/ 下用于 AI 标注的权重文件名"
     )
+
+    ai_algorithm = Column(
+        String(32), nullable=False, default="yolo", server_default="yolo"
+    )
+
+    @property
+    def dataset_prefix(self) -> str:
+        """任务 ID 决定固定的本地目录，不随名称或配置变化。"""
+        return f"tasks/{self.id}"
 
     last_sample_inner_id = Column(
         Integer, default=0, comment="The last inner id of sample in a task"

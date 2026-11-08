@@ -2,74 +2,68 @@
 
 ![LabelS](frontend/images/labels-logo.svg)
 
-用于独立算法数据集的图片标注。离线训练代码位于 [backend/training](backend/training/README.md)。不接入 CI 和自动 Review，测试按需运行。
+图片上传、人工标注、YOLO 辅助标注和本机训练。所有数据直接保存到本地目录，不配置数据源，不使用 S3，也不提供图片或预标注导入。
 
-## 目录
+## 目录与数据
 
-```text
-LabelS/
-├── backend/                 # 独立 Python 后端项目，同时是 backend 包
-│   ├── main.py              # 服务与 CLI 入口
-│   ├── migrations/          # 001_init_db.py 完整初始化脚本
-│   ├── training/            # 离线训练模块，GPU 依赖按需安装
-│   ├── tests/               # SQLite / Moto S3 验证
-│   ├── pyproject.toml
-│   └── uv.lock
-├── frontend/                # 管理页面、标注组件及文档图片
-└── Dockerfile               # 包含前端静态文件的标注平台镜像
-```
+后端是独立 Python 项目 `backend/`，前端位于 `frontend/`，训练模块位于 `backend/training/`。版本为 `2.0.0`。
 
-## 参考项目
-
-后端基于 [LabelU](https://github.com/opendatalab/labelU)，提交 `8681ca4`，版本 1.5.6；前端复制自 [LabelU-Kit v5.12.0](https://github.com/opendatalab/labelU-Kit/tree/v5.12.0)，提交 `d06cb1f5`。两份 Apache-2.0 许可证分别保留在本目录与 `frontend/`。未引入上游 Git 仓库、发布流水线和模型权重。
-
-## 存储与数据集
-
-- SQLite 保存账户、任务、原始标注和数据集划分；`DATABASE_URL` 指定文件位置。
-- 上传的图片和缩略图存入全局 `S3_*` 配置的桶，移除了本地媒体存储后端。
-- 每个任务选择自己的 S3 数据源与数据集目录。目录相对于该数据源的前缀，不同任务使用独立目录。
-- 图片标注保存后直接同步 YOLO 数据集，不提供导出入口、导出任务或下载包。
-- 当前同步目标为图片目标检测，标注工具使用矩形框；类别顺序由任务配置决定，类别显示名称写入 `data.yaml`。
+`BASE_DATA_DIR` 指定本地数据根目录，默认 `data/`，相对于服务启动目录。SQLite 默认位于该目录的 `labels.sqlite`，也可用 `DATABASE_URL` 单独指定。
 
 ```text
-<数据源前缀>/<数据集目录>/
-├── images/<sample-id>.<ext>
-├── labels/<sample-id>.txt
-├── train.txt        # 训练
-├── test.txt         # 测试
-├── val.txt          # 评估
-└── data.yaml
+data/
+├── labels.sqlite
+└── tasks/<任务ID>/
+    ├── uploads/             # 上传图片和缩略图
+    ├── images/              # 已确认的 YOLO 图片
+    ├── labels/              # YOLO 标签
+    ├── train.txt
+    ├── test.txt
+    ├── data.yaml
+    ├── models/              # 可选择、下载的任务模型
+    └── runs/<训练记录ID>/   # 日志、输入快照及训练中间文件
 ```
 
-样本默认归入训练集，可在样本列表选择训练、测试或评估。清单只包含已完成的样本；撤回、跳过或删除时同步移除对应训练文件和清单引用。空标注保存为空标签文件，用作背景样本。
+创建任务时自动创建目录，任务改名不移动文件。目录创建失败则回滚任务；图片只接受 JPG、PNG、BMP、WEBP、TIFF，服务端验证实际图片内容。
 
-保存先写入 SQLite，再同步变更图片、标签和三个清单；修改任务配置时同步全部样本。S3 失败会返回明确错误，已保存的标注仍在 SQLite 中，重新保存即可重试。这里不提供跨 SQLite/S3 的原子发布协议；训练应在本次标注和同步完成后启动。
+样本只分训练集和测试集，默认训练集。人工保存后同步 YOLO 图片、标签和清单，未完成或跳过的样本不进入清单；背景样本保存空标签。保存先写入数据库，再更新本地数据集；磁盘失败时返回错误，原标注仍可重新保存重试。
 
-从外部 S3 数据源导入的图片只读取，删除样本引用时不删除原图。`raw/`、`models/` 和 `runs/` 不由标注同步流程清理。独立数据集直接使用 S3，项目不依赖 DataFactory 服务。
+## 模型设置与训练
 
-## AI 预标注
+任务配置分四步：基础配置、图片上传、标注配置、模型设置。首版算法为 YOLO 目标检测，模型从当前任务 `models/` 选择。AI 预测框可编辑，人工确认前不算完成标注。
 
-任务配置中的“AI 模型”列出目标数据集 `models/` 下的 `.pt` 权重。选择权重后，可在标注页对单张图片生成预标注，也可在任务页面批量处理待标注样本。
+任务页提供“开始训练”和“训练记录”。训练集和测试集都需要至少一张已确认图片。可设置初始权重、轮数、图片尺寸与 batch，后台复用当前 Python 的 PyTorch/Ultralytics 环境执行独立训练进程，不在请求中安装依赖或替换 GPU 运行时。
 
-- 使用 YOLO26，类别按任务显示名称或内部值匹配；未匹配的预测类别会忽略并提示。
-- 预测框只作为可编辑的预标注，不自动把样本标为完成；人工确认保存后才同步训练数据。
-- 每批只加载一次模型，逐张保存结果并记录成功、失败数量；重启后未完成批次标记为中断。
-- `AI_DEVICE` 留空时由 PyTorch 选择设备，验证时可显式设为 `cpu`。
-- 不再支持原上游的 HTTP 模型服务分支。AI 预标注和离线训练使用同一组可选 `training` 依赖，默认 Web 安装不包含 PyTorch/Ultralytics。
+只维护 `train.txt` 和 `test.txt`。YOLO 的 `val` 与 `test` 同时指向 `test.txt`，测试集用于每轮验证及选择 `best.pt`，因此展示的指标不是独立测试成绩。每次训练先复制输入快照，产出模型保存到当前任务的 `models/`。
+
+训练记录显示等待、运行中、成功、失败或中断状态，并提供参数、指标、日志和模型下载。正常关闭服务会终止自己启动的训练；重新启动后未完成记录标为中断，不自动重跑。
+
+- **清理日志**：删除该次运行的日志和中间文件，保留执行记录、指标与产出模型。
+- **清理记录**：删除执行记录、产出模型及剩余日志。被 AI 配置或其他运行任务引用的模型需先解除使用。
+
+任务创建者可清理终态记录，运行中的训练不允许清理。数据库与 `BASE_DATA_DIR` 应一起备份；目录路径不要指向不受信任的可写共享位置。
 
 ## 本地运行
 
-后端使用本地 Python。仅运行标注界面时可使用独立轻量环境；启用 AI 标注时，在已有 PyTorch/Ultralytics 的训练环境中安装本项目。
+仅运行人工标注可使用后端轻量环境：
 
 ```bash
-cd C:/Users/killf/github/LabelS/backend
+cd backend
 uv sync --python 3.11 --frozen --group test
 cp .env.example .env
-# 填写 S3_*，设置固定 PASSWORD_SECRET_KEY 后启动
 uv run --env-file .env uvicorn backend.main:app --host 127.0.0.1 --port 8002
 ```
 
-另一个终端启动前端：
+启用训练或 AI 时，优先复用已安装 PyTorch/Ultralytics 的 GPU 环境。本机已有 AMD Python 可从仓库根目录运行：
+
+```powershell
+$env:BASE_DATA_DIR = 'C:/Users/killf/github/LabelS/backend/data'
+$env:PASSWORD_SECRET_KEY = '<自行生成的固定签名密钥>'
+$env:AI_DEVICE = '0'
+C:/Python314/python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8002
+```
+
+前端：
 
 ```bash
 cd frontend
@@ -78,20 +72,9 @@ pnpm --filter @labels/frontend run postinstall
 pnpm --filter @labels/frontend start --host 127.0.0.1
 ```
 
-访问 `http://127.0.0.1:3004/`。开发服务器将 API 与 WebSocket 请求转发到本地 8002 端口。先在“数据源”中配置 S3 连接，再创建标注任务并选择目标数据源、填写数据集目录。
+访问 `http://127.0.0.1:3004/`，开发服务器将 API 和 WebSocket 转发到后端 8002。图片预览使用限定文件、带有效期的地址；模型下载和训练操作需登录并具有任务访问权。
 
-本地 MinIO 可以使用已有镜像启动，并把 S3 endpoint 设置为 `http://127.0.0.1:9000`，启用 path-style；桶需预先创建。以下命令只供本地合成数据使用：
-
-```bash
-docker run -d --pull never --name labels-minio \
-  -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 \
-  -e MINIO_ROOT_USER=labels-local -e MINIO_ROOT_PASSWORD=labels-local-only \
-  -v labels-minio:/data minio/minio:latest server /data --console-address :9001
-```
-
-后端 Python 包为 `backend`，服务命令为 `labels`，训练命令为 `labels-train`，前端内部包使用 `@labels/*` 并链接本地源码，不从 npm 下载。已有数据库继续使用 `labelu.sqlite`；已有 `DATABASE_URL` 无需改动。浏览器语言与播放偏好键保持兼容。
-
-固定的 `PASSWORD_SECRET_KEY` 同时用于登录签名与 S3 数据源凭据加密，重启后应保留同一配置。
+当前仅保留 `backend/migrations/versions/001_init_db.py` 初始化空库，不提供旧结构迁移或 to_mysql。结构调整后使用新库，已有数据库和原 S3 数据不自动搬迁或删除。
 
 ## 验证与构建
 
@@ -99,33 +82,17 @@ docker run -d --pull never --name labels-minio \
 cd backend
 uv run --no-sync pytest
 cd ../frontend
-pnpm build:frontend
-```
-
-测试使用隔离 SQLite 和 Moto 模拟 S3，不读取实际凭据、不连接外部存储。实际 MinIO 与浏览器验证另行执行。
-
-本地包的运行与类型入口都指向工作区源码。完整 TypeScript 检查仍有 74 条页面/组件类型错误，本轮已消除全部模块缺失错误；生产构建与完整类型检查的结果分开报告。
-
-Python 修改文件按 Black（Python 3.11、88 列）格式化，并用 Flake8 检查。前端工具函数使用现有 ESLint/Prettier 检查；`lint:*` 默认只检查，不自动修改文件。使用当前 Node 24 环境执行新增前端单元测试：
-
-```bash
-cd frontend
 pnpm --filter @labels/frontend test:unit
+pnpm build:frontend
 pnpm --filter @labels/frontend type-check
 ```
 
-安装命令明确跳过第三方生命周期脚本，`strictDepBuilds=false` 仅允许被跳过的脚本不使安装失败，不授予执行许可。前端的主题 CSS 仍通过前述显式 postinstall 命令生成。
+测试使用隔离 SQLite 和临时本地目录，不读取真实凭据。完整 TypeScript 检查仍有既有页面/组件类型问题，构建与类型检查分别报告。不接入 CI 或自动 Review，测试按需执行。
 
-标注平台镜像从本目录构建：
+只维护根目录的 `Dockerfile`，从仓库根目录执行 `docker build -t labels:local .`。同一镜像默认启动标注服务，持久化 `/data`；离线训练使用 `--entrypoint labels-train`，参数与挂载约定见[训练说明](backend/training/README.md)。
 
-```bash
-docker build -t labels:local .
-```
+依赖清单和锁文件先于源码复制，前后端依赖分别形成缓存层；pnpm、pip 和 uv 使用 BuildKit 缓存挂载。只改业务源码时复用依赖层，继续执行项目安装和源码构建。GPU 框架沿用 Ultralytics 基础镜像。
 
-训练镜像使用 `backend/Dockerfile.training`，构建上下文为 `backend/`，详细参数与 S3 模型、日志约定见 [训练说明](training/README.md)。
+## 参考项目
 
-## SQLite 持久化
-
-`DATABASE_URL` 可设为 `sqlite:////data/labelu.sqlite`。部署到 K8s 时，将整个 `/data` 目录挂载到 PV，使数据库和 journal 一起持久化。部署由使用方维护，本项目不提供部署清单。
-
-后端版本为 `2.0.0`。`backend/migrations/versions/` 仅保留一份完整初始化脚本，启动时由 Alembic 建立空库表结构；不提供历史修订链升级或 SQLite 到 MySQL 的搬迁命令。
+后端基于 [LabelU](https://github.com/opendatalab/labelU)，提交 `8681ca4`，版本 1.5.6；前端复制自 [LabelU-Kit v5.12.0](https://github.com/opendatalab/labelU-Kit/tree/v5.12.0)，提交 `d06cb1f5`。两份 Apache-2.0 许可证分别保留在本目录与 `frontend/`。未引入上游 Git 仓库、发布流水线和模型权重。

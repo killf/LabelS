@@ -11,12 +11,11 @@ from backend.common.error_code import LabelSException
 from backend.domain.models.user import User
 from backend.domain.models.task import Task
 from backend.domain.models.attachment import TaskAttachment
-from backend.common.storage import get_storage_backend, build_thumbnail_key
+from backend.common.storage import get_storage, build_thumbnail_key
 from backend.domain.models.task import TaskStatus
 from backend.domain.models.sample import SampleState
 from backend.application.service.access import assert_task_access
 from backend.application.service.dataset import (
-    assert_dataset_destination,
     dataset_classes,
     sync_dataset,
 )
@@ -35,33 +34,49 @@ from backend.application.response.task import TaskResponseWithStatics
 async def create(
     db: Session, cmd: BasicConfigCommand, current_user: User
 ) -> TaskResponse:
-    assert_dataset_destination(db, cmd.dataset_data_source_id, current_user)
     if cmd.media_type != "IMAGE":
         raise HTTPException(422, "YOLO 数据集任务使用图片标注")
 
-    # 创建任务时固定本次使用的 S3 数据源与目录。
-
-    with begin_transaction(db):
-        new_task = crud_task.create(
-            db=db,
-            task=Task(
-                status=TaskStatus.DRAFT.value,
-                name=cmd.name,
-                dataset_data_source_id=cmd.dataset_data_source_id,
-                dataset_prefix=cmd.dataset_prefix.strip("/"),
-                description=cmd.description,
-                media_type=cmd.media_type,
-                tips=cmd.tips,
-                created_by=current_user.id,
-                updated_by=current_user.id,
-            ),
-        )
+    # 1. 数据库分配任务 ID，再创建该任务的本地目录。
+    storage = get_storage()
+    created_directories = []
+    try:
+        with begin_transaction(db):
+            new_task = crud_task.create(
+                db=db,
+                task=Task(
+                    status=TaskStatus.DRAFT.value,
+                    name=cmd.name,
+                    description=cmd.description,
+                    media_type=cmd.media_type,
+                    tips=cmd.tips,
+                    created_by=current_user.id,
+                    updated_by=current_user.id,
+                ),
+            )
+            task_directory = storage.path(new_task.dataset_prefix)
+            task_directory.mkdir(parents=True, exist_ok=False)
+            created_directories.append(task_directory)
+            for name in ("uploads", "images", "labels", "models", "runs"):
+                directory = task_directory / name
+                directory.mkdir()
+                created_directories.append(directory)
+    except Exception as error:
+        # 2. 失败时只移除本次新建的空目录，保留已有文件。
+        for directory in reversed(created_directories):
+            try:
+                directory.rmdir()
+            except OSError:
+                logger.error("Task directory cleanup failed: path={}", directory)
+        if isinstance(error, OSError):
+            raise HTTPException(500, "本地任务目录创建失败，任务未创建") from None
+        raise
 
     # response
     return TaskResponse(
         id=new_task.id,
         ai_model_name=new_task.ai_model_name,
-        dataset_data_source_id=new_task.dataset_data_source_id,
+        ai_algorithm=new_task.ai_algorithm,
         dataset_prefix=new_task.dataset_prefix,
         name=new_task.name,
         description=new_task.description,
@@ -96,7 +111,7 @@ async def list_by(
         TaskResponseWithStatics(
             id=task.id,
             ai_model_name=task.ai_model_name,
-            dataset_data_source_id=task.dataset_data_source_id,
+            ai_algorithm=task.ai_algorithm,
             dataset_prefix=task.dataset_prefix,
             name=task.name,
             description=task.description,
@@ -154,7 +169,7 @@ async def get(db: Session, task_id: int, current_user: User) -> TaskResponseWith
     return TaskResponseWithStatics(
         id=task.id,
         ai_model_name=task.ai_model_name,
-        dataset_data_source_id=task.dataset_data_source_id,
+        ai_algorithm=task.ai_algorithm,
         dataset_prefix=task.dataset_prefix,
         name=task.name,
         description=task.description,
@@ -370,8 +385,6 @@ async def update(
 
     # update
     obj_in = cmd.model_dump(exclude_unset=True)
-    if cmd.dataset_data_source_id is not None:
-        assert_dataset_destination(db, cmd.dataset_data_source_id, current_user)
     if cmd.config:
         dataset_classes(json.loads(cmd.config))
     if cmd.media_type and cmd.media_type != "IMAGE":
@@ -381,14 +394,14 @@ async def update(
     with begin_transaction(db):
         updated_task = crud_task.update(db=db, db_obj=task, obj_in=obj_in)
 
-    if {"config", "dataset_data_source_id", "dataset_prefix"} & cmd.model_fields_set:
+    if "config" in cmd.model_fields_set:
         sync_dataset(db, updated_task)
 
     # response
     return TaskResponse(
         id=updated_task.id,
         ai_model_name=updated_task.ai_model_name,
-        dataset_data_source_id=updated_task.dataset_data_source_id,
+        ai_algorithm=updated_task.ai_algorithm,
         dataset_prefix=updated_task.dataset_prefix,
         name=updated_task.name,
         description=updated_task.description,
@@ -426,13 +439,12 @@ async def delete(db: Session, task_id: int, current_user: User) -> CommonDataRes
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    # 删除任务上传的附件与缩略图；外部源文件和已同步的数据集保留。
-    storage = get_storage_backend()
+    # 删除上传附件与缩略图，保留数据集、模型和训练日志。
+    storage = get_storage()
     attachments = (
         db.query(TaskAttachment)
         .filter(
             TaskAttachment.task_id == task_id,
-            TaskAttachment.data_source_id.is_(None),
             TaskAttachment.deleted_at.is_(None),
         )
         .all()
