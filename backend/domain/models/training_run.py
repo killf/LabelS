@@ -1,4 +1,4 @@
-"""记录任务的本地训练参数、执行状态、日志与模型产出。"""
+"""记录项目的本地训练参数、执行状态、日志与模型产出。"""
 
 from datetime import datetime
 from enum import Enum
@@ -24,7 +24,7 @@ class TrainingRun(Base):
     __tablename__ = "training_run"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, ForeignKey("task.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("project.id"), nullable=False, index=True)
     created_by = Column(Integer, ForeignKey("user.id"), nullable=False)
     initial_model = Column(String(256), nullable=False)
     parameters = Column(Text, nullable=False)

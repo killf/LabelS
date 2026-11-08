@@ -17,7 +17,7 @@ class SampleResponse(BaseModel):
     split: DatasetSplit = DatasetSplit.TRAIN
     id: Union[int, None] = Field(default=None, description="description: annotation id")
     inner_id: Union[int, None] = Field(
-        default=None, description="description: inner id of a sample in task"
+        default=None, description="description: inner id of a sample in project"
     )
     state: Union[str, None] = Field(
         default=None,
@@ -37,13 +37,13 @@ class SampleResponse(BaseModel):
         default=0, description="description: annotate result count"
     )
     created_at: Union[datetime, None] = Field(
-        default=None, description="description: task created at time"
+        default=None, description="description: project created at time"
     )
     created_by: Union[UserResp, None] = Field(
-        default=None, description="description: task created by"
+        default=None, description="description: project created by"
     )
     updated_at: Union[datetime, None] = Field(
-        default=None, description="description: task updated at time"
+        default=None, description="description: project updated at time"
     )
     updaters: List[UserResp] | None = Field(
         default=[], description="description: sample updaters"

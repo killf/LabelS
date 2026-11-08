@@ -4,16 +4,16 @@ import { useEffect } from 'react';
 import { i18n } from '@labels/i18n';
 
 import Register from '@/pages/register';
-import Tasks from '@/pages/tasks';
-import TaskEdit from '@/pages/tasks.[id].edit';
-import TaskAnnotation from '@/pages/tasks.[id].samples.[id]';
-import Samples from '@/pages/tasks.[id]';
-import TaskSamplesFinished from '@/pages/tasks.[id].samples.finished';
+import Projects from '@/pages/projects';
+import ProjectEdit from '@/pages/projects.[id].edit';
+import ProjectAnnotation from '@/pages/projects.[id].samples.[id]';
+import Samples from '@/pages/projects.[id]';
+import ProjectSamplesFinished from '@/pages/projects.[id].samples.finished';
 import Page404 from '@/pages/404';
 import MainLayout from '@/layouts/MainLayoutWithNavigation';
 
-import type { TaskLoaderResult } from './loaders/task.loader';
-import { taskLoader, tasksLoader } from './loaders/task.loader';
+import type { ProjectLoaderResult } from './loaders/project.loader';
+import { projectLoader, projectsLoader } from './loaders/project.loader';
 import { rootLoader } from './loaders/root.loader';
 import { sampleLoader } from './loaders/sample.loader';
 import RequireAuth from './components/RequireSSO';
@@ -26,9 +26,9 @@ function Root() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 如果是根路径，跳转到任务管理（以任务管理为首页）
+    // 如果是根路径，跳转到项目管理（以项目管理为首页）
     if (location.pathname === '/' || location.pathname === '') {
-      navigate('/tasks');
+      navigate('/projects');
     }
   }, [location.pathname, navigate]);
 
@@ -51,29 +51,29 @@ const routes: RouteObject[] = [
     loader: rootLoader,
     children: [
       {
-        path: 'tasks',
+        path: 'projects',
         element: <MainLayout />,
         errorElement: <Page404 />,
-        id: 'tasks',
-        loader: tasksLoader,
+        id: 'projects',
+        loader: projectsLoader,
         handle: {
           crumb: () => {
-            return i18n.t('taskList');
+            return i18n.t('projectList');
           },
         },
         children: [
           {
             index: true,
-            element: <Tasks />,
+            element: <Projects />,
           },
           {
-            path: ':taskId',
-            id: 'task',
+            path: ':projectId',
+            id: 'project',
             element: <Outlet />,
-            loader: taskLoader,
+            loader: projectLoader,
             handle: {
-              crumb: (data: TaskLoaderResult) => {
-                return data?.task?.name;
+              crumb: (data: ProjectLoaderResult) => {
+                return data?.project?.name;
               },
             },
             children: [
@@ -83,9 +83,9 @@ const routes: RouteObject[] = [
               },
               {
                 path: 'edit',
-                element: <TaskEdit />,
+                element: <ProjectEdit />,
                 loader: async ({ params }) => {
-                  return params.taskId !== '0' ? i18n.t('taskEdit') : i18n.t('createTask');
+                  return params.projectId !== '0' ? i18n.t('projectEdit') : i18n.t('createProject');
                 },
                 handle: {
                   crumb: (data: string) => {
@@ -100,7 +100,7 @@ const routes: RouteObject[] = [
                 children: [
                   {
                     path: ':sampleId',
-                    element: <TaskAnnotation />,
+                    element: <ProjectAnnotation />,
                     loader: sampleLoader,
                     id: 'annotation',
                     handle: {
@@ -111,8 +111,8 @@ const routes: RouteObject[] = [
                   },
                   {
                     path: 'finished',
-                    element: <TaskSamplesFinished />,
-                    loader: taskLoader,
+                    element: <ProjectSamplesFinished />,
+                    loader: projectLoader,
                     handle: {
                       crumb: () => {
                         return i18n.t('finished');

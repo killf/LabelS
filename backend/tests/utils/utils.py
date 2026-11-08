@@ -12,9 +12,9 @@ def random_username() -> str:
     return f"{random_lower_string()}@{random_lower_string()}.com"
 
 
-def empty_task_upload(task_id: int, input_filename: str) -> str:
+def empty_project_upload(project_id: int, input_filename: str) -> str:
     from backend.common.storage import get_storage
 
-    key = f"tasks/{task_id}/uploads/{input_filename}"
+    key = f"projects/{project_id}/uploads/{input_filename}"
     get_storage().delete(key)
     return key

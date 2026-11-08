@@ -22,12 +22,12 @@ export async function sampleLoader({ params }: LoaderFunctionArgs) {
     queryFn: () =>
       getSample({
         sample_id: +params.sampleId!,
-        task_id: +params.taskId!,
+        project_id: +params.projectId!,
       }),
   });
 
   const preAnnotationQueryKey = preAnnotationKey.listWithSampleName({
-    task_id: +params.taskId!,
+    project_id: +params.projectId!,
     sample_name: result?.sample?.data?.file?.filename,
   });
 
@@ -35,7 +35,7 @@ export async function sampleLoader({ params }: LoaderFunctionArgs) {
     queryKey: preAnnotationQueryKey,
     queryFn: () =>
       getPreAnnotations({
-        task_id: +params.taskId!,
+        project_id: +params.projectId!,
         sample_name: result?.sample?.data?.file?.filename,
       }),
   });

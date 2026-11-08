@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class AutoLabelResponse(BaseModel):
     status: str = Field(description="auto-label job status")
-    task_id: int = Field(description="task id")
+    project_id: int = Field(description="project id")
     sample_id: int = Field(description="sample id")
     media_type: str = Field(description="media type")
     provider: str = Field(description="ai provider")
@@ -25,7 +25,7 @@ class AutoLabelResponse(BaseModel):
 class AutoLabelJobResponse(BaseModel):
     model_name: str = ""
     id: int
-    task_id: int
+    project_id: int
     status: str
     sample_count: int
     processed_count: int

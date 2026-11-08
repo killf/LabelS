@@ -1,4 +1,4 @@
-"""本地任务文件存储与短时图片访问地址。"""
+"""本地项目文件存储与短时图片访问地址。"""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from backend.common.config import settings
 
 
 class LocalStorage:
-    """在 BASE_DATA_DIR 内读写任务文件，拒绝越界路径和符号链接逃逸。"""
+    """在 BASE_DATA_DIR 内读写项目文件，拒绝越界路径和符号链接逃逸。"""
 
     def __init__(self) -> None:
         self.root = Path(settings.BASE_DATA_DIR).resolve()
@@ -30,7 +30,7 @@ class LocalStorage:
             or ".." in relative.parts
             or any(character in key for character in ("\\", ":", "\x00"))
         ):
-            raise ValueError("Invalid task-relative path")
+            raise ValueError("Invalid project-relative path")
         target = (self.root / relative).resolve()
         if not target.is_relative_to(self.root) or target == self.root:
             raise ValueError("Path is outside the data directory")
@@ -81,13 +81,13 @@ class LocalStorage:
         """图片只携带绑定当前文件的短时签名，不把登录令牌放入 URL。"""
         self.path(key)
         parts = PurePosixPath(key).parts
-        if len(parts) < 4 or parts[0] != "tasks" or parts[2] != "uploads":
+        if len(parts) < 4 or parts[0] != "projects" or parts[2] != "uploads":
             raise ValueError("Only uploaded images may be previewed")
         expires = int(time.time()) + expires_in
         suffix = quote("/".join(parts[2:]), safe="/")
         signature = self._signature(key, expires)
         return (
-            f"{settings.API_V1_STR}/tasks/{parts[1]}/files/{suffix}"
+            f"{settings.API_V1_STR}/projects/{parts[1]}/files/{suffix}"
             f"?expires={expires}&signature={signature}"
         )
 
@@ -97,7 +97,7 @@ class LocalStorage:
         parts = PurePosixPath(key).parts
         return (
             len(parts) >= 4
-            and parts[0] == "tasks"
+            and parts[0] == "projects"
             and parts[2] == "uploads"
             and int(time.time()) <= expires
             and hmac.compare_digest(self._signature(key, expires), signature)

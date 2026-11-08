@@ -1,13 +1,19 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from backend.domain.models.training_run import TrainingStatus
 
 
+class TrainingParameterResponse(BaseModel):
+    name: str
+    default: JsonValue
+    description: str
+
+
 class TrainingRunResponse(BaseModel):
     id: int
-    task_id: int
+    project_id: int
     created_by: int
     initial_model: str
     parameters: dict

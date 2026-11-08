@@ -13,13 +13,15 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     hashed_password = Column(String(255))
     created_at = Column(
-        DateTime(timezone=True), default=datetime.now, comment="Time a task was created"
+        DateTime(timezone=True),
+        default=datetime.now,
+        comment="Time the user was created",
     )
     updated_at = Column(
         DateTime(timezone=True),
         default=datetime.now,
-        comment="Last time a task was updated",
+        comment="Last time the user was updated",
     )
-    tasks = relationship(
-        "Task", secondary="task_collaborator", back_populates="collaborators"
+    projects = relationship(
+        "Project", secondary="project_collaborator", back_populates="collaborators"
     )

@@ -17,7 +17,7 @@ uv run --env-file .env uvicorn backend.main:app --host 127.0.0.1 --port 8002
 
 ## 训练与 AI 预标注
 
-任务页可发起异步训练并查看状态、日志与产物，任务配置第 4 步选择 YOLO 算法和 AI 模型。训练代码位于 `training/`，离线入口为 `labels-train` 或 `python -m backend.training.train`。默认 Web 依赖不包含 PyTorch/Ultralytics，需要时安装 `.[training]`；优先复用已有 GPU 运行环境。安装和存储约定见[训练说明](training/README.md)。
+项目页可发起异步训练并查看状态、日志与产物，项目配置第 4 步选择 YOLO 算法和 AI 模型。训练代码位于 `training/`，离线入口为 `labels-train` 或 `python -m backend.training.train`。默认 Web 依赖不包含 PyTorch/Ultralytics，需要时安装 `.[training]`；优先复用已有 GPU 运行环境。安装和存储约定见[训练说明](training/README.md)。
 
 服务与训练共用根目录的 Dockerfile，从仓库根目录构建：
 

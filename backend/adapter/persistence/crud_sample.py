@@ -7,45 +7,45 @@ from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 
 from backend.domain.models.sample import SampleState
-from backend.domain.models.sample import TaskSample
+from backend.domain.models.sample import ProjectSample
 
 
-def batch(db: Session, samples: List[TaskSample]) -> List[TaskSample]:
+def batch(db: Session, samples: List[ProjectSample]) -> List[ProjectSample]:
     db.bulk_save_objects(samples, return_defaults=True)
     return samples
 
 
 def list_by(
     db: Session,
-    task_id: Union[int, None],
+    project_id: Union[int, None],
     after: Union[int, None],
     before: Union[int, None],
     page: Union[int, None],
     size: int,
     sorting: Union[str, None],
-) -> List[TaskSample]:
+) -> List[ProjectSample]:
 
     # query filter
-    query_filter = [TaskSample.deleted_at == None]
+    query_filter = [ProjectSample.deleted_at == None]
     if before:
-        query_filter.append(TaskSample.id < before)
+        query_filter.append(ProjectSample.id < before)
     if after:
-        query_filter.append(TaskSample.id > after)
-    if task_id:
-        query_filter.append(TaskSample.task_id == task_id)
-    query = db.query(TaskSample).filter(*query_filter)
+        query_filter.append(ProjectSample.id > after)
+    if project_id:
+        query_filter.append(ProjectSample.project_id == project_id)
+    query = db.query(ProjectSample).filter(*query_filter)
 
     # case when for state enum
     whens = {state.value: index for index, state in enumerate(SampleState)}
-    sort_logic = case(whens, value=TaskSample.state).label(TaskSample.state.key)
+    sort_logic = case(whens, value=ProjectSample.state).label(ProjectSample.state.key)
 
     # Allowlist of sortable columns mapped to real ORM columns. Only these
     # identifiers may reach ORDER BY; anything else is rejected so request
     # input can never be interpolated into raw SQL.
     sortable_columns = {
-        "inner_id": TaskSample.inner_id,
-        "updated_at": TaskSample.updated_at,
-        "annotated_count": TaskSample.annotated_count,
+        "inner_id": ProjectSample.inner_id,
+        "updated_at": ProjectSample.updated_at,
+        "annotated_count": ProjectSample.annotated_count,
     }
 
     if sorting:
@@ -56,7 +56,7 @@ def list_by(
             direction = sort_key[1] if len(sort_key) > 1 else "asc"
             if direction not in ("asc", "desc"):
                 continue
-            if column == TaskSample.state.key:
+            if column == ProjectSample.state.key:
                 order_target = sort_logic
             elif column in sortable_columns:
                 order_target = sortable_columns[column]
@@ -68,45 +68,45 @@ def list_by(
 
     # default order by id, before need select last items
     if before:
-        query = query.order_by(TaskSample.id.desc())
+        query = query.order_by(ProjectSample.id.desc())
     else:
-        query = query.order_by(TaskSample.id.asc())
+        query = query.order_by(ProjectSample.id.asc())
     results = query.offset(offset=page * size if page else 0).limit(limit=size).all()
     if before:
         results.reverse()
     return results
 
 
-def get(db: Session, sample_id: int) -> TaskSample:
+def get(db: Session, sample_id: int) -> ProjectSample:
     return (
-        db.query(TaskSample)
-        .filter(TaskSample.id == sample_id, TaskSample.deleted_at == None)
+        db.query(ProjectSample)
+        .filter(ProjectSample.id == sample_id, ProjectSample.deleted_at == None)
         .first()
     )
 
 
 def get_by_ids(
-    db: Session, sample_ids: List[int], task_id: Union[int, None] = None
-) -> List[TaskSample]:
-    query_filter = [TaskSample.id.in_(sample_ids), TaskSample.deleted_at == None]
-    if task_id is not None:
-        query_filter.append(TaskSample.task_id == task_id)
-    return db.query(TaskSample).filter(*query_filter).all()
+    db: Session, sample_ids: List[int], project_id: Union[int, None] = None
+) -> List[ProjectSample]:
+    query_filter = [ProjectSample.id.in_(sample_ids), ProjectSample.deleted_at == None]
+    if project_id is not None:
+        query_filter.append(ProjectSample.project_id == project_id)
+    return db.query(ProjectSample).filter(*query_filter).all()
 
 
-def list_new_samples(db: Session, task_id: int) -> List[TaskSample]:
+def list_new_samples(db: Session, project_id: int) -> List[ProjectSample]:
     return (
-        db.query(TaskSample)
+        db.query(ProjectSample)
         .filter(
-            TaskSample.task_id == task_id,
-            TaskSample.state == SampleState.NEW.value,
-            TaskSample.deleted_at == None,
+            ProjectSample.project_id == project_id,
+            ProjectSample.state == SampleState.NEW.value,
+            ProjectSample.deleted_at == None,
         )
         .all()
     )
 
 
-def update(db: Session, db_obj: TaskSample, obj_in: Dict[str, Any]) -> TaskSample:
+def update(db: Session, db_obj: ProjectSample, obj_in: Dict[str, Any]) -> ProjectSample:
     obj_data = jsonable_encoder(obj_in)
     for field in obj_data:
         if field in obj_in:
@@ -118,34 +118,34 @@ def update(db: Session, db_obj: TaskSample, obj_in: Dict[str, Any]) -> TaskSampl
 
 
 def delete(db: Session, sample_ids: List[int]) -> None:
-    db.query(TaskSample).filter(TaskSample.id.in_(sample_ids)).update(
-        {TaskSample.deleted_at: datetime.now()}
+    db.query(ProjectSample).filter(ProjectSample.id.in_(sample_ids)).update(
+        {ProjectSample.deleted_at: datetime.now()}
     )
 
 
-def count(db: Session, task_id: int) -> int:
-    query_filter = [TaskSample.deleted_at == None]
-    if task_id:
-        query_filter.append(TaskSample.task_id == task_id)
-    return db.query(TaskSample).filter(*query_filter).count()
+def count(db: Session, project_id: int) -> int:
+    query_filter = [ProjectSample.deleted_at == None]
+    if project_id:
+        query_filter.append(ProjectSample.project_id == project_id)
+    return db.query(ProjectSample).filter(*query_filter).count()
 
 
 def statics(
     db: Session,
-    task_ids: List[int],
+    project_ids: List[int],
 ) -> dict:
-    query_filter = [TaskSample.deleted_at == None]
-    if task_ids:
-        query_filter.append(TaskSample.task_id.in_(task_ids))
+    query_filter = [ProjectSample.deleted_at == None]
+    if project_ids:
+        query_filter.append(ProjectSample.project_id.in_(project_ids))
 
     statics = (
         db.query(
-            TaskSample.task_id,
-            TaskSample.state,
-            func.count(TaskSample.state).label("count"),
+            ProjectSample.project_id,
+            ProjectSample.state,
+            func.count(ProjectSample.state).label("count"),
         )
         .filter(*query_filter)
-        .group_by(TaskSample.task_id, TaskSample.state)
+        .group_by(ProjectSample.project_id, ProjectSample.state)
         .all()
     )
     d = {f"{s[0]}_{s[1]}": s[2] for s in statics}

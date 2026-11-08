@@ -1,11 +1,11 @@
 import request from '../request';
 import {
   type AutoLabelJobResponse,
-  type DeleteApiV1TasksTaskIdDeleteParams,
+  type DeleteApiV1ProjectsProjectIdDeleteParams,
   type DeleteSampleCommand,
-  type GetApiV1TasksTaskIdSamplesSampleIdGetParams,
-  type GetPreApiV1TasksTaskIdSamplesSampleIdPreGetParams,
-  type ListByApiV1TasksTaskIdSamplesGetParams,
+  type GetApiV1ProjectsProjectIdSamplesSampleIdGetParams,
+  type GetPreApiV1ProjectsProjectIdSamplesSampleIdPreGetParams,
+  type ListByApiV1ProjectsProjectIdSamplesGetParams,
   type OkRespCommonDataResp,
   type OkRespCreateSampleResponse,
   type OkRespAutoLabelResponse,
@@ -14,24 +14,24 @@ import {
   type SampleData,
   type SampleListResponse,
   type SampleResponse,
-  type UpdateApiV1TasksTaskIdSamplesSampleIdPatchParams,
+  type UpdateApiV1ProjectsProjectIdSamplesSampleIdPatchParams,
 } from '../types';
 
 export async function createSamples(
-  taskId: number,
+  projectId: number,
   data: {
     file_id: number;
     data: SampleData;
   }[],
 ): Promise<OkRespCreateSampleResponse> {
-  return await request.post(`/v1/tasks/${taskId}/samples`, data);
+  return await request.post(`/v1/projects/${projectId}/samples`, data);
 }
 
 export async function getSamples({
-  task_id,
+  project_id,
   ...params
-}: ListByApiV1TasksTaskIdSamplesGetParams): Promise<SampleListResponse> {
-  return await request.get(`/v1/tasks/${task_id}/samples`, {
+}: ListByApiV1ProjectsProjectIdSamplesGetParams): Promise<SampleListResponse> {
+  return await request.get(`/v1/projects/${project_id}/samples`, {
     params: {
       ...params,
       page: typeof params.page === 'undefined' ? 0 : params.page - 1,
@@ -40,17 +40,17 @@ export async function getSamples({
 }
 
 export async function getSample({
-  task_id,
+  project_id,
   sample_id,
-}: GetApiV1TasksTaskIdSamplesSampleIdGetParams): Promise<OkRespSampleResponse> {
-  return await request.get(`/v1/tasks/${task_id}/samples/${sample_id}`);
+}: GetApiV1ProjectsProjectIdSamplesSampleIdGetParams): Promise<OkRespSampleResponse> {
+  return await request.get(`/v1/projects/${project_id}/samples/${sample_id}`);
 }
 
 export async function updateSampleState(
-  { task_id, sample_id, ...params }: UpdateApiV1TasksTaskIdSamplesSampleIdPatchParams,
+  { project_id, sample_id, ...params }: UpdateApiV1ProjectsProjectIdSamplesSampleIdPatchParams,
   body: PatchSampleCommand,
 ): Promise<SampleResponse> {
-  return await request.patch(`/v1/tasks/${task_id}/samples/${sample_id}`, body, {
+  return await request.patch(`/v1/projects/${project_id}/samples/${sample_id}`, body, {
     params: {
       sample_id,
       ...params,
@@ -59,12 +59,12 @@ export async function updateSampleState(
 }
 
 export async function updateSampleAnnotationResult(
-  taskId: number,
+  projectId: number,
   sampleId: number,
   data: SampleResponse,
 ): Promise<SampleResponse> {
   return await request.patch(
-    `/v1/tasks/${taskId}/samples/${sampleId}`,
+    `/v1/projects/${projectId}/samples/${sampleId}`,
     {
       data: data.data,
       state: data.state,
@@ -78,8 +78,8 @@ export async function updateSampleAnnotationResult(
   );
 }
 
-export async function autoLabelSample(taskId: number, sampleId: number): Promise<OkRespAutoLabelResponse> {
-  return await request.post(`/v1/tasks/${taskId}/samples/${sampleId}/auto_label`, undefined, {
+export async function autoLabelSample(projectId: number, sampleId: number): Promise<OkRespAutoLabelResponse> {
+  return await request.post(`/v1/projects/${projectId}/samples/${sampleId}/auto_label`, undefined, {
     timeout: 5 * 60 * 1000,
     params: {
       sample_id: sampleId,
@@ -87,26 +87,26 @@ export async function autoLabelSample(taskId: number, sampleId: number): Promise
   });
 }
 
-export async function createAutoLabelJob(taskId: number): Promise<{ data: AutoLabelJobResponse }> {
-  return await request.post(`/v1/tasks/${taskId}/auto_label_job`);
+export async function createAutoLabelJob(projectId: number): Promise<{ data: AutoLabelJobResponse }> {
+  return await request.post(`/v1/projects/${projectId}/auto_label_job`);
 }
 
-export async function getAutoLabelJobStatus(taskId: number, jobId: number): Promise<{ data: AutoLabelJobResponse }> {
-  return await request.get(`/v1/tasks/${taskId}/auto_label_job/${jobId}`);
+export async function getAutoLabelJobStatus(projectId: number, jobId: number): Promise<{ data: AutoLabelJobResponse }> {
+  return await request.get(`/v1/projects/${projectId}/auto_label_job/${jobId}`);
 }
 
 export async function deleteSamples(
-  { task_id }: DeleteApiV1TasksTaskIdDeleteParams,
+  { project_id }: DeleteApiV1ProjectsProjectIdDeleteParams,
   body: DeleteSampleCommand,
 ): Promise<OkRespCommonDataResp> {
-  return await request.delete(`/v1/tasks/${task_id}/samples`, {
+  return await request.delete(`/v1/projects/${project_id}/samples`, {
     data: body,
   });
 }
 
 export async function getPreSample({
   sample_id,
-  task_id,
-}: GetPreApiV1TasksTaskIdSamplesSampleIdPreGetParams): Promise<OkRespSampleResponse> {
-  return await request.get(`/v1/tasks/${task_id}/samples/${sample_id}/pre`);
+  project_id,
+}: GetPreApiV1ProjectsProjectIdSamplesSampleIdPreGetParams): Promise<OkRespSampleResponse> {
+  return await request.get(`/v1/projects/${project_id}/samples/${sample_id}/pre`);
 }

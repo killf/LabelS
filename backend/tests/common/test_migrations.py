@@ -27,15 +27,17 @@ def test_initial_schema_round_trip_preserves_data_on_repeated_upgrade(tmp_path: 
         with engine.begin() as connection:
             context = MigrationContext.configure(connection)
             assert compare_metadata(context, Base.metadata) == []
-            connection.execute(text("INSERT INTO task (id) VALUES (1)"))
+            connection.execute(text("INSERT INTO project (id) VALUES (1)"))
             connection.execute(
-                text("INSERT INTO auto_label_job (id, task_id) VALUES (1, 1)")
+                text("INSERT INTO auto_label_job (id, project_id) VALUES (1, 1)")
             )
             connection.execute(
-                text("INSERT INTO task_sample (id, task_id) VALUES (1, 1)")
+                text("INSERT INTO project_sample (id, project_id) VALUES (1, 1)")
             )
             assert (
-                connection.execute(text("SELECT ai_algorithm FROM task")).scalar_one()
+                connection.execute(
+                    text("SELECT ai_algorithm FROM project")
+                ).scalar_one()
                 == "yolo"
             )
             assert (
@@ -45,7 +47,9 @@ def test_initial_schema_round_trip_preserves_data_on_repeated_upgrade(tmp_path: 
                 == ""
             )
             assert (
-                connection.execute(text("SELECT split FROM task_sample")).scalar_one()
+                connection.execute(
+                    text("SELECT split FROM project_sample")
+                ).scalar_one()
                 == "train"
             )
             connection.execute(

@@ -12,16 +12,16 @@ from backend.application.response.base import MetaData, OkRespWithMeta
 from backend.application.response.pre_annotation import PreAnnotationResponse
 from backend.common.error_code import ErrorCode, LabelSException
 
-router = APIRouter(prefix="/tasks", tags=["pre_annotations"])
+router = APIRouter(prefix="/projects", tags=["pre_annotations"])
 
 
 @router.get(
-    "/{task_id}/pre_annotations",
+    "/{project_id}/pre_annotations",
     response_model=OkRespWithMeta[List[PreAnnotationResponse]],
     status_code=status.HTTP_200_OK,
 )
 async def list_by(
-    task_id: int,
+    project_id: int,
     sample_name: str = Query(default=None, min_length=1, max_length=255),
     after: Union[int, None] = Query(default=None, gt=0),
     before: Union[int, None] = Query(default=None, gt=0),
@@ -47,7 +47,7 @@ async def list_by(
     # business logic
     data, total = await service.list_by(
         db=db,
-        task_id=task_id,
+        project_id=project_id,
         sample_name=sample_name,
         after=after,
         before=before,

@@ -27,13 +27,13 @@ const LoginPage = () => {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: () => {
-      window.location.href = '/tasks';
+      window.location.href = '/projects';
     },
   });
 
   useEffect(() => {
     if (me.data?.id) {
-      window.location.href = '/tasks';
+      window.location.href = '/projects';
     }
   }, [me]);
 

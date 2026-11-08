@@ -2,23 +2,23 @@ import type { MediaAnnotatorConfig } from '@labels/audio-annotator-react';
 
 import type { ToolsConfigState } from '@/types/toolConfig';
 
-export function convertAudioAndVideoConfig(taskConfig?: ToolsConfigState) {
+export function convertAudioAndVideoConfig(projectConfig?: ToolsConfigState) {
   const editorConfig: MediaAnnotatorConfig = {} as MediaAnnotatorConfig;
 
-  taskConfig?.tools?.forEach((item) => {
+  projectConfig?.tools?.forEach((item) => {
     if (['videoSegmentTool', 'audioSegmentTool'].includes(item.tool)) {
       editorConfig.segment = [...(editorConfig.segment ?? []), ...(item.config.attributes ?? [])];
 
-      if (taskConfig.attributes) {
-        editorConfig.segment = [...editorConfig.segment, ...taskConfig.attributes];
+      if (projectConfig.attributes) {
+        editorConfig.segment = [...editorConfig.segment, ...projectConfig.attributes];
       }
     }
 
     if (['videoFrameTool', 'audioFrameTool'].includes(item.tool)) {
       editorConfig.frame = [...(editorConfig.frame ?? []), ...(item.config.attributes ?? [])];
 
-      if (taskConfig.attributes) {
-        editorConfig.frame = [...editorConfig.frame, ...taskConfig.attributes];
+      if (projectConfig.attributes) {
+        editorConfig.frame = [...editorConfig.frame, ...projectConfig.attributes];
       }
     }
 

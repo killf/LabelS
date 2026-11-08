@@ -4,13 +4,13 @@ import { TOOL_NAMES } from '@labels/image';
 
 import type { ToolsConfigState } from '@/types/toolConfig';
 
-export function convertImageConfig(taskConfig?: ToolsConfigState) {
+export function convertImageConfig(projectConfig?: ToolsConfigState) {
   const editorConfig: NonNullable<ImageAnnotatorProps['config']> = {
     showOrder: true,
   } as NonNullable<ImageAnnotatorProps['config']>;
-  const commonLabels = taskConfig?.attributes ?? [];
+  const commonLabels = projectConfig?.attributes ?? [];
 
-  taskConfig?.tools?.forEach((item) => {
+  projectConfig?.tools?.forEach((item) => {
     const toolName = item.tool.replace(/Tool$/, '') as ToolName | 'tag' | 'text';
 
     if (TOOL_NAMES.includes(toolName as ToolName)) {
@@ -22,7 +22,7 @@ export function convertImageConfig(taskConfig?: ToolsConfigState) {
       editorConfig[toolName] = {
         labels: [...commonLabels, ...(item.config.attributes ?? [])],
         // @ts-ignore
-        outOfImage: Boolean(taskConfig.drawOutsideTarget),
+        outOfImage: Boolean(projectConfig.drawOutsideTarget),
       };
 
       if (toolName === 'line') {

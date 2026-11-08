@@ -1,13 +1,13 @@
 import request from '../request';
-import type { ListByApiV1TasksTaskIdSamplesGetParams, PreAnnotationListResponse } from '../types';
+import type { ListByApiV1ProjectsProjectIdSamplesGetParams, PreAnnotationListResponse } from '../types';
 
 export async function getPreAnnotations({
-  task_id,
+  project_id,
   ...params
-}: ListByApiV1TasksTaskIdSamplesGetParams & {
+}: ListByApiV1ProjectsProjectIdSamplesGetParams & {
   sample_name?: string;
 }): Promise<PreAnnotationListResponse> {
-  return await request.get(`/v1/tasks/${task_id}/pre_annotations`, {
+  return await request.get(`/v1/projects/${project_id}/pre_annotations`, {
     params: {
       ...params,
       page: typeof params.page === 'undefined' ? 0 : params.page - 1,
