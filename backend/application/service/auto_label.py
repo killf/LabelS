@@ -1,4 +1,4 @@
-"""使用任务数据集 models/ 下的 YOLO 权重生成可人工修改的预标注。"""
+"""使用项目数据集 models/ 下的 YOLO 权重生成可人工修改的预标注。"""
 
 import asyncio
 import json
@@ -19,46 +19,46 @@ from backend.adapter.persistence import (
     crud_auto_label_job,
     crud_pre_annotation,
     crud_sample,
-    crud_task,
+    crud_project,
 )
 from backend.application.response.auto_label import (
     AutoLabelResponse,
     AutoLabelJobResponse,
 )
-from backend.application.service.access import assert_task_access
+from backend.application.service.access import assert_project_access
 from backend.application.service.dataset import dataset_classes
 from backend.common.config import settings
 from backend.common.db import SessionLocal, begin_transaction
 from backend.common.storage import get_storage
 from backend.domain.models.auto_label_job import AutoLabelJob, AutoLabelStatus
-from backend.domain.models.pre_annotation import TaskPreAnnotation
-from backend.domain.models.sample import SampleState, TaskSample
-from backend.domain.models.task import Task
+from backend.domain.models.pre_annotation import ProjectPreAnnotation
+from backend.domain.models.sample import SampleState, ProjectSample
+from backend.domain.models.project import Project
 from backend.domain.models.user import User
 
 
-def _task(db: Session, task_id: int, user: User) -> Task:
-    """读取任务并验证用户访问权，不存在时返回 404。"""
-    task = crud_task.get(db=db, task_id=task_id)
-    if task is None:
-        raise HTTPException(404, "标注任务不存在")
-    assert_task_access(task, user)
-    return task
+def _project(db: Session, project_id: int, user: User) -> Project:
+    """读取项目并验证用户访问权，不存在时返回 404。"""
+    project = crud_project.get(db=db, project_id=project_id)
+    if project is None:
+        raise HTTPException(404, "标注项目不存在")
+    assert_project_access(project, user)
+    return project
 
 
-def list_models(db: Session, task_id: int, user: User) -> list[str]:
-    """验证任务访问权，列出本任务目录直属的模型权重。"""
-    task = _task(db, task_id, user)
-    return get_storage().list_models(f"{task.dataset_prefix}/models/")
+def list_models(db: Session, project_id: int, user: User) -> list[str]:
+    """验证项目访问权，列出本项目目录直属的模型权重。"""
+    project = _project(db, project_id, user)
+    return get_storage().list_models(f"{project.dataset_prefix}/models/")
 
 
 @contextmanager
-def _load_model(db: Session, task: Task, model_name: str) -> Iterator[Any]:
-    """加载本任务选定的本地权重，在本批次内复用模型。"""
+def _load_model(db: Session, project: Project, model_name: str) -> Iterator[Any]:
+    """加载本项目选定的本地权重，在本批次内复用模型。"""
     if not settings.AI_AUTO_LABEL_ENABLED:
         raise HTTPException(400, "AI 标注未启用")
     if not model_name:
-        raise HTTPException(400, "请在任务配置中选择 AI 模型")
+        raise HTTPException(400, "请在项目配置中选择 AI 模型")
     if (
         PurePosixPath(model_name).name != model_name
         or PureWindowsPath(model_name).name != model_name
@@ -75,23 +75,25 @@ def _load_model(db: Session, task: Task, model_name: str) -> Iterator[Any]:
             503, "AI 标注需要 Ultralytics，请使用已安装训练依赖的 Python 环境"
         ) from None
 
-    # 2. 仅加载当前任务目录内已存在的本地权重。
+    # 2. 仅加载当前项目目录内已存在的本地权重。
     storage = get_storage()
-    weights = storage.path(f"{task.dataset_prefix}/models/{model_name}")
+    weights = storage.path(f"{project.dataset_prefix}/models/{model_name}")
     if not weights.is_file():
         raise HTTPException(404, "所选模型文件不存在")
     yield YOLO(str(weights))
 
 
-def _image_content(sample: TaskSample) -> bytes:
-    """从本地目录读取本任务上传的原图。"""
+def _image_content(sample: ProjectSample) -> bytes:
+    """从本地目录读取本项目上传的原图。"""
     return get_storage().read_bytes(sample.file.path)
 
 
-def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dict:
+def _predict(
+    model: Any, sample: ProjectSample, project: Project, model_name: str
+) -> dict:
     """使用所选模型推理图片，将匹配类别的框转换为可编辑预标注。"""
     # 1. 类别显示名和内部值均可匹配，覆盖训练 data.yaml 与标注工具的命名差异。
-    attributes = dataset_classes(json.loads(task.config))
+    attributes = dataset_classes(json.loads(project.config))
     labels = {
         name: attribute["value"]
         for attribute in attributes
@@ -107,7 +109,7 @@ def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dic
             verbose=False,
         )[0]
 
-    # 2. 只生成任务已配置类别的矩形框；预标注不改变样本的人工完成状态。
+    # 2. 只生成项目已配置类别的矩形框；预标注不改变样本的人工完成状态。
     boxes = []
     unmatched = 0
     for coordinates, class_id, confidence in zip(
@@ -135,7 +137,7 @@ def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dic
             }
         )
 
-    warning = f"已忽略 {unmatched} 个未匹配任务类别的预测框" if unmatched else None
+    warning = f"已忽略 {unmatched} 个未匹配项目类别的预测框" if unmatched else None
     return {
         "sample_name": sample.file.filename,
         "annotations": {"rectTool": {"toolName": "rectTool", "result": boxes}},
@@ -152,11 +154,15 @@ def _predict(model: Any, sample: TaskSample, task: Task, model_name: str) -> dic
 
 
 def _save_prediction(
-    db: Session, task: Task, sample: TaskSample, payload: dict, user_id: int
+    db: Session, project: Project, sample: ProjectSample, payload: dict, user_id: int
 ) -> int:
     """替换当前样本的 AI 预标注并提交。"""
     existing, _ = crud_pre_annotation.list_by(
-        db=db, task_id=task.id, sample_name=sample.file.filename, page=0, size=None
+        db=db,
+        project_id=project.id,
+        sample_name=sample.file.filename,
+        page=0,
+        size=None,
     )
     # 仅替换当前样本的 AI 结果，保留同名其他样本的预标注。
     previous_ai = []
@@ -173,8 +179,8 @@ def _save_prediction(
         created = crud_pre_annotation.batch(
             db=db,
             pre_annotations=[
-                TaskPreAnnotation(
-                    task_id=task.id,
+                ProjectPreAnnotation(
+                    project_id=project.id,
                     sample_name=sample.file.filename,
                     data=json.dumps(payload, ensure_ascii=False),
                     created_by=user_id,
@@ -185,34 +191,36 @@ def _save_prediction(
     return created[0].id
 
 
-def _single(db: Session, task_id: int, sample_id: int, user: User) -> AutoLabelResponse:
-    """验证任务和样本，运行一次预测并返回保存后的预标注信息。"""
-    task = _task(db, task_id, user)
+def _single(
+    db: Session, project_id: int, sample_id: int, user: User
+) -> AutoLabelResponse:
+    """验证项目和样本，运行一次预测并返回保存后的预标注信息。"""
+    project = _project(db, project_id, user)
     sample = crud_sample.get(db=db, sample_id=sample_id)
-    if sample is None or sample.task_id != task_id or not sample.file:
+    if sample is None or sample.project_id != project_id or not sample.file:
         raise HTTPException(404, "标注样本不存在")
 
     try:
-        with _load_model(db, task, task.ai_model_name) as model:
-            payload = _predict(model, sample, task, task.ai_model_name)
+        with _load_model(db, project, project.ai_model_name) as model:
+            payload = _predict(model, sample, project, project.ai_model_name)
     except HTTPException:
         raise
     except Exception as error:
         logger.error(
-            "YOLO prediction failed: task_id={}, sample_id={}, error={}",
-            task_id,
+            "YOLO prediction failed: project_id={}, sample_id={}, error={}",
+            project_id,
             sample_id,
             type(error).__name__,
         )
         raise HTTPException(502, "YOLO 预标注失败，请检查权重与运行环境") from None
-    annotation_id = _save_prediction(db, task, sample, payload, user.id)
+    annotation_id = _save_prediction(db, project, sample, payload, user.id)
     return AutoLabelResponse(
         status="COMPLETED",
-        task_id=task.id,
+        project_id=project.id,
         sample_id=sample.id,
-        media_type=task.media_type,
+        media_type=project.media_type,
         provider="yolo",
-        model=task.ai_model_name,
+        model=project.ai_model_name,
         pre_annotation_id=annotation_id,
         latency_ms=payload["meta"]["latency_ms"],
         warning_message=payload["meta"]["warning_message"],
@@ -220,23 +228,24 @@ def _single(db: Session, task_id: int, sample_id: int, user: User) -> AutoLabelR
 
 
 async def create(
-    db: Session, task_id: int, sample_id: int, current_user: User
+    db: Session, project_id: int, sample_id: int, current_user: User
 ) -> AutoLabelResponse:
     # 推理在线程中执行，保持页面 API 和批量进度查询可响应。
     """在线程中执行单张预标注，返回结果且不改变样本完成状态。"""
-    return await asyncio.to_thread(_single, db, task_id, sample_id, current_user)
+    return await asyncio.to_thread(_single, db, project_id, sample_id, current_user)
 
 
 async def create_batch_job(
-    db: Session, task_id: int, current_user: User
+    db: Session, project_id: int, current_user: User
 ) -> AutoLabelJobResponse:
     """保存待标注样本的批次记录并启动后台处理，返回初始进度。"""
-    task = _task(db, task_id, current_user)
-    if not settings.AI_AUTO_LABEL_ENABLED or not task.ai_model_name:
-        raise HTTPException(400, "请启用 AI 标注并在任务配置中选择模型")
-    dataset_classes(json.loads(task.config))
+    project = _project(db, project_id, current_user)
+    if not settings.AI_AUTO_LABEL_ENABLED or not project.ai_model_name:
+        raise HTTPException(400, "请启用 AI 标注并在项目配置中选择模型")
+    dataset_classes(json.loads(project.config))
     sample_ids = [
-        sample.id for sample in crud_sample.list_new_samples(db=db, task_id=task_id)
+        sample.id
+        for sample in crud_sample.list_new_samples(db=db, project_id=project_id)
     ]
     if not sample_ids:
         raise HTTPException(400, "没有待标注样本")
@@ -244,25 +253,25 @@ async def create_batch_job(
     with begin_transaction(db):
         job = crud_auto_label_job.create(
             db=db,
-            task_id=task_id,
+            project_id=project_id,
             user_id=current_user.id,
             sample_count=len(sample_ids),
-            model_name=task.ai_model_name,
+            model_name=project.ai_model_name,
         )
         job_id = job.id
 
     asyncio.get_running_loop().run_in_executor(None, _run_batch, job_id, sample_ids)
-    return get_batch_job(db, task_id, job_id, current_user)
+    return get_batch_job(db, project_id, job_id, current_user)
 
 
 def get_batch_job(
-    db: Session, task_id: int, job_id: int, user: User
+    db: Session, project_id: int, job_id: int, user: User
 ) -> AutoLabelJobResponse:
-    """验证任务及批次归属，返回当前批次进度。"""
-    _task(db, task_id, user)
+    """验证项目及批次归属，返回当前批次进度。"""
+    _project(db, project_id, user)
     job = crud_auto_label_job.get(db=db, job_id=job_id)
-    if job is None or job.task_id != task_id:
-        raise HTTPException(404, "AI 标注任务不存在")
+    if job is None or job.project_id != project_id:
+        raise HTTPException(404, "AI 标注项目不存在")
     return AutoLabelJobResponse.model_validate(job, from_attributes=True)
 
 
@@ -280,15 +289,15 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
                 crud_auto_label_job.update_status(
                     db, job, AutoLabelStatus.PROCESSING.value
                 )
-            task = crud_task.get(db=db, task_id=job.task_id)
-            if task is None:
-                raise HTTPException(404, "标注任务已不存在")
-            with _load_model(db, task, job.model_name) as model:
+            project = crud_project.get(db=db, project_id=job.project_id)
+            if project is None:
+                raise HTTPException(404, "标注项目已不存在")
+            with _load_model(db, project, job.model_name) as model:
                 for sample_id in sample_ids:
                     sample = crud_sample.get(db=db, sample_id=sample_id)
                     if (
                         sample is None
-                        or sample.task_id != task.id
+                        or sample.project_id != project.id
                         or sample.state != SampleState.NEW.value
                         or sample.file is None
                     ):
@@ -298,8 +307,8 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
                             )
                         continue
                     try:
-                        payload = _predict(model, sample, task, job.model_name)
-                        _save_prediction(db, task, sample, payload, job.created_by)
+                        payload = _predict(model, sample, project, job.model_name)
+                        _save_prediction(db, project, sample, payload, job.created_by)
                         success = True
                     except Exception as error:
                         db.rollback()

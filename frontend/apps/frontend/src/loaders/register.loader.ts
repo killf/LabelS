@@ -5,7 +5,7 @@ import * as storage from '@/utils/storage';
 
 export async function registerLoader() {
   if (storage.get('token')) {
-    return redirect('/tasks');
+    return redirect('/projects');
   }
 
   if (window.IS_ONLINE) {

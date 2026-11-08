@@ -5,10 +5,10 @@ import WebSocketClient from '@/classes/WebsocketClient';
 
 import useMe from './useMe';
 
-export interface TaskSampleUser {
+export interface ProjectSampleUser {
   user_id: number;
   username: string;
-  task_id: number;
+  project_id: number;
   sample_id: number;
 }
 
@@ -16,7 +16,7 @@ export default function useSampleWs() {
   const routeParams = useParams();
   const revalidator = useRevalidator();
   const me = useMe();
-  const [connections, setConnections] = useState<TaskSampleUser[]>([]);
+  const [connections, setConnections] = useState<ProjectSampleUser[]>([]);
   const host = window.location.host;
   const token = localStorage.getItem('token')?.split(' ')[1];
   const wsRef = useRef<WebSocketClient | null>(null);
@@ -28,7 +28,7 @@ export default function useSampleWs() {
 
     const isMeCurrentEditor = connections[0]?.user_id === me.data?.id;
     const ws = wsRef.current;
-    const handleSampleUpdate = (data: TaskSampleUser) => {
+    const handleSampleUpdate = (data: ProjectSampleUser) => {
       if (!isMeCurrentEditor && data.user_id !== me.data?.id && data.sample_id === +routeParams.sampleId!) {
         revalidator.revalidate();
       }
@@ -43,7 +43,7 @@ export default function useSampleWs() {
 
   useEffect(() => {
     wsRef.current = new WebSocketClient(
-      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${host}/ws/task/${routeParams.taskId}/${
+      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${host}/ws/project/${routeParams.projectId}/${
         routeParams.sampleId
       }?token=${token}`,
     );
@@ -57,7 +57,7 @@ export default function useSampleWs() {
     return () => {
       ws.disconnect();
     };
-  }, [host, routeParams.sampleId, routeParams.taskId, token]);
+  }, [host, routeParams.sampleId, routeParams.projectId, token]);
 
   const currentSampleUsers = useMemo(() => {
     return connections.filter((item) => item.sample_id === +routeParams.sampleId!);

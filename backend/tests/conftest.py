@@ -110,9 +110,9 @@ def run_around_tests(db: Session):
             for table in reversed(meta.sorted_tables):
                 if table.key != "user":
                     cleanup.execute(table.delete())
-        task_files = (_TEST_DATA_DIR / "tasks").resolve()
-        assert task_files.is_relative_to(_TEST_DATA_DIR.resolve())
-        shutil.rmtree(task_files, ignore_errors=True)
+        project_files = (_TEST_DATA_DIR / "projects").resolve()
+        assert project_files.is_relative_to(_TEST_DATA_DIR.resolve())
+        shutil.rmtree(project_files, ignore_errors=True)
     finally:
         if cleanup is not None:
             cleanup.close()

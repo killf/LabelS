@@ -7,7 +7,7 @@ from loguru import logger
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.application.service.access import assert_task_access
+from backend.application.service.access import assert_project_access
 from backend.common.db import begin_transaction
 from backend.common.config import settings
 from backend.common.error_code import ErrorCode
@@ -18,8 +18,8 @@ from backend.common.storage import (
     get_storage,
 )
 from backend.domain.models.user import User
-from backend.domain.models.attachment import TaskAttachment
-from backend.adapter.persistence import crud_task
+from backend.domain.models.attachment import ProjectAttachment
+from backend.adapter.persistence import crud_project
 from backend.adapter.persistence import crud_attachment
 from backend.application.command.attachment import AttachmentCommand
 from backend.application.command.attachment import AttachmentDeleteCommand
@@ -28,9 +28,9 @@ from backend.application.response.attachment import AttachmentResponse
 
 
 def build_attachment_response(
-    attachment: TaskAttachment | None,
+    attachment: ProjectAttachment | None,
 ) -> AttachmentResponse | None:
-    """为任务上传图片签发预览地址，空附件返回 None。"""
+    """为项目上传图片签发预览地址，空附件返回 None。"""
     if attachment is None:
         return None
 
@@ -49,8 +49,8 @@ def build_attachment_response(
     )
 
 
-def _upload_key(task_id: int, filename: str) -> str:
-    """清理上传文件名，返回任务目录内使用正斜杠的相对路径。"""
+def _upload_key(project_id: int, filename: str) -> str:
+    """清理上传文件名，返回项目目录内使用正斜杠的相对路径。"""
     parts = [
         re.sub(r'[\\/*?:"<>|#]', "_", part.replace("%", "_pct_"))
         for part in filename.split("/")
@@ -63,22 +63,24 @@ def _upload_key(task_id: int, filename: str) -> str:
     ):
         raise HTTPException(422, "上传文件名包含系统保留名称")
     directories = [part for part in parts[:-1] if part not in ("", ".", "..")]
-    return str(PurePosixPath("tasks", str(task_id), "uploads", *directories, parts[-1]))
+    return str(
+        PurePosixPath("projects", str(project_id), "uploads", *directories, parts[-1])
+    )
 
 
 async def create(
-    db: Session, task_id: int, cmd: AttachmentCommand, current_user: User
+    db: Session, project_id: int, cmd: AttachmentCommand, current_user: User
 ) -> AttachmentResponse:
-    """验证任务访问权，将上传文件和缩略图写入本地目录，并保存附件记录。"""
-    # 1. 先验证任务，再访问存储；对象键只来自清理后的相对路径。
-    task = crud_task.get(db=db, task_id=task_id)
-    if task is None:
+    """验证项目访问权，将上传文件和缩略图写入本地目录，并保存附件记录。"""
+    # 1. 先验证项目，再访问存储；对象键只来自清理后的相对路径。
+    project = crud_project.get(db=db, project_id=project_id)
+    if project is None:
         raise LabelSException(
-            code=ErrorCode.CODE_50002_TASK_NOT_FOUND,
+            code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
-    assert_task_access(task, current_user)
-    key = _upload_key(task_id, cmd.file.filename or "")
+    assert_project_access(project, current_user)
+    key = _upload_key(project_id, cmd.file.filename or "")
     if PurePosixPath(key).suffix.lower() not in {
         ".jpg",
         ".jpeg",
@@ -93,7 +95,7 @@ async def create(
     thumbnail_key = build_thumbnail_key(key)
     if storage.exists(key) or storage.exists(thumbnail_key):
         raise LabelSException(
-            code=ErrorCode.CODE_51002_TASK_ATTACHMENT_ALREADY_EXISTS,
+            code=ErrorCode.CODE_51002_PROJECT_ATTACHMENT_ALREADY_EXISTS,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -125,12 +127,12 @@ async def create(
         with begin_transaction(db):
             attachment = crud_attachment.create(
                 db=db,
-                attachment=TaskAttachment(
+                attachment=ProjectAttachment(
                     path=key,
                     filename=PurePosixPath(key).name,
                     created_by=current_user.id,
                     updated_by=current_user.id,
-                    task_id=task_id,
+                    project_id=project_id,
                 ),
             )
     except Exception as error:
@@ -139,14 +141,14 @@ async def create(
                 storage.delete(object_key)
             except Exception as cleanup_error:
                 logger.error(
-                    "Upload cleanup failed: task_id={}, error={}",
-                    task_id,
+                    "Upload cleanup failed: project_id={}, error={}",
+                    project_id,
                     type(cleanup_error).__name__,
                 )
         if isinstance(error, HTTPException):
             raise
         logger.error(
-            "Upload failed: task_id={}, error={}", task_id, type(error).__name__
+            "Upload failed: project_id={}, error={}", project_id, type(error).__name__
         )
         raise LabelSException(
             code=ErrorCode.CODE_51000_CREATE_ATTACHMENT_ERROR,
@@ -154,7 +156,7 @@ async def create(
         ) from None
 
     # 4. 使用本次写入结果构造响应，不重复查询对象是否存在。
-    logger.info("File saved: task_id={}, size={}", task_id, total_size)
+    logger.info("File saved: project_id={}, size={}", project_id, total_size)
     url = storage.get_read_url(key)
     return AttachmentResponse(
         id=attachment.id,
@@ -165,22 +167,22 @@ async def create(
 
 
 async def delete(
-    db: Session, task_id: int, cmd: AttachmentDeleteCommand, current_user: User
+    db: Session, project_id: int, cmd: AttachmentDeleteCommand, current_user: User
 ) -> CommonDataResp:
-    """由任务创建者删除本任务上传图片和缩略图。"""
-    # 1. 验证任务创建者及待删除附件的归属。
-    task = crud_task.get(db=db, task_id=task_id)
-    if not task:
-        logger.error("cannot find task:{}", task_id)
+    """由项目创建者删除本项目上传图片和缩略图。"""
+    # 1. 验证项目创建者及待删除附件的归属。
+    project = crud_project.get(db=db, project_id=project_id)
+    if not project:
+        logger.error("cannot find project:{}", project_id)
         raise LabelSException(
-            code=ErrorCode.CODE_51001_TASK_ATTACHMENT_NOT_FOUND,
+            code=ErrorCode.CODE_51001_PROJECT_ATTACHMENT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    if task.created_by != current_user.id:
+    if project.created_by != current_user.id:
         logger.error(
-            "cannot delete attachment, the task owner is:{}, the delete operator is:{}",
-            task.created_by,
+            "cannot delete attachment, the project owner is:{}, the delete operator is:{}",
+            project.created_by,
             current_user.id,
         )
         raise LabelSException(
@@ -190,7 +192,7 @@ async def delete(
 
     # 本地文件删除失败时保留数据库记录，避免出现不可重试的悬空引用。
     attachments = crud_attachment.get_by_ids(db=db, attachment_ids=cmd.attachment_ids)
-    if any(attachment.task_id != task_id for attachment in attachments):
+    if any(attachment.project_id != project_id for attachment in attachments):
         raise LabelSException(
             code=ErrorCode.CODE_30001_NO_PERMISSION,
             status_code=status.HTTP_403_FORBIDDEN,

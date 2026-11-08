@@ -1,21 +1,23 @@
 from sqlalchemy.orm import Session
 
 from backend.common.db import begin_transaction
-from backend.domain.models.task import Task
-from backend.domain.models.sample import TaskSample
-from backend.adapter.persistence import crud_task
+from backend.domain.models.project import Project
+from backend.domain.models.sample import ProjectSample
+from backend.adapter.persistence import crud_project
 from backend.adapter.persistence import crud_sample
 
 
-def _make_task_with_samples(db: Session, n: int = 3):
+def _make_project_with_samples(db: Session, n: int = 3):
     with begin_transaction(db):
-        task = crud_task.create(
+        project = crud_project.create(
             db=db,
-            task=Task(name="n", description="d", tips="t", created_by=1, updated_by=1),
+            project=Project(
+                name="n", description="d", tips="t", created_by=1, updated_by=1
+            ),
         )
     samples = [
-        TaskSample(
-            task_id=task.id,
+        ProjectSample(
+            project_id=project.id,
             file_id=1,
             created_by=1,
             updated_by=1,
@@ -26,19 +28,19 @@ def _make_task_with_samples(db: Session, n: int = 3):
     ]
     with begin_transaction(db):
         crud_sample.batch(db=db, samples=samples)
-    return task
+    return project
 
 
 class TestCrudSampleSortInjection:
     """Regression tests for SQL injection via the sample-listing sort param."""
 
     def test_error_based_injection_is_ignored(self, db: Session):
-        task = _make_task_with_samples(db)
+        project = _make_project_with_samples(db)
         # a non-existent column injected after a valid pair must NOT reach SQL
         sorting = "updated_at:asc,SQLI_MARKER_no_such_col:asc"
         results = crud_sample.list_by(
             db=db,
-            task_id=task.id,
+            project_id=project.id,
             after=None,
             before=None,
             page=0,
@@ -48,20 +50,20 @@ class TestCrudSampleSortInjection:
         assert len(results) == 3
 
     def test_boolean_based_injection_has_no_effect(self, db: Session):
-        task = _make_task_with_samples(db)
+        project = _make_project_with_samples(db)
         payload_true = (
-            "state:asc,(CASE WHEN 1=1 THEN task_sample.id "
-            "ELSE 0-task_sample.id END):desc"
+            "state:asc,(CASE WHEN 1=1 THEN project_sample.id "
+            "ELSE 0-project_sample.id END):desc"
         )
         payload_false = (
-            "state:asc,(CASE WHEN 1=0 THEN task_sample.id "
-            "ELSE 0-task_sample.id END):desc"
+            "state:asc,(CASE WHEN 1=0 THEN project_sample.id "
+            "ELSE 0-project_sample.id END):desc"
         )
         ids_true = [
             s.id
             for s in crud_sample.list_by(
                 db=db,
-                task_id=task.id,
+                project_id=project.id,
                 after=None,
                 before=None,
                 page=0,
@@ -73,7 +75,7 @@ class TestCrudSampleSortInjection:
             s.id
             for s in crud_sample.list_by(
                 db=db,
-                task_id=task.id,
+                project_id=project.id,
                 after=None,
                 before=None,
                 page=0,
@@ -85,10 +87,10 @@ class TestCrudSampleSortInjection:
         assert ids_true == ids_false
 
     def test_valid_sort_still_works(self, db: Session):
-        task = _make_task_with_samples(db)
+        project = _make_project_with_samples(db)
         results = crud_sample.list_by(
             db=db,
-            task_id=task.id,
+            project_id=project.id,
             after=None,
             before=None,
             page=0,
@@ -99,10 +101,10 @@ class TestCrudSampleSortInjection:
         assert counts == sorted(counts, reverse=True)
 
     def test_state_sort_still_works(self, db: Session):
-        task = _make_task_with_samples(db)
+        project = _make_project_with_samples(db)
         results = crud_sample.list_by(
             db=db,
-            task_id=task.id,
+            project_id=project.id,
             after=None,
             before=None,
             page=0,

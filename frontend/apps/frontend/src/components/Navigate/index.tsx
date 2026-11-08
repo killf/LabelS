@@ -1,4 +1,4 @@
-import Icon, { BellOutlined, PoweroffOutlined } from '@ant-design/icons';
+import Icon, { PoweroffOutlined } from '@ant-design/icons';
 import { FlexLayout } from '@labels/components-react';
 import { Button, Divider, Dropdown, Popover, Tag } from 'antd';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
@@ -12,14 +12,14 @@ import useMe from '@/hooks/useMe';
 import AppPanel from '../AppPanel';
 import Breadcrumb from '../Breadcrumb';
 import { LabelSLogo, NavigationWrapper } from './style';
-import TaskTip from './TaskTip';
+import ProjectTip from './ProjectTip';
 import LanguageSwitcher from '../LangSwitcher';
 import { UserAvatar } from '../UserAvatar';
 
 const Homepage = () => {
   const me = useMe();
   const navigate = useNavigate();
-  const isSampleDetail = useMatch('/tasks/:taskId/samples/:sampleId');
+  const isSampleDetail = useMatch('/projects/:projectId/samples/:sampleId');
   const { t } = useTranslation();
 
   const logout = async (e: any) => {
@@ -54,7 +54,7 @@ const Homepage = () => {
         <Breadcrumb hideHome={window.IS_ONLINE} />
       </FlexLayout.Item>
       <FlexLayout.Item flex gap="1rem">
-        <TaskTip visible={Boolean(isSampleDetail)} />
+        <ProjectTip visible={Boolean(isSampleDetail)} />
         {window.IS_ONLINE && (
           <Popover title={null} content={<AppPanel />}>
             <Button
@@ -73,17 +73,6 @@ const Homepage = () => {
             </Button>
           </a>
         )}
-        <Button
-          type="link"
-          data-wiz="documentation"
-          icon={<BellOutlined />}
-          href="https://github.com/killf/LabelS#readme"
-          style={{ color: 'rgba(0, 0, 0, 0.85)' }}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('documentation')}
-        </Button>
         <LanguageSwitcher />
         <Dropdown
           trigger={['click']}

@@ -30,15 +30,15 @@ export interface UserResponse {
 }
 
 export interface BasicConfigCommand {
-  /** Name description: task name */
+  /** Name description: project name */
   name: string;
-  /** Description description: task description */
+  /** Description description: project description */
   description?: string;
-  /** Tips description: task tips */
+  /** Tips description: project tips */
   tips?: string;
 }
 
-export interface BodyCreateApiV1TasksTaskIdAttachmentsPost {
+export interface BodyCreateApiV1ProjectsProjectIdAttachmentsPost {
   /** File */
   file: string;
 }
@@ -48,12 +48,12 @@ export interface CommonDataResp {
   ok: boolean;
 }
 
-export interface CreateApiV1TasksTaskIdAttachmentsPostParams {
-  task_id: number;
+export interface CreateApiV1ProjectsProjectIdAttachmentsPostParams {
+  project_id: number;
 }
 
-export interface CreateApiV1TasksTaskIdSamplesPostParams {
-  task_id: number;
+export interface CreateApiV1ProjectsProjectIdSamplesPostParams {
+  project_id: number;
 }
 
 export interface SampleData {
@@ -72,16 +72,16 @@ export interface CreateSampleResponse {
   ids?: number[];
 }
 
-export interface DeleteApiV1TasksTaskIdAttachmentsDeleteParams {
-  task_id: number;
+export interface DeleteApiV1ProjectsProjectIdAttachmentsDeleteParams {
+  project_id: number;
 }
 
-export interface DeleteApiV1TasksTaskIdDeleteParams {
-  task_id: number;
+export interface DeleteApiV1ProjectsProjectIdDeleteParams {
+  project_id: number;
 }
 
 export interface DeletePreAnnotationFileParams {
-  task_id: number;
+  project_id: number;
   file_id: number;
 }
 
@@ -90,13 +90,13 @@ export interface DeleteSampleCommand {
   sample_ids: number[];
 }
 
-export interface DownloadAttachmentApiV1TasksAttachmentFilePathGetParams {
+export interface DownloadAttachmentApiV1ProjectsAttachmentFilePathGetParams {
   file_path: string;
 }
 
 export interface AutoLabelResponse {
   status: string;
-  task_id: number;
+  project_id: number;
   sample_id: number;
   media_type: MediaType;
   provider: string;
@@ -109,7 +109,7 @@ export interface AutoLabelResponse {
 export interface AutoLabelJobResponse {
   model_name: string;
   id: number;
-  task_id: number;
+  project_id: number;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   sample_count: number;
   processed_count: number;
@@ -119,17 +119,17 @@ export interface AutoLabelJobResponse {
   created_at?: string | null;
 }
 
-export interface GetApiV1TasksTaskIdGetParams {
-  task_id: number;
+export interface GetApiV1ProjectsProjectIdGetParams {
+  project_id: number;
 }
 
-export interface GetApiV1TasksTaskIdSamplesSampleIdGetParams {
-  task_id: number;
+export interface GetApiV1ProjectsProjectIdSamplesSampleIdGetParams {
+  project_id: number;
   sample_id: number;
 }
 
-export interface GetPreApiV1TasksTaskIdSamplesSampleIdPreGetParams {
-  task_id: number;
+export interface GetPreApiV1ProjectsProjectIdSamplesSampleIdPreGetParams {
+  project_id: number;
   sample_id: number;
 }
 
@@ -138,13 +138,13 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
-export interface ListByApiV1TasksGetParams {
+export interface ListByApiV1ProjectsGetParams {
   page?: number;
   size?: number;
 }
 
-export interface ListByApiV1TasksTaskIdSamplesGetParams {
-  task_id: number;
+export interface ListByApiV1ProjectsProjectIdSamplesGetParams {
+  project_id: number;
   after?: number;
   before?: number;
   page?: number;
@@ -222,12 +222,12 @@ export interface OkRespSignupResponse {
   data: SignupResponse;
 }
 
-export interface OkRespTaskResponse {
-  data: TaskResponse;
+export interface OkRespProjectResponse {
+  data: ProjectResponse;
 }
 
-export interface OkRespTaskResponseWithStatics {
-  data: TaskResponseWithStatics;
+export interface OkRespProjectResponseWithStatics {
+  data: ProjectResponseWithStatics;
 }
 
 export interface PatchSampleCommand {
@@ -261,13 +261,13 @@ export interface SampleResponse {
   };
   /** Annotated Count description: annotate result count */
   annotated_count?: number;
-  /** Created At description: task created at time */
+  /** Created At description: project created at time */
   created_at?: string;
-  /** Created By description: task created by */
+  /** Created By description: project created by */
   created_by?: UserResp;
-  /** Updated At description: task updated at time */
+  /** Updated At description: project updated at time */
   updated_at?: string;
-  /** Updated By description: task updated by */
+  /** Updated By description: project updated by */
   updated_by?: UserResp;
 }
 
@@ -282,13 +282,13 @@ export interface PreAnnotationResponse {
     filename: string;
     thumbnail_url?: string | null;
   } | null;
-  /** Created At description: task created at time */
+  /** Created At description: project created at time */
   created_at?: string;
-  /** Created By description: task created by */
+  /** Created By description: project created by */
   created_by?: UserResp;
-  /** Updated At description: task updated at time */
+  /** Updated At description: project updated at time */
   updated_at?: string;
-  /** Updated By description: task updated by */
+  /** Updated By description: project updated by */
   updated_by?: UserResp;
 }
 
@@ -339,61 +339,61 @@ export interface SignupResponse {
   username: string;
 }
 
-export interface TaskResponse {
+export interface ProjectResponse {
   ai_algorithm?: 'yolo';
   /** models/ 下用于 AI 标注的权重文件名。 */
   ai_model_name?: string | null;
-  /** 自动分配的任务本地目录，只读。 */
+  /** 自动分配的项目本地目录，只读。 */
   dataset_prefix?: string;
-  /** Id description: task id */
+  /** Id description: project id */
   id?: number;
-  /** Name description: task name */
+  /** Name description: project name */
   name?: string;
-  /** Description description: task description */
+  /** Description description: project description */
   description?: string;
-  /** Tips description: task tips */
+  /** Tips description: project tips */
   tips?: string;
-  /** Config description: task config content */
+  /** Config description: project config content */
   config?: string;
-  /** Media Type description: task media type: IMAGE, VIDEO, AUDIO */
+  /** Media Type description: project media type: IMAGE, VIDEO, AUDIO */
   media_type?: MediaType;
-  /** Status description: task status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED */
-  status?: TaskStatus;
+  /** Status description: project status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED */
+  status?: ProjectStatus;
 
-  stats: TaskStatics;
-  /** Created At description: task created at time */
+  stats: ProjectStatics;
+  /** Created At description: project created at time */
   created_at?: string;
-  /** Created By description: task created at time */
+  /** Created By description: project created at time */
   created_by?: UserResp;
 }
 
-export interface TaskResponseWithStatics {
+export interface ProjectResponseWithStatics {
   ai_algorithm?: 'yolo';
   ai_model_name?: string | null;
   dataset_prefix?: string;
-  /** Id description: task id */
+  /** Id description: project id */
   id?: number;
-  /** Name description: task name */
+  /** Name description: project name */
   name?: string;
-  /** Description description: task description */
+  /** Description description: project description */
   description?: string;
-  /** Tips description: task tips */
+  /** Tips description: project tips */
   tips?: string;
-  /** Config description: task config content */
+  /** Config description: project config content */
   config?: string;
-  /** Media Type description: task media type: IMAGE, VIDEO, AUDIO */
+  /** Media Type description: project media type: IMAGE, VIDEO, AUDIO */
   media_type?: MediaType;
-  /** Status description: task status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED */
-  status?: TaskStatus;
-  /** Created At description: task created at time */
+  /** Status description: project status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED */
+  status?: ProjectStatus;
+  /** Created At description: project created at time */
   created_at?: string;
-  /** Created By description: task created at time */
+  /** Created By description: project created at time */
   created_by?: UserResp;
   updaters?: UserResp[];
-  stats?: TaskStatics;
+  stats?: ProjectStatics;
 }
 
-export enum TaskStatus {
+export enum ProjectStatus {
   DRAFT = 'DRAFT',
   IMPORTED = 'IMPORTED',
   CONFIGURED = 'CONFIGURED',
@@ -401,27 +401,27 @@ export enum TaskStatus {
   FINISHED = 'FINISHED',
 }
 
-export interface TaskListResponseWithStatics {
+export interface ProjectListResponseWithStatics {
   meta_data?: MetaData;
   /** Data */
-  data: TaskResponseWithStatics[];
+  data: ProjectResponseWithStatics[];
 }
 
-export interface TaskStatics {
-  /** New description: count for task data have not labeled yet */
+export interface ProjectStatics {
+  /** New description: count for project data have not labeled yet */
   new?: number;
-  /** Done description: count for task data already labeled */
+  /** Done description: count for project data already labeled */
   done?: number;
-  /** Skipped description: count for task data skipped */
+  /** Skipped description: count for project data skipped */
   skipped?: number;
 }
 
-export interface UpdateApiV1TasksTaskIdPatchParams {
-  task_id: number;
+export interface UpdateApiV1ProjectsProjectIdPatchParams {
+  project_id: number;
 }
 
-export interface UpdateApiV1TasksTaskIdSamplesSampleIdPatchParams {
-  task_id: number;
+export interface UpdateApiV1ProjectsProjectIdSamplesSampleIdPatchParams {
+  project_id: number;
   sample_id: number;
 }
 
@@ -429,15 +429,15 @@ export interface UpdateCommand {
   ai_algorithm?: 'yolo';
   /** models/ 下用于 AI 标注的权重文件名。 */
   ai_model_name?: string | null;
-  /** Name description: task name */
+  /** Name description: project name */
   name?: string;
-  /** Description description: task description */
+  /** Description description: project description */
   description?: string;
-  /** Tips description: task tips */
+  /** Tips description: project tips */
   tips?: string;
-  /** description: task config content */
+  /** description: project config content */
   media_type?: MediaType;
-  /** Config description: task config content */
+  /** Config description: project config content */
   config?: string;
 }
 

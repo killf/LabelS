@@ -1,5 +1,8 @@
+import json
 import sys
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -20,7 +23,7 @@ def test_training_help_does_not_load_model_runtime(monkeypatch, capsys):
 
 @pytest.fixture
 def local_dataset(tmp_path):
-    directory = tmp_path / "task"
+    directory = tmp_path / "project"
     (directory / "images").mkdir(parents=True)
     (directory / "labels").mkdir()
     config = {
@@ -69,3 +72,147 @@ def test_snapshot_requires_completed_test_images(local_dataset, tmp_path):
     (local_dataset / "test.txt").write_text("")
     with pytest.raises(ValueError, match="test.txt contains no images"):
         train.prepare_dataset(local_dataset, tmp_path / "data-copy", tmp_path / "input")
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        None,
+        [],
+        "invalid",
+        {"epochs": 3},
+        {"data": "elsewhere"},
+        {"save": False},
+        {"lr0": float("nan")},
+    ],
+)
+def test_custom_parameters_reject_invalid_objects_and_reserved_fields(parameters):
+    with pytest.raises((ValueError, TypeError)):
+        train.validate_training_options(parameters)
+
+
+def test_custom_parameters_use_framework_validation(monkeypatch):
+    cfg = ModuleType("ultralytics.cfg")
+    cfg.DEFAULT_CFG_DICT = {"lr0": 0.01, "amp": True}
+    cfg.get_cfg = Mock()
+    monkeypatch.setitem(sys.modules, "ultralytics", ModuleType("ultralytics"))
+    monkeypatch.setitem(sys.modules, "ultralytics.cfg", cfg)
+    parameters = {"lr0": 0.001, "amp": False}
+    assert train.validate_training_options(parameters) == parameters
+    cfg.get_cfg.assert_called_once_with(overrides=parameters)
+    with pytest.raises(ValueError, match="未知训练参数"):
+        train.validate_training_options({"typo_parameter": 1})
+    cfg.get_cfg.side_effect = TypeError("amp must be boolean")
+    with pytest.raises(ValueError, match="amp must be boolean"):
+        train.validate_training_options({"amp": "invalid"})
+
+
+def test_parameter_catalog_matches_runtime_and_excludes_managed_fields(
+    monkeypatch, tmp_path
+):
+    config = tmp_path / "default.yaml"
+    config.write_text(
+        "lr0: 0.01 # initial learning rate\n"
+        "future_option: null # new runtime option\n",
+        encoding="utf-8",
+    )
+    cfg = ModuleType("ultralytics.cfg")
+    cfg.DEFAULT_CFG_DICT = {
+        "lr0": 0.01,
+        "future_option": None,
+        "model": None,
+        "epochs": 100,
+        "device": None,
+    }
+    utils = ModuleType("ultralytics.utils")
+    utils.DEFAULT_CFG_PATH = config
+    monkeypatch.setitem(sys.modules, "ultralytics", ModuleType("ultralytics"))
+    monkeypatch.setitem(sys.modules, "ultralytics.cfg", cfg)
+    monkeypatch.setitem(sys.modules, "ultralytics.utils", utils)
+    catalog = train.training_parameter_catalog()
+    assert [entry["name"] for entry in catalog] == ["lr0", "future_option"]
+    assert catalog[0]["default"] == 0.01
+    assert "初始学习率" in catalog[0]["description"]
+    assert catalog[1] == {
+        "name": "future_option",
+        "default": None,
+        "description": "new runtime option",
+    }
+
+
+def test_cli_custom_parameters_reach_yolo_and_result(
+    local_dataset, tmp_path, monkeypatch
+):
+    """核对真实 CLI、快照和产物流程，固定运行编号并替换模型计算。"""
+    best = tmp_path / "best.pt"
+    best.write_bytes(b"test-only model")
+    model = SimpleNamespace(
+        train=Mock(), trainer=SimpleNamespace(best=best, metrics={"mAP": 0.5})
+    )
+    runtime = ModuleType("ultralytics")
+    runtime.YOLO = Mock(return_value=model)
+    cfg = ModuleType("ultralytics.cfg")
+    cfg.DEFAULT_CFG_DICT = {"lr0": 0.01, "amp": True, "seed": 0}
+    cfg.get_cfg = Mock()
+    monkeypatch.setitem(sys.modules, "ultralytics", runtime)
+    monkeypatch.setitem(sys.modules, "ultralytics.cfg", cfg)
+    monkeypatch.setitem(
+        sys.modules,
+        "torch",
+        SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True)),
+    )
+    monkeypatch.setenv("YOLO_CONFIG_DIR", str(tmp_path / "ultralytics"))
+    monkeypatch.setenv("YOLO_AUTOINSTALL", "false")
+    monkeypatch.setattr(train, "_next_run_id", lambda _dataset: "test-parameters")
+    result = tmp_path / "result.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "labels-train",
+            "--data",
+            str(local_dataset),
+            "--model",
+            "bootstrap.pt",
+            "--epochs",
+            "2",
+            "--imgsz",
+            "640",
+            "--batch",
+            "2",
+            "--result-file",
+            str(result),
+            "--extra-params",
+            json.dumps({"lr0": 0.001, "amp": False, "seed": 7}),
+        ],
+    )
+    assert train.main() == 0
+    passed = model.train.call_args.kwargs
+    assert passed["lr0"] == 0.001 and passed["amp"] is False and passed["seed"] == 7
+    assert passed["epochs"] == 2 and passed["imgsz"] == 640 and passed["batch"] == 2
+    assert Path(passed["data"]).is_file()
+    output = json.loads(result.read_text())
+    assert Path(output["model_path"]).read_bytes() == best.read_bytes()
+
+
+@pytest.mark.parametrize("value", ["{", "[]", '{"epochs": 2}', '{"amp": false}'])
+def test_cli_rejects_bad_json_and_duplicate_options(tmp_path, monkeypatch, value):
+    monkeypatch.setattr(train, "validate_training_options", train.validate_extra_params)
+    worker = Mock()
+    monkeypatch.setattr(train, "run_training", worker)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "labels-train",
+            "--data",
+            str(tmp_path),
+            "--amp",
+            "--extra-params",
+            value,
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        train.main()
+    assert result.value.code == 2
+    worker.assert_not_called()

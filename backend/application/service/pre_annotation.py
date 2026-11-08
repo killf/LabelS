@@ -1,10 +1,10 @@
-"""读取本任务由 AI 生成的预标注，不提供文件导入入口。"""
+"""读取本项目由 AI 生成的预标注，不提供文件导入入口。"""
 
 from typing import List, Optional, Tuple
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from backend.adapter.persistence import crud_pre_annotation, crud_task
-from backend.application.service.access import assert_task_access
+from backend.adapter.persistence import crud_pre_annotation, crud_project
+from backend.application.service.access import assert_project_access
 from backend.application.service.attachment import build_attachment_response
 from backend.application.response.base import UserResp
 from backend.application.response.pre_annotation import PreAnnotationResponse
@@ -13,7 +13,7 @@ from backend.domain.models.user import User
 
 async def list_by(
     db: Session,
-    task_id: Optional[int],
+    project_id: Optional[int],
     sample_name: Optional[str],
     after: Optional[int],
     before: Optional[int],
@@ -23,15 +23,15 @@ async def list_by(
     current_user: User,
 ) -> Tuple[List[PreAnnotationResponse], int]:
 
-    if task_id is not None:
-        task = crud_task.get(db=db, task_id=task_id)
-        if task is None:
-            raise HTTPException(404, "标注任务不存在")
-        assert_task_access(task, current_user)
+    if project_id is not None:
+        project = crud_project.get(db=db, project_id=project_id)
+        if project is None:
+            raise HTTPException(404, "标注项目不存在")
+        assert_project_access(project, current_user)
 
     pre_annotations, total = crud_pre_annotation.list_by(
         db=db,
-        task_id=task_id,
+        project_id=project_id,
         after=after,
         before=before,
         page=page,

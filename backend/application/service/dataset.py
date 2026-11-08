@@ -1,4 +1,4 @@
-"""将任务图片与人工标注同步到本地 YOLO 数据集目录。"""
+"""将项目图片与人工标注同步到本地 YOLO 数据集目录。"""
 
 import json
 from io import BytesIO
@@ -11,8 +11,8 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from backend.common.storage import LocalStorage, get_storage
-from backend.domain.models.sample import DatasetSplit, SampleState, TaskSample
-from backend.domain.models.task import Task
+from backend.domain.models.sample import DatasetSplit, SampleState, ProjectSample
+from backend.domain.models.project import Project
 
 
 def dataset_classes(config: dict) -> list[dict]:
@@ -29,7 +29,7 @@ def dataset_classes(config: dict) -> list[dict]:
     return attributes
 
 
-def _image_name(sample: TaskSample) -> str:
+def _image_name(sample: ProjectSample) -> str:
     return f"{sample.id}{PurePosixPath(sample.file.filename).suffix.lower()}"
 
 
@@ -46,7 +46,7 @@ def _label_text(result: dict, classes: list[dict], width: int, height: int) -> s
         if x2 <= x1 or y2 <= y1:
             raise HTTPException(422, "标注框必须与图片相交并具有正的宽高")
         if box["label"] not in class_ids:
-            raise HTTPException(422, "标注类别不在当前任务配置中")
+            raise HTTPException(422, "标注类别不在当前项目配置中")
         lines.append(
             f"{class_ids[box['label']]} {(x1 + x2) / (2 * width):.8f} "
             f"{(y1 + y2) / (2 * height):.8f} {(x2 - x1) / width:.8f} "
@@ -56,7 +56,7 @@ def _label_text(result: dict, classes: list[dict], width: int, height: int) -> s
 
 
 def _write_sample(
-    storage: LocalStorage, prefix: str, sample: TaskSample, classes: list[dict]
+    storage: LocalStorage, prefix: str, sample: ProjectSample, classes: list[dict]
 ) -> None:
     """同步一个完成样本；跳过或删除的样本移除训练副本。"""
     image_key = f"{prefix}images/{_image_name(sample)}"
@@ -90,19 +90,21 @@ def _write_sample(
 
 
 def sync_dataset(
-    db: Session, task: Task, changed_samples: list[TaskSample] | None = None
+    db: Session, project: Project, changed_samples: list[ProjectSample] | None = None
 ) -> None:
     """同步变更图片及训练、测试清单；YOLO 验证与测试使用同一清单。"""
-    if not task.config:
+    if not project.config:
         return
 
-    # 1. 类别和目录仅从任务取得，根目录由服务端统一提供。
-    classes = dataset_classes(json.loads(task.config))
-    prefix = f"{task.dataset_prefix}/"
+    # 1. 类别和目录仅从项目取得，根目录由服务端统一提供。
+    classes = dataset_classes(json.loads(project.config))
+    prefix = f"{project.dataset_prefix}/"
     samples = (
-        db.query(TaskSample)
-        .filter(TaskSample.task_id == task.id, TaskSample.deleted_at.is_(None))
-        .order_by(TaskSample.id)
+        db.query(ProjectSample)
+        .filter(
+            ProjectSample.project_id == project.id, ProjectSample.deleted_at.is_(None)
+        )
+        .order_by(ProjectSample.id)
         .all()
     )
     storage = get_storage()
@@ -133,7 +135,7 @@ def sync_dataset(
             f"{prefix}data.yaml",
         )
     except OSError:
-        logger.error("YOLO dataset synchronization failed: task_id={}", task.id)
+        logger.error("YOLO dataset synchronization failed: project_id={}", project.id)
         raise HTTPException(
             500, "标注已保存，本地数据集同步失败，请重新保存重试"
         ) from None

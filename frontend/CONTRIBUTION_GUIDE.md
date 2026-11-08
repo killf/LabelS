@@ -4,7 +4,7 @@
 
 ## 目录与依赖
 
-- `apps/frontend`：管理、数据源、任务与标注页面。
+- `apps/frontend`：管理、数据源、项目与标注页面。
 - `apps/website`：组件示例页面。
 - `packages/*`：`@labels/*` 标注引擎、React 组件、共享类型及语言包。
 

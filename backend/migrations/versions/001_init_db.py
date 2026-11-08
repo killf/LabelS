@@ -22,22 +22,22 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task was created",
+            comment="Time the user was created",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Last time a task was updated",
+            comment="Last time the user was updated",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_user_id"), "user", ["id"], unique=False)
     op.create_index(op.f("ix_user_username"), "user", ["username"], unique=True)
 
-    # 2. 创建任务与数据集配置表及其索引。
+    # 2. 创建项目与数据集配置表及其索引。
     op.create_table(
-        "task",
+        "project",
         sa.Column("ai_algorithm", sa.String(32), nullable=False, server_default="yolo"),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=64), nullable=True),
@@ -45,9 +45,11 @@ def upgrade() -> None:
             "description",
             sa.String(length=1024),
             nullable=True,
-            comment="task description",
+            comment="project description",
         ),
-        sa.Column("tips", sa.String(length=1024), nullable=True, comment="task tips"),
+        sa.Column(
+            "tips", sa.String(length=1024), nullable=True, comment="project tips"
+        ),
         sa.Column(
             "ai_model_name",
             sa.String(length=1024),
@@ -58,40 +60,42 @@ def upgrade() -> None:
             "last_sample_inner_id",
             sa.Integer(),
             nullable=True,
-            comment="The last inner id of sample in a task",
+            comment="The last inner id of sample in a project",
         ),
-        sa.Column("config", sa.Text(), nullable=True, comment="task config yaml"),
+        sa.Column("config", sa.Text(), nullable=True, comment="project config yaml"),
         sa.Column(
             "media_type",
             sa.String(length=32),
             nullable=True,
-            comment="task media type: image, video, audio",
+            comment="project media type: image, video, audio",
         ),
-        sa.Column("status", sa.String(length=32), nullable=True, comment="task status"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=True, comment="project status"
+        ),
         sa.Column("created_by", sa.Integer(), nullable=True),
         sa.Column(
             "updated_by",
             sa.Integer(),
             nullable=True,
-            comment="Last time a task was updated by",
+            comment="Last time a project was updated by",
         ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task was created",
+            comment="Time a project was created",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Last time a task was updated",
+            comment="Last time a project was updated",
         ),
         sa.Column(
             "deleted_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Task delete time",
+            comment="Project delete time",
         ),
         sa.ForeignKeyConstraint(
             ["created_by"],
@@ -104,18 +108,22 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "idx_task_id_deleted_at_index", "task", ["id", "deleted_at"], unique=False
+        "idx_project_id_deleted_at_index", "project", ["id", "deleted_at"], unique=False
     )
-    op.create_index(op.f("ix_task_created_by"), "task", ["created_by"], unique=False)
-    op.create_index(op.f("ix_task_deleted_at"), "task", ["deleted_at"], unique=False)
-    op.create_index(op.f("ix_task_id"), "task", ["id"], unique=False)
-    op.create_index(op.f("ix_task_name"), "task", ["name"], unique=False)
+    op.create_index(
+        op.f("ix_project_created_by"), "project", ["created_by"], unique=False
+    )
+    op.create_index(
+        op.f("ix_project_deleted_at"), "project", ["deleted_at"], unique=False
+    )
+    op.create_index(op.f("ix_project_id"), "project", ["id"], unique=False)
+    op.create_index(op.f("ix_project_name"), "project", ["name"], unique=False)
 
     # 3. 创建 AI 预标注批次表及其索引。
     op.create_table(
         "auto_label_job",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("task_id", sa.Integer(), nullable=True),
+        sa.Column("project_id", sa.Integer(), nullable=True),
         sa.Column("created_by", sa.Integer(), nullable=True),
         sa.Column("status", sa.String(length=32), nullable=True),
         sa.Column("sample_count", sa.Integer(), nullable=True),
@@ -137,8 +145,8 @@ def upgrade() -> None:
             ["user.id"],
         ),
         sa.ForeignKeyConstraint(
-            ["task_id"],
-            ["task.id"],
+            ["project_id"],
+            ["project.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -146,12 +154,15 @@ def upgrade() -> None:
         op.f("ix_auto_label_job_id"), "auto_label_job", ["id"], unique=False
     )
     op.create_index(
-        op.f("ix_auto_label_job_task_id"), "auto_label_job", ["task_id"], unique=False
+        op.f("ix_auto_label_job_project_id"),
+        "auto_label_job",
+        ["project_id"],
+        unique=False,
     )
 
     # 4. 创建图片与附件引用表及其索引。
     op.create_table(
-        "task_attachment",
+        "project_attachment",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "filename", sa.String(length=256), nullable=True, comment="file name"
@@ -160,33 +171,33 @@ def upgrade() -> None:
             "path",
             sa.String(length=256),
             nullable=True,
-            comment="任务目录下的文件相对路径",
+            comment="项目目录下的文件相对路径",
         ),
-        sa.Column("task_id", sa.Integer(), nullable=True),
+        sa.Column("project_id", sa.Integer(), nullable=True),
         sa.Column("created_by", sa.Integer(), nullable=True),
         sa.Column("updated_by", sa.Integer(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task was created",
+            comment="Time a project was created",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Last time a task was updated",
+            comment="Last time a project was updated",
         ),
         sa.Column(
-            "deleted_at", sa.DateTime(), nullable=True, comment="Task delete time"
+            "deleted_at", sa.DateTime(), nullable=True, comment="Project delete time"
         ),
         sa.ForeignKeyConstraint(
             ["created_by"],
             ["user.id"],
         ),
         sa.ForeignKeyConstraint(
-            ["task_id"],
-            ["task.id"],
+            ["project_id"],
+            ["project.id"],
         ),
         sa.ForeignKeyConstraint(
             ["updated_by"],
@@ -196,73 +207,76 @@ def upgrade() -> None:
     )
     op.create_index(
         "idx_attachment_id_deleted_at",
-        "task_attachment",
+        "project_attachment",
         ["id", "deleted_at"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_attachment_created_by"),
-        "task_attachment",
+        op.f("ix_project_attachment_created_by"),
+        "project_attachment",
         ["created_by"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_attachment_deleted_at"),
-        "task_attachment",
+        op.f("ix_project_attachment_deleted_at"),
+        "project_attachment",
         ["deleted_at"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_attachment_id"), "task_attachment", ["id"], unique=False
+        op.f("ix_project_attachment_id"), "project_attachment", ["id"], unique=False
     )
     op.create_index(
-        op.f("ix_task_attachment_task_id"), "task_attachment", ["task_id"], unique=False
+        op.f("ix_project_attachment_project_id"),
+        "project_attachment",
+        ["project_id"],
+        unique=False,
     )
     op.create_index(
-        op.f("ix_task_attachment_updated_by"),
-        "task_attachment",
+        op.f("ix_project_attachment_updated_by"),
+        "project_attachment",
         ["updated_by"],
         unique=False,
     )
 
-    # 5. 创建任务协作者表及其索引。
+    # 5. 创建项目协作者表及其索引。
     op.create_table(
-        "task_collaborator",
-        sa.Column("task_id", sa.Integer(), nullable=False),
+        "project_collaborator",
+        sa.Column("project_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task collaborator was created",
+            comment="Time a project collaborator was created",
         ),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["project_id"], ["project.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("task_id", "user_id"),
+        sa.PrimaryKeyConstraint("project_id", "user_id"),
     )
     op.create_index(
-        op.f("ix_task_collaborator_task_id"),
-        "task_collaborator",
-        ["task_id"],
+        op.f("ix_project_collaborator_project_id"),
+        "project_collaborator",
+        ["project_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_collaborator_user_id"),
-        "task_collaborator",
+        op.f("ix_project_collaborator_user_id"),
+        "project_collaborator",
         ["user_id"],
         unique=False,
     )
 
     # 6. 创建样本预标注表及其索引。
     op.create_table(
-        "task_pre_annotation",
+        "project_pre_annotation",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("task_id", sa.Integer(), nullable=True, comment="Task ID"),
+        sa.Column("project_id", sa.Integer(), nullable=True, comment="Project ID"),
         sa.Column(
             "sample_name",
             sa.String(length=255),
             nullable=True,
-            comment="One of the sample names of the task",
+            comment="One of the sample names of the project",
         ),
         sa.Column("file_id", sa.Integer(), nullable=True),
         sa.Column("created_by", sa.Integer(), nullable=True),
@@ -271,25 +285,25 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task sample result was created",
+            comment="Time a project sample result was created",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Last time a task pre annotation result was updated",
+            comment="Last time a project pre annotation result was updated",
         ),
         sa.Column(
             "data",
             sa.Text(),
             nullable=True,
-            comment="task sample pre annotation result",
+            comment="project sample pre annotation result",
         ),
         sa.Column(
             "deleted_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Task pre-annotation delete time",
+            comment="Project pre-annotation delete time",
         ),
         sa.ForeignKeyConstraint(
             ["created_by"],
@@ -297,11 +311,11 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["file_id"],
-            ["task_attachment.id"],
+            ["project_attachment.id"],
         ),
         sa.ForeignKeyConstraint(
-            ["task_id"],
-            ["task.id"],
+            ["project_id"],
+            ["project.id"],
         ),
         sa.ForeignKeyConstraint(
             ["updated_by"],
@@ -311,58 +325,61 @@ def upgrade() -> None:
     )
     op.create_index(
         "idx_pre_annotation_id_deleted_at",
-        "task_pre_annotation",
+        "project_pre_annotation",
         ["id", "deleted_at"],
         unique=False,
     )
     op.create_index(
         "idx_pre_annotation_sample_name",
-        "task_pre_annotation",
+        "project_pre_annotation",
         ["sample_name"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_created_by"),
-        "task_pre_annotation",
+        op.f("ix_project_pre_annotation_created_by"),
+        "project_pre_annotation",
         ["created_by"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_deleted_at"),
-        "task_pre_annotation",
+        op.f("ix_project_pre_annotation_deleted_at"),
+        "project_pre_annotation",
         ["deleted_at"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_file_id"),
-        "task_pre_annotation",
+        op.f("ix_project_pre_annotation_file_id"),
+        "project_pre_annotation",
         ["file_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_id"), "task_pre_annotation", ["id"], unique=False
+        op.f("ix_project_pre_annotation_id"),
+        "project_pre_annotation",
+        ["id"],
+        unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_sample_name"),
-        "task_pre_annotation",
+        op.f("ix_project_pre_annotation_sample_name"),
+        "project_pre_annotation",
         ["sample_name"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_pre_annotation_task_id"),
-        "task_pre_annotation",
-        ["task_id"],
+        op.f("ix_project_pre_annotation_project_id"),
+        "project_pre_annotation",
+        ["project_id"],
         unique=False,
     )
 
     # 7. 创建样本与数据集划分表及其索引。
     op.create_table(
-        "task_sample",
+        "project_sample",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
-            "inner_id", sa.Integer(), nullable=True, comment="sample id in a task"
+            "inner_id", sa.Integer(), nullable=True, comment="sample id in a project"
         ),
-        sa.Column("task_id", sa.Integer(), nullable=True),
+        sa.Column("project_id", sa.Integer(), nullable=True),
         sa.Column("file_id", sa.Integer(), nullable=True),
         sa.Column(
             "split",
@@ -377,21 +394,21 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Time a task sample result was created",
+            comment="Time a project sample result was created",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Last time a task sample result was updated",
+            comment="Last time a project sample result was updated",
         ),
         sa.Column(
             "annotated_count",
             sa.Integer(),
             nullable=True,
-            comment="task sample result count",
+            comment="project sample result count",
         ),
-        sa.Column("data", sa.Text(), nullable=True, comment="task sample result"),
+        sa.Column("data", sa.Text(), nullable=True, comment="project sample result"),
         sa.Column(
             "state",
             sa.String(length=32),
@@ -402,7 +419,7 @@ def upgrade() -> None:
             "deleted_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            comment="Task delete time",
+            comment="Project delete time",
         ),
         sa.ForeignKeyConstraint(
             ["created_by"],
@@ -410,11 +427,11 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["file_id"],
-            ["task_attachment.id"],
+            ["project_attachment.id"],
         ),
         sa.ForeignKeyConstraint(
-            ["task_id"],
-            ["task.id"],
+            ["project_id"],
+            ["project.id"],
         ),
         sa.ForeignKeyConstraint(
             ["updated_by"],
@@ -423,25 +440,36 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "idx_sample_id_deleted_at", "task_sample", ["id", "deleted_at"], unique=False
+        "idx_sample_id_deleted_at", "project_sample", ["id", "deleted_at"], unique=False
     )
     op.create_index(
-        op.f("ix_task_sample_created_by"), "task_sample", ["created_by"], unique=False
+        op.f("ix_project_sample_created_by"),
+        "project_sample",
+        ["created_by"],
+        unique=False,
     )
     op.create_index(
-        op.f("ix_task_sample_deleted_at"), "task_sample", ["deleted_at"], unique=False
+        op.f("ix_project_sample_deleted_at"),
+        "project_sample",
+        ["deleted_at"],
+        unique=False,
     )
     op.create_index(
-        op.f("ix_task_sample_file_id"), "task_sample", ["file_id"], unique=False
+        op.f("ix_project_sample_file_id"), "project_sample", ["file_id"], unique=False
     )
-    op.create_index(op.f("ix_task_sample_id"), "task_sample", ["id"], unique=False)
     op.create_index(
-        op.f("ix_task_sample_task_id"), "task_sample", ["task_id"], unique=False
+        op.f("ix_project_sample_id"), "project_sample", ["id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_project_sample_project_id"),
+        "project_sample",
+        ["project_id"],
+        unique=False,
     )
 
     # 8. 创建样本更新者表及其索引。
     op.create_table(
-        "task_sample_updater",
+        "project_sample_updater",
         sa.Column("sample_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column(
@@ -450,19 +478,21 @@ def upgrade() -> None:
             nullable=False,
             comment="created time",
         ),
-        sa.ForeignKeyConstraint(["sample_id"], ["task_sample.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["sample_id"], ["project_sample.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("sample_id", "user_id"),
     )
     op.create_index(
-        op.f("ix_task_sample_updater_sample_id"),
-        "task_sample_updater",
+        op.f("ix_project_sample_updater_sample_id"),
+        "project_sample_updater",
         ["sample_id"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_sample_updater_user_id"),
-        "task_sample_updater",
+        op.f("ix_project_sample_updater_user_id"),
+        "project_sample_updater",
         ["user_id"],
         unique=False,
     )
@@ -471,7 +501,9 @@ def upgrade() -> None:
     op.create_table(
         "training_run",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("task_id", sa.Integer(), sa.ForeignKey("task.id"), nullable=False),
+        sa.Column(
+            "project_id", sa.Integer(), sa.ForeignKey("project.id"), nullable=False
+        ),
         sa.Column("created_by", sa.Integer(), sa.ForeignKey("user.id"), nullable=False),
         sa.Column("initial_model", sa.String(256), nullable=False),
         sa.Column("parameters", sa.Text(), nullable=False),
@@ -484,73 +516,93 @@ def upgrade() -> None:
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index("ix_training_run_task_id", "training_run", ["task_id"])
+    op.create_index("ix_training_run_project_id", "training_run", ["project_id"])
 
 
 def downgrade() -> None:
     """按外键依赖的逆序删除初始化脚本创建的索引和业务表。"""
-    op.drop_index("ix_training_run_task_id", table_name="training_run")
+    op.drop_index("ix_training_run_project_id", table_name="training_run")
     op.drop_table("training_run")
 
     op.drop_index(
-        op.f("ix_task_sample_updater_user_id"), table_name="task_sample_updater"
+        op.f("ix_project_sample_updater_user_id"), table_name="project_sample_updater"
     )
     op.drop_index(
-        op.f("ix_task_sample_updater_sample_id"), table_name="task_sample_updater"
+        op.f("ix_project_sample_updater_sample_id"), table_name="project_sample_updater"
     )
 
-    op.drop_table("task_sample_updater")
-    op.drop_index(op.f("ix_task_sample_task_id"), table_name="task_sample")
-    op.drop_index(op.f("ix_task_sample_id"), table_name="task_sample")
-    op.drop_index(op.f("ix_task_sample_file_id"), table_name="task_sample")
-    op.drop_index(op.f("ix_task_sample_deleted_at"), table_name="task_sample")
-    op.drop_index(op.f("ix_task_sample_created_by"), table_name="task_sample")
-    op.drop_index("idx_sample_id_deleted_at", table_name="task_sample")
+    op.drop_table("project_sample_updater")
+    op.drop_index(op.f("ix_project_sample_project_id"), table_name="project_sample")
+    op.drop_index(op.f("ix_project_sample_id"), table_name="project_sample")
+    op.drop_index(op.f("ix_project_sample_file_id"), table_name="project_sample")
+    op.drop_index(op.f("ix_project_sample_deleted_at"), table_name="project_sample")
+    op.drop_index(op.f("ix_project_sample_created_by"), table_name="project_sample")
+    op.drop_index("idx_sample_id_deleted_at", table_name="project_sample")
 
-    op.drop_table("task_sample")
+    op.drop_table("project_sample")
     op.drop_index(
-        op.f("ix_task_pre_annotation_task_id"), table_name="task_pre_annotation"
+        op.f("ix_project_pre_annotation_project_id"),
+        table_name="project_pre_annotation",
     )
     op.drop_index(
-        op.f("ix_task_pre_annotation_sample_name"), table_name="task_pre_annotation"
-    )
-    op.drop_index(op.f("ix_task_pre_annotation_id"), table_name="task_pre_annotation")
-    op.drop_index(
-        op.f("ix_task_pre_annotation_file_id"), table_name="task_pre_annotation"
+        op.f("ix_project_pre_annotation_sample_name"),
+        table_name="project_pre_annotation",
     )
     op.drop_index(
-        op.f("ix_task_pre_annotation_deleted_at"), table_name="task_pre_annotation"
+        op.f("ix_project_pre_annotation_id"), table_name="project_pre_annotation"
     )
     op.drop_index(
-        op.f("ix_task_pre_annotation_created_by"), table_name="task_pre_annotation"
+        op.f("ix_project_pre_annotation_file_id"), table_name="project_pre_annotation"
     )
-    op.drop_index("idx_pre_annotation_sample_name", table_name="task_pre_annotation")
-    op.drop_index("idx_pre_annotation_id_deleted_at", table_name="task_pre_annotation")
+    op.drop_index(
+        op.f("ix_project_pre_annotation_deleted_at"),
+        table_name="project_pre_annotation",
+    )
+    op.drop_index(
+        op.f("ix_project_pre_annotation_created_by"),
+        table_name="project_pre_annotation",
+    )
+    op.drop_index("idx_pre_annotation_sample_name", table_name="project_pre_annotation")
+    op.drop_index(
+        "idx_pre_annotation_id_deleted_at", table_name="project_pre_annotation"
+    )
 
-    op.drop_table("task_pre_annotation")
-    op.drop_index(op.f("ix_task_collaborator_user_id"), table_name="task_collaborator")
-    op.drop_index(op.f("ix_task_collaborator_task_id"), table_name="task_collaborator")
+    op.drop_table("project_pre_annotation")
+    op.drop_index(
+        op.f("ix_project_collaborator_user_id"), table_name="project_collaborator"
+    )
+    op.drop_index(
+        op.f("ix_project_collaborator_project_id"), table_name="project_collaborator"
+    )
 
-    op.drop_table("task_collaborator")
-    op.drop_index(op.f("ix_task_attachment_updated_by"), table_name="task_attachment")
-    op.drop_index(op.f("ix_task_attachment_task_id"), table_name="task_attachment")
-    op.drop_index(op.f("ix_task_attachment_id"), table_name="task_attachment")
-    op.drop_index(op.f("ix_task_attachment_deleted_at"), table_name="task_attachment")
-    op.drop_index(op.f("ix_task_attachment_created_by"), table_name="task_attachment")
-    op.drop_index("idx_attachment_id_deleted_at", table_name="task_attachment")
+    op.drop_table("project_collaborator")
+    op.drop_index(
+        op.f("ix_project_attachment_updated_by"), table_name="project_attachment"
+    )
+    op.drop_index(
+        op.f("ix_project_attachment_project_id"), table_name="project_attachment"
+    )
+    op.drop_index(op.f("ix_project_attachment_id"), table_name="project_attachment")
+    op.drop_index(
+        op.f("ix_project_attachment_deleted_at"), table_name="project_attachment"
+    )
+    op.drop_index(
+        op.f("ix_project_attachment_created_by"), table_name="project_attachment"
+    )
+    op.drop_index("idx_attachment_id_deleted_at", table_name="project_attachment")
 
-    op.drop_table("task_attachment")
-    op.drop_index(op.f("ix_auto_label_job_task_id"), table_name="auto_label_job")
+    op.drop_table("project_attachment")
+    op.drop_index(op.f("ix_auto_label_job_project_id"), table_name="auto_label_job")
     op.drop_index(op.f("ix_auto_label_job_id"), table_name="auto_label_job")
 
     op.drop_table("auto_label_job")
-    op.drop_index(op.f("ix_task_name"), table_name="task")
-    op.drop_index(op.f("ix_task_id"), table_name="task")
-    op.drop_index(op.f("ix_task_deleted_at"), table_name="task")
-    op.drop_index(op.f("ix_task_created_by"), table_name="task")
-    op.drop_index("idx_task_id_deleted_at_index", table_name="task")
+    op.drop_index(op.f("ix_project_name"), table_name="project")
+    op.drop_index(op.f("ix_project_id"), table_name="project")
+    op.drop_index(op.f("ix_project_deleted_at"), table_name="project")
+    op.drop_index(op.f("ix_project_created_by"), table_name="project")
+    op.drop_index("idx_project_id_deleted_at_index", table_name="project")
 
-    op.drop_table("task")
+    op.drop_table("project")
 
     op.drop_index(op.f("ix_user_username"), table_name="user")
     op.drop_index(op.f("ix_user_id"), table_name="user")

@@ -1,14 +1,58 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+import json
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+
+
+def validate_extra_params(value: dict) -> dict:
+    """校验附加参数为有限 JSON 对象，拒绝覆盖表单和项目文件、进程配置。"""
+    if not isinstance(value, dict):
+        raise ValueError("自定义训练参数必须是 JSON 对象")
+    conflicts = RESERVED_TRAINING_PARAMETERS.intersection(value)
+    if conflicts:
+        raise ValueError("自定义参数不能覆盖：" + ", ".join(sorted(conflicts)))
+    json.dumps(value, allow_nan=False)
+    return value
+
+
+RESERVED_TRAINING_PARAMETERS = {
+    "algorithm",
+    "initial_model",
+    "model",
+    "data",
+    "epochs",
+    "imgsz",
+    "batch",
+    "device",
+    "workers",
+    "project",
+    "name",
+    "exist_ok",
+    "save_dir",
+    "save",
+    "task",
+    "mode",
+    "resume",
+    "pretrained",
+    "cfg",
+    "work_dir",
+    "result_file",
+    "extra_params",
+}
 
 
 class StartTrainingCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    algorithm: Literal["yolo26_detect"] = Field(
+        default="yolo26_detect", description="训练算法，目前仅支持 YOLO26 目标检测"
+    )
+
     initial_model: str = Field(
         default="yolo26s.pt",
         max_length=128,
         pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*\.pt$",
-        description="官方 YOLO26 权重名称，或当前任务已有的模型文件名",
+        description="官方 YOLO26 权重名称，或当前项目已有的模型文件名",
     )
     epochs: int = Field(default=100, ge=1, le=10000, description="训练轮数")
     imgsz: int = Field(
@@ -21,6 +65,14 @@ class StartTrainingCommand(BaseModel):
     batch: int = Field(
         default=2, ge=-1, le=1024, description="每批图片数；-1 为自动选择"
     )
+    extra_params: dict[str, JsonValue] = Field(
+        default_factory=dict, description="额外 YOLO 训练参数，不覆盖基础表单或项目路径"
+    )
+
+    @field_validator("extra_params")
+    @classmethod
+    def validate_extra_params(cls, value: dict) -> dict:
+        return validate_extra_params(value)
 
     @field_validator("batch")
     @classmethod

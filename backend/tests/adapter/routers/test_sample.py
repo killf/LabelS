@@ -4,13 +4,13 @@ from fastapi.testclient import TestClient
 from backend.common.config import settings
 from backend.common.db import begin_transaction
 from backend.adapter.persistence import crud_user
-from backend.adapter.persistence import crud_task
+from backend.adapter.persistence import crud_project
 from backend.adapter.persistence import crud_sample
-from backend.domain.models.task import Task
-from backend.domain.models.sample import TaskSample
+from backend.domain.models.project import Project
+from backend.domain.models.sample import ProjectSample
 
 
-class TestClassTaskSampleRouter:
+class TestClassProjectSampleRouter:
     def test_create_sample_successful(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
@@ -20,9 +20,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -34,20 +34,20 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.post(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             json=data,
         )
 
         # check
         db.expire_all()
-        updated_task = crud_task.get(db=db, task_id=task.id)
+        updated_project = crud_project.get(db=db, project_id=project.id)
         json = r.json()
         assert r.status_code == 201
         assert len(json["data"]["ids"]) == 1
-        assert updated_task.status == "IMPORTED"
+        assert updated_project.status == "IMPORTED"
 
-    def test_create_sample_task_status_not_draft(
+    def test_create_sample_project_status_not_draft(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
 
@@ -56,9 +56,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -71,20 +71,20 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.post(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             json=data,
         )
 
         # check
         db.expire_all()
-        updated_task = crud_task.get(db=db, task_id=task.id)
+        updated_project = crud_project.get(db=db, project_id=project.id)
         json = r.json()
         assert r.status_code == 201
         assert len(json["data"]["ids"]) == 1
-        assert updated_task.status == "CONFIGURED"
+        assert updated_project.status == "CONFIGURED"
 
-    def test_create_sample_task_not_found(
+    def test_create_sample_project_not_found(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
 
@@ -93,7 +93,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.post(
-            f"{settings.API_V1_STR}/tasks/0/samples",
+            f"{settings.API_V1_STR}/projects/0/samples",
             headers=testuser_token_headers,
             json=data,
         )
@@ -112,9 +112,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -123,8 +123,8 @@ class TestClassTaskSampleRouter:
                 ),
             )
         samples = [
-            TaskSample(
-                task_id=1,
+            ProjectSample(
+                project_id=1,
                 file_id=12,
                 created_by=current_user.id,
                 updated_by=current_user.id,
@@ -140,7 +140,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"page": 0, "size": 10},
         )
@@ -161,9 +161,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -172,8 +172,8 @@ class TestClassTaskSampleRouter:
                 ),
             )
         samples = [
-            TaskSample(
-                task_id=1,
+            ProjectSample(
+                project_id=1,
                 file_id=1,
                 created_by=current_user.id,
                 updated_by=current_user.id,
@@ -189,7 +189,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"before": 13, "size": 10},
         )
@@ -211,9 +211,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -222,8 +222,8 @@ class TestClassTaskSampleRouter:
                 ),
             )
         samples = [
-            TaskSample(
-                task_id=1,
+            ProjectSample(
+                project_id=1,
                 file_id=1,
                 created_by=current_user.id,
                 updated_by=current_user.id,
@@ -239,7 +239,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"after": 5, "size": 10},
         )
@@ -261,9 +261,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -272,8 +272,8 @@ class TestClassTaskSampleRouter:
                 ),
             )
         samples = [
-            TaskSample(
-                task_id=task.id,
+            ProjectSample(
+                project_id=project.id,
                 file_id=1,
                 created_by=current_user.id,
                 updated_by=current_user.id,
@@ -294,7 +294,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"sort": "annotated_count:desc", "after": after_id, "size": 10},
         )
@@ -315,7 +315,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{1}/samples",
+            f"{settings.API_V1_STR}/projects/{1}/samples",
             headers=testuser_token_headers,
             params={"after": 1, "before": 1, "page": 1, "size": 10},
         )
@@ -332,9 +332,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -344,7 +344,7 @@ class TestClassTaskSampleRouter:
             )
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"sort": "", "page": 0, "size": 10},
         )
@@ -357,11 +357,11 @@ class TestClassTaskSampleRouter:
     ) -> None:
         # enable the AI feature so the request reaches the access check
         monkeypatch.setattr(settings, "AI_AUTO_LABEL_ENABLED", True)
-        # task owned by another user
+        # project owned by another user
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="other",
                     description="d",
                     tips="t",
@@ -371,12 +371,12 @@ class TestClassTaskSampleRouter:
                 ),
             )
         r = client.post(
-            f"{settings.API_V1_STR}/tasks/{task.id}/auto_label_job",
+            f"{settings.API_V1_STR}/projects/{project.id}/auto_label_job",
             headers=testuser_token_headers,
         )
         assert r.status_code == 403
 
-    def test_collaborator_can_annotate_shared_task(
+    def test_collaborator_can_annotate_shared_project(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
         # owner = the default test user
@@ -396,9 +396,9 @@ class TestClassTaskSampleRouter:
         collab_user = crud_user.get_user_by_username(db=db, username=collab_username)
 
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="shared",
                     description="d",
                     tips="t",
@@ -410,8 +410,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=task.id,
+                    ProjectSample(
+                        project_id=project.id,
                         file_id=1,
                         created_by=owner.id,
                         updated_by=owner.id,
@@ -423,26 +423,26 @@ class TestClassTaskSampleRouter:
 
         # owner adds the collaborator
         r = client.post(
-            f"{settings.API_V1_STR}/tasks/{task.id}/collaborators",
+            f"{settings.API_V1_STR}/projects/{project.id}/collaborators",
             headers=testuser_token_headers,
             json={"user_id": collab_user.id},
         )
         assert r.status_code == 201
 
-        # the collaborator can list, read and annotate samples in the shared task
+        # the collaborator can list, read and annotate samples in the shared project
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=collab_headers,
             params={"page": 0, "size": 10},
         )
         assert r.status_code == 200
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{sid}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{sid}",
             headers=collab_headers,
         )
         assert r.status_code == 200
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{sid}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{sid}",
             headers=collab_headers,
             json={"data": {"k": "v"}, "annotated_count": 1},
         )
@@ -451,11 +451,11 @@ class TestClassTaskSampleRouter:
     def test_sample_access_forbidden_for_non_member(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
-        # a task owned by someone else; the test user is neither owner nor collaborator
+        # a project owned by someone else; the test user is neither owner nor collaborator
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="other",
                     description="d",
                     tips="t",
@@ -467,8 +467,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=task.id,
+                    ProjectSample(
+                        project_id=project.id,
                         file_id=1,
                         created_by=999,
                         updated_by=999,
@@ -480,20 +480,20 @@ class TestClassTaskSampleRouter:
 
         # list
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             params={"page": 0, "size": 10},
         )
         assert r.status_code == 403
         # get
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{sid}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{sid}",
             headers=testuser_token_headers,
         )
         assert r.status_code == 403
         # patch
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{sid}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{sid}",
             headers=testuser_token_headers,
             json={"data": {}, "annotated_count": 0},
         )
@@ -501,7 +501,7 @@ class TestClassTaskSampleRouter:
         # delete
         r = client.request(
             "delete",
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             json={"sample_ids": [sid]},
         )
@@ -516,9 +516,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -530,8 +530,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=task.id,
+                    ProjectSample(
+                        project_id=project.id,
                         file_id=1,
                         created_by=current_user.id,
                         updated_by=current_user.id,
@@ -544,7 +544,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{samples[0].id}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{samples[0].id}",
             headers=testuser_token_headers,
         )
 
@@ -561,9 +561,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -574,7 +574,7 @@ class TestClassTaskSampleRouter:
 
         # run
         r = client.get(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/0",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/0",
             headers=testuser_token_headers,
         )
 
@@ -592,9 +592,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -606,8 +606,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=1,
+                    ProjectSample(
+                        project_id=1,
                         file_id=1,
                         created_by=current_user.id,
                         updated_by=current_user.id,
@@ -622,7 +622,7 @@ class TestClassTaskSampleRouter:
             "annotated_count": 1,
         }
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{samples[0].id}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{samples[0].id}",
             headers=testuser_token_headers,
             json=data,
         )
@@ -641,9 +641,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -655,8 +655,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=1,
+                    ProjectSample(
+                        project_id=1,
                         file_id=1,
                         created_by=current_user.id,
                         updated_by=current_user.id,
@@ -668,7 +668,7 @@ class TestClassTaskSampleRouter:
         # run
         data = {"state": "SKIPPED"}
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/{samples[0].id}",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/{samples[0].id}",
             headers=testuser_token_headers,
             json=data,
         )
@@ -678,7 +678,7 @@ class TestClassTaskSampleRouter:
         assert r.status_code == 200
         assert json["data"]["state"] == "SKIPPED"
 
-    def test_sample_patch_task_not_found(
+    def test_sample_patch_project_not_found(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
 
@@ -687,7 +687,7 @@ class TestClassTaskSampleRouter:
         # run
         data = {"state": "SKIPPED"}
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/0/samples/0",
+            f"{settings.API_V1_STR}/projects/0/samples/0",
             headers=testuser_token_headers,
             json=data,
         )
@@ -696,7 +696,7 @@ class TestClassTaskSampleRouter:
         assert r.status_code == 404
         assert json["err_code"] == 50002
 
-    def test_sample_patch_task_sample_not_found(
+    def test_sample_patch_project_sample_not_found(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
 
@@ -705,9 +705,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -719,7 +719,7 @@ class TestClassTaskSampleRouter:
         # run
         data = {"state": "SKIPPED"}
         r = client.patch(
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples/0",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples/0",
             headers=testuser_token_headers,
             json=data,
         )
@@ -737,9 +737,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -751,8 +751,8 @@ class TestClassTaskSampleRouter:
             samples = crud_sample.batch(
                 db=db,
                 samples=[
-                    TaskSample(
-                        task_id=1,
+                    ProjectSample(
+                        project_id=1,
                         file_id=1,
                         created_by=current_user.id,
                         updated_by=current_user.id,
@@ -765,7 +765,7 @@ class TestClassTaskSampleRouter:
         data = {"sample_ids": [samples[0].id]}
         r = client.request(
             "delete",
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             json=data,
         )
@@ -782,9 +782,9 @@ class TestClassTaskSampleRouter:
             db=db, username="test@example.com"
         )
         with begin_transaction(db):
-            task = crud_task.create(
+            project = crud_project.create(
                 db=db,
-                task=Task(
+                project=Project(
                     name="name",
                     description="description",
                     tips="tips",
@@ -797,7 +797,7 @@ class TestClassTaskSampleRouter:
         data = {"sample_ids": [1, 2]}
         r = client.request(
             "delete",
-            f"{settings.API_V1_STR}/tasks/{task.id}/samples",
+            f"{settings.API_V1_STR}/projects/{project.id}/samples",
             headers=testuser_token_headers,
             json=data,
         )

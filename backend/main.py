@@ -28,13 +28,13 @@ You will be able to:
 * **Login**
 * **Logout**.
 
-## Tasks
+## Projects
 
 You will be able to:
 
 * **CRUD**
 
-## Task attachment
+## Project attachment
 
 You will be able to:
 
@@ -42,7 +42,7 @@ You will be able to:
 * **download attachment**
 * **delete attachment**
 
-## Task sample
+## Project sample
 
 You will be able to:
 
@@ -60,16 +60,16 @@ tags_metadata = [
         "description": "Operations with users.",
     },
     {
-        "name": "tasks",
-        "description": "Task management.",
+        "name": "projects",
+        "description": "Project management.",
     },
     {
         "name": "attachments",
-        "description": "Task attachment management.",
+        "description": "Project attachment management.",
     },
     {
         "name": "samples",
-        "description": "Task sample management.",
+        "description": "Project sample management.",
     },
 ]
 

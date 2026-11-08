@@ -6,24 +6,26 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from backend.common.db import Base
 
 
-class TaskAttachment(Base):
-    __tablename__ = "task_attachment"
+class ProjectAttachment(Base):
+    __tablename__ = "project_attachment"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     filename = Column(String(256), comment="file name")
-    path = Column(String(256), comment="任务目录下的文件相对路径")
-    task_id = Column(Integer, ForeignKey("task.id"), index=True)
+    path = Column(String(256), comment="项目目录下的文件相对路径")
+    project_id = Column(Integer, ForeignKey("project.id"), index=True)
     created_by = Column(Integer, ForeignKey("user.id"), index=True)
     updated_by = Column(Integer, ForeignKey("user.id"), index=True)
     created_at = Column(
-        DateTime(timezone=True), default=datetime.now, comment="Time a task was created"
+        DateTime(timezone=True),
+        default=datetime.now,
+        comment="Time a project was created",
     )
     updated_at = Column(
         DateTime(timezone=True),
         default=datetime.now,
         onupdate=datetime.now,
-        comment="Last time a task was updated",
+        comment="Last time a project was updated",
     )
-    deleted_at = Column(DateTime, index=True, comment="Task delete time")
+    deleted_at = Column(DateTime, index=True, comment="Project delete time")
 
     Index("idx_attachment_id_deleted_at", id, deleted_at)

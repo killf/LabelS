@@ -4,10 +4,10 @@ from backend.domain.models.auto_label_job import AutoLabelJob, AutoLabelStatus
 
 
 def create(
-    db: Session, task_id: int, user_id: int, sample_count: int, model_name: str
+    db: Session, project_id: int, user_id: int, sample_count: int, model_name: str
 ) -> AutoLabelJob:
     job = AutoLabelJob(
-        task_id=task_id,
+        project_id=project_id,
         created_by=user_id,
         sample_count=sample_count,
         model_name=model_name,

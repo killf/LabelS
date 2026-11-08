@@ -10,7 +10,7 @@ from backend.common.db import Base
 
 class SampleState(str, Enum):
     """
-    task sample state
+    project sample state
     """
 
     NEW = "NEW"
@@ -26,13 +26,13 @@ class DatasetSplit(str, Enum):
     TEST = "test"
 
 
-class TaskSample(Base):
-    __tablename__ = "task_sample"
+class ProjectSample(Base):
+    __tablename__ = "project_sample"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    inner_id = Column(Integer, comment="sample id in a task")
-    task_id = Column(Integer, ForeignKey("task.id"), index=True)
-    file_id = Column(Integer, ForeignKey("task_attachment.id"), index=True)
+    inner_id = Column(Integer, comment="sample id in a project")
+    project_id = Column(Integer, ForeignKey("project.id"), index=True)
+    file_id = Column(Integer, ForeignKey("project_attachment.id"), index=True)
     split = Column(
         String(16),
         nullable=False,
@@ -45,31 +45,33 @@ class TaskSample(Base):
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.now,
-        comment="Time a task sample result was created",
+        comment="Time a project sample result was created",
     )
     updated_at = Column(
         DateTime(timezone=True),
         default=datetime.now,
         onupdate=datetime.now,
-        comment="Last time a task sample result was updated",
+        comment="Last time a project sample result was updated",
     )
     annotated_count = Column(
         Integer,
         default=0,
-        comment="task sample result count",
+        comment="project sample result count",
     )
-    data = Column(Text, comment="task sample result")
+    data = Column(Text, comment="project sample result")
     state = Column(
         String(32),
         default=SampleState.NEW.value,
         comment="NEW is has not start yet, DONE is completed, SKIPPED is skipped",
     )
-    deleted_at = Column(DateTime(timezone=True), index=True, comment="Task delete time")
+    deleted_at = Column(
+        DateTime(timezone=True), index=True, comment="Project delete time"
+    )
 
     # 由旧的data里的fileNames和urls中的唯一一个，迁移到media中
-    file = relationship("TaskAttachment", foreign_keys=[file_id])
-    task = relationship("Task", foreign_keys=[task_id])
+    file = relationship("ProjectAttachment", foreign_keys=[file_id])
+    project = relationship("Project", foreign_keys=[project_id])
     owner = relationship("User", foreign_keys=[created_by])
-    updaters = relationship("User", secondary="task_sample_updater")
+    updaters = relationship("User", secondary="project_sample_updater")
 
     Index("idx_sample_id_deleted_at", id, deleted_at)

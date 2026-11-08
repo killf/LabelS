@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     AI_AUTO_LABEL_ENABLED: bool = True
     AI_DEVICE: str = ""  # 留空自动选择 CUDA/ROCm、MPS 或 CPU。
 
-    # SQLite 默认与本地任务文件使用同一根目录。
+    # SQLite 默认与本地项目文件使用同一根目录。
     DATABASE_URL: str = Field(
         default="",
         description="Database connection URL. Supports SQLite and MySQL.",

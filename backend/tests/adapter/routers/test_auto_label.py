@@ -13,7 +13,7 @@ from backend.application.service import auto_label
 from backend.common.db import begin_transaction
 from backend.common.storage import get_storage
 from backend.domain.models.auto_label_job import AutoLabelJob
-from backend.domain.models.sample import TaskSample
+from backend.domain.models.sample import ProjectSample
 from backend.tests.conftest import TestingSessionLocal
 
 
@@ -23,10 +23,10 @@ class Vector(list):
 
 
 @pytest.fixture
-def ai_task(client: TestClient, testuser_token_headers: dict) -> tuple[int, int]:
+def ai_project(client: TestClient, testuser_token_headers: dict) -> tuple[int, int]:
     headers = testuser_token_headers
-    task = client.post(
-        "/api/v1/tasks",
+    project = client.post(
+        "/api/v1/projects",
         headers=headers,
         json={
             "name": "AI detection",
@@ -42,29 +42,29 @@ def ai_task(client: TestClient, testuser_token_headers: dict) -> tuple[int, int]
         ]
     }
     client.patch(
-        f"/api/v1/tasks/{task['id']}",
+        f"/api/v1/projects/{project['id']}",
         headers=headers,
         json={"config": json.dumps(config), "ai_model_name": "20261107-1.pt"},
     )
     content = BytesIO()
     Image.new("RGB", (100, 80), "blue").save(content, format="PNG")
     attachment = client.post(
-        f"/api/v1/tasks/{task['id']}/attachments",
+        f"/api/v1/projects/{project['id']}/attachments",
         headers=headers,
         files={"file": ("sample.png", content.getvalue(), "image/png")},
     ).json()["data"]
     sample_id = client.post(
-        f"/api/v1/tasks/{task['id']}/samples",
+        f"/api/v1/projects/{project['id']}/samples",
         headers=headers,
         json=[{"file_id": attachment["id"], "data": {}}],
     ).json()["data"]["ids"][0]
-    return task["id"], sample_id
+    return project["id"], sample_id
 
 
 def test_yolo_prediction_is_editable_and_does_not_complete_sample(
     client: TestClient,
     testuser_token_headers: dict,
-    ai_task: tuple[int, int],
+    ai_project: tuple[int, int],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     prediction = SimpleNamespace(
@@ -82,17 +82,17 @@ def test_yolo_prediction_is_editable_and_does_not_complete_sample(
         yield model
 
     monkeypatch.setattr(auto_label, "_load_model", load_model)
-    task_id, sample_id = ai_task
+    project_id, sample_id = ai_project
     for _ in range(2):
         response = client.post(
-            f"/api/v1/tasks/{task_id}/samples/{sample_id}/auto_label",
+            f"/api/v1/projects/{project_id}/samples/{sample_id}/auto_label",
             headers=testuser_token_headers,
         )
         assert response.status_code == 200
         assert response.json()["data"]["warning_message"]
 
     annotations = client.get(
-        f"/api/v1/tasks/{task_id}/pre_annotations",
+        f"/api/v1/projects/{project_id}/pre_annotations",
         params={"sample_name": "sample.png", "page": 0},
         headers=testuser_token_headers,
     ).json()["data"]
@@ -102,21 +102,22 @@ def test_yolo_prediction_is_editable_and_does_not_complete_sample(
     assert len(boxes) == 1 and boxes[0]["label"] == "object"
     assert (boxes[0]["x"], boxes[0]["width"]) == (10, 40)
     sample = client.get(
-        f"/api/v1/tasks/{task_id}/samples/{sample_id}", headers=testuser_token_headers
+        f"/api/v1/projects/{project_id}/samples/{sample_id}",
+        headers=testuser_token_headers,
     ).json()["data"]
     assert sample["state"] == "NEW" and sample["data"] == {}
 
 
 def test_batch_reuses_model_and_reports_partial_failure(
     db: Session,
-    ai_task: tuple[int, int],
+    ai_project: tuple[int, int],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id, sample_id = ai_task
-    first = db.get(TaskSample, sample_id)
+    project_id, sample_id = ai_project
+    first = db.get(ProjectSample, sample_id)
     with begin_transaction(db):
-        second = TaskSample(
-            task_id=task_id,
+        second = ProjectSample(
+            project_id=project_id,
             file_id=first.file_id,
             inner_id=2,
             created_by=first.created_by,
@@ -127,7 +128,7 @@ def test_batch_reuses_model_and_reports_partial_failure(
         db.flush()
         second_id = second.id
         job = crud_auto_label_job.create(
-            db, task_id, first.created_by, 2, "20261107-1.pt"
+            db, project_id, first.created_by, 2, "20261107-1.pt"
         )
         job_id = job.id
     loads = []
@@ -137,7 +138,7 @@ def test_batch_reuses_model_and_reports_partial_failure(
         loads.append(1)
         yield object()
 
-    def predict(model, sample, task, model_name):
+    def predict(model, sample, project, model_name):
         if sample.id == second_id:
             raise RuntimeError("synthetic inference failure")
         return {
@@ -164,14 +165,14 @@ def test_batch_reuses_model_and_reports_partial_failure(
 
 def test_restart_marks_unfinished_ai_job_as_interrupted(
     db: Session,
-    ai_task: tuple[int, int],
+    ai_project: tuple[int, int],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id, sample_id = ai_task
-    sample = db.get(TaskSample, sample_id)
+    project_id, sample_id = ai_project
+    sample = db.get(ProjectSample, sample_id)
     with begin_transaction(db):
         job = crud_auto_label_job.create(
-            db, task_id, sample.created_by, 1, "20261107-1.pt"
+            db, project_id, sample.created_by, 1, "20261107-1.pt"
         )
         job_id = job.id
     monkeypatch.setattr(auto_label, "SessionLocal", TestingSessionLocal)
@@ -181,14 +182,14 @@ def test_restart_marks_unfinished_ai_job_as_interrupted(
 
 
 def test_list_dataset_model_weights(
-    client: TestClient, testuser_token_headers: dict, ai_task: tuple[int, int]
+    client: TestClient, testuser_token_headers: dict, ai_project: tuple[int, int]
 ) -> None:
-    task_id, _ = ai_task
+    project_id, _ = ai_project
     get_storage().save_bytes(
-        b"synthetic weight", f"tasks/{ai_task[0]}/models/20261107-1.pt"
+        b"synthetic weight", f"projects/{ai_project[0]}/models/20261107-1.pt"
     )
     response = client.get(
-        f"/api/v1/tasks/{task_id}/models", headers=testuser_token_headers
+        f"/api/v1/projects/{project_id}/models", headers=testuser_token_headers
     )
     assert response.status_code == 200
     assert response.json()["data"] == ["20261107-1.pt"]

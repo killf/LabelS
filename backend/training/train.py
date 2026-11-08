@@ -1,4 +1,4 @@
-"""使用本地图片与 YOLO 标注训练，模型和日志保存在任务目录。"""
+"""使用本地图片与 YOLO 标注训练，模型和日志保存在项目目录。"""
 
 from __future__ import annotations
 
@@ -20,7 +20,155 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
+from backend.application.command.training import (
+    RESERVED_TRAINING_PARAMETERS,
+    validate_extra_params,
+)
+
 LOGGER = logging.getLogger("backend.training")
+
+# 中文说明覆盖当前框架参数；框架新增字段时保留配置文件中的原文说明。
+PARAMETER_DESCRIPTIONS = {
+    "time": "最长训练时间（小时）；设置后优先于训练轮数。",
+    "patience": "验证指标连续多少轮未改善后提前停止。",
+    "save_period": "每隔多少轮保存检查点；小于 1 时禁用周期保存。",
+    "cache": "图片缓存：false 禁用，true 或 ram 使用内存，disk 使用磁盘。",
+    "cls_remap": "微调不同数据集时，按类别名称匹配并重映射分类头权重。",
+    "optimizer": "优化器：auto、SGD、MuSGD、Adam、Adamax、AdamW、NAdam、RAdam、RMSProp。",
+    "verbose": "是否输出详细日志。",
+    "seed": "随机种子（整数）。",
+    "deterministic": "是否启用确定性计算，以提高可复现性，可能降低速度。",
+    "single_cls": "是否把所有类别合并为单一类别。",
+    "rect": "是否使用矩形批次训练，减少图片填充。",
+    "cos_lr": "是否使用余弦学习率调度。",
+    "close_mosaic": "最后多少轮关闭 Mosaic 增强；0 表示始终开启。",
+    "amp": "训练精度：true 或 fp16 为自动混合精度，bf16 为 BF16，false 或 fp32 为全精度。",
+    "fraction": "训练数据使用比例或数量；1.0 使用全部数据，整数大于 1 表示数量。",
+    "profile": "是否在训练过程中分析 ONNX 和 TensorRT 的推理速度。",
+    "freeze": "冻结前 N 层，或指定层索引、模块名列表；null 表示不冻结。",
+    "multi_scale": "多尺度训练相对图片尺寸的变化幅度；0 表示关闭。",
+    "compile": "是否使用 torch.compile，可传 false、true 或受支持的编译模式字符串。",
+    "channels_last": "是否使用 channels-last 内存布局；null 表示按设备与平台自动选择。",
+    "overlap_mask": "仅分割：训练时是否将实例掩码合并到同一张掩码。",
+    "mask_ratio": "仅分割：训练掩码的下采样倍数。",
+    "dropout": "仅分类：分类头的 Dropout 概率。",
+    "val": "训练过程中是否执行验证。",
+    "split": "独立验证使用的数据划分：val、test 或 train。",
+    "save_json": "验证时是否保存 COCO 格式结果；部分算法保存专用格式。",
+    "conf": "预测或验证的置信度阈值；null 使用框架默认阈值。",
+    "iou": "非极大值抑制（NMS）的 IoU 阈值，范围 0–1。",
+    "max_det": "每张图片最多保留的检测目标数量。",
+    "quantize": "计算或导出精度，如 fp16、fp32、int8；训练时 int8 用于量化感知训练。",
+    "dnn": "仅 ONNX 推理：是否使用 OpenCV DNN 后端。",
+    "plots": "是否保存训练、验证图表及可视化图片。",
+    "nms": "是否启用 NMS；null 使用默认处理，false 对可用模型使用无 NMS 检测头。",
+    "source": "仅预测：图片、目录、视频、URL 或流地址。",
+    "vid_stride": "仅视频预测：每隔多少帧读取一次。",
+    "stream_buffer": "仅流预测：是否缓存所有帧；false 优先处理最新帧。",
+    "visualize": "是否可视化预测特征，或验证时的正确、漏检和误检结果。",
+    "augment": "仅预测：是否使用测试时增强。",
+    "agnostic_nms": "是否使用不区分类别的 NMS。",
+    "classes": "按类别编号筛选目标，支持单个整数或整数列表。",
+    "retina_masks": "仅分割预测：是否使用高分辨率掩码。",
+    "embed": "仅预测：返回指定层索引的特征向量。",
+    "show": "仅预测：是否在窗口中显示结果。",
+    "save_frames": "仅视频预测：是否保存单帧结果。",
+    "save_txt": "是否将预测结果保存为文本。",
+    "save_conf": "保存文本结果时是否包含置信度。",
+    "save_crop": "仅预测：是否保存检测目标的裁剪图片。",
+    "show_labels": "可视化时是否显示类别名称。",
+    "show_conf": "可视化时是否显示置信度。",
+    "show_boxes": "可视化时是否绘制边界框。",
+    "line_width": "可视化边界框线宽（像素）；null 表示自动选择。",
+    "format": "仅导出：目标格式，如 torchscript、onnx、engine、openvino。",
+    "optimize": "仅 DEEPX 导出：是否采用更高等级的编译优化。",
+    "dynamic": "仅导出：是否启用动态输入尺寸。",
+    "simplify": "仅导出：是否简化 ONNX 中间计算图。",
+    "opset": "仅 ONNX 相关导出：指定算子集版本；null 使用框架默认值。",
+    "workspace": "仅 TensorRT 导出：工作空间大小（GiB）。",
+    "lr0": "初始学习率；常用值 SGD 为 0.01，Adam/AdamW 为 0.001。",
+    "lrf": "最终学习率系数；最终学习率等于 lr0 × lrf。",
+    "momentum": "SGD 动量或 Adam 的 beta1 系数。",
+    "weight_decay": "权重衰减（L2 正则化系数）。",
+    "warmup_epochs": "学习率预热轮数，允许小数。",
+    "warmup_momentum": "预热阶段的初始动量。",
+    "warmup_bias_lr": "预热阶段偏置参数的初始学习率。",
+    "distill_model": "知识蒸馏使用的教师模型路径；null 表示不指定。",
+    "dis": "知识蒸馏损失权重。",
+    "box": "边界框回归损失权重。",
+    "cls": "分类损失权重。",
+    "cls_pw": "类别不平衡权重指数；0 禁用，1 按类别频率倒数加权。",
+    "dfl": "边界框距离损失权重；YOLO26 的无 DFL 检测头使用 L1 距离。",
+    "pose": "仅姿态估计：姿态损失权重。",
+    "kobj": "仅姿态估计：关键点目标存在性损失权重。",
+    "rle": "仅姿态估计：RLE 损失权重。",
+    "angle": "仅旋转框检测：角度损失权重。",
+    "dlog": "仅深度估计：对数深度损失权重。",
+    "dgrad": "仅深度估计：梯度损失权重。",
+    "dlam": "仅深度估计：尺度不变损失系数；1 为尺度不变，0 为对数 RMSE。",
+    "nbs": "标称批量大小；框架据此计算梯度累积次数。",
+    "hsv_h": "HSV 色调增强幅度。",
+    "hsv_s": "HSV 饱和度增强幅度。",
+    "hsv_v": "HSV 明度增强幅度。",
+    "degrees": "随机旋转角度的正负范围（度）。",
+    "translate": "随机平移相对于图片尺寸的比例。",
+    "scale": "随机缩放幅度；通常传数值，具体格式由当前框架校验。",
+    "shear": "随机错切角度的正负范围（度）。",
+    "perspective": "随机透视变换幅度，常用范围 0–0.001。",
+    "flipud": "垂直翻转概率，范围 0–1。",
+    "fliplr": "水平翻转概率，范围 0–1。",
+    "bgr": "交换 RGB 与 BGR 通道的概率。",
+    "mosaic": "Mosaic 拼图增强概率。",
+    "mixup": "MixUp 图像混合增强概率。",
+    "cutmix": "CutMix 区域混合增强概率。",
+    "copy_paste": "仅分割、语义分割或旋转框：复制粘贴增强比例。",
+    "copy_paste_mode": "复制粘贴策略：flip 翻转或 mixup 混合。",
+    "auto_augment": "仅分类：自动增强策略，支持 randaugment、autoaugment、augmix。",
+    "erasing": "仅分类：随机擦除概率，范围 0–1。",
+    "tracker": "仅跟踪：跟踪器配置文件名。",
+}
+
+
+def training_parameter_catalog() -> list[dict]:
+    """读取框架默认值并补充中文说明，新增参数保留原文，排除系统管理字段。"""
+    from ultralytics.cfg import DEFAULT_CFG_DICT
+    from ultralytics.utils import DEFAULT_CFG_PATH
+
+    descriptions = {}
+    for line in Path(DEFAULT_CFG_PATH).read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^(\w+):.*?#\s*(.+)$", line)
+        if match:
+            descriptions[match[1]] = match[2]
+
+    return [
+        {
+            "name": name,
+            "default": value,
+            "description": PARAMETER_DESCRIPTIONS.get(
+                name, descriptions.get(name, "当前框架未提供参数说明")
+            ),
+        }
+        for name, value in DEFAULT_CFG_DICT.items()
+        if name not in RESERVED_TRAINING_PARAMETERS
+    ]
+
+
+def validate_training_options(parameters: dict) -> dict:
+    """使用当前 Ultralytics 校验附加参数名称、类型和范围，不加载模型。"""
+    parameters = validate_extra_params(parameters)
+    if not parameters:
+        return parameters
+
+    from ultralytics.cfg import DEFAULT_CFG_DICT, get_cfg
+
+    unknown = parameters.keys() - DEFAULT_CFG_DICT.keys()
+    if unknown:
+        raise ValueError("未知训练参数：" + ", ".join(sorted(unknown)))
+    try:
+        get_cfg(overrides=parameters.copy())
+    except (TypeError, ValueError, SyntaxError) as error:
+        raise ValueError(str(error).splitlines()[0]) from None
+    return parameters
 
 
 class Tee(io.TextIOBase):
@@ -59,7 +207,7 @@ def _dataset_file(directory: Path, value: str) -> Path:
 
 
 def prepare_dataset(dataset: Path, destination: Path, snapshot: Path) -> Path:
-    """复制本地训练快照并生成绝对路径清单，不改动任务的原始标注。"""
+    """复制本地训练快照并生成绝对路径清单，不改动项目的原始标注。"""
     # 1. 保存原始清单，禁用数据配置中的下载脚本。
     snapshot.mkdir(parents=True, exist_ok=True)
     destination.mkdir(parents=True, exist_ok=True)
@@ -141,7 +289,7 @@ def run_training(
     work_dir: Path | None = None,
     result_file: Path | None = None,
 ) -> int:
-    """冻结本地输入并训练，将最佳权重复制到任务 models/，日志留在 runs/。"""
+    """冻结本地输入并训练，将最佳权重复制到项目 models/，日志留在 runs/。"""
     dataset = dataset.resolve()
     run_id = _next_run_id(dataset)
     if work_dir is None:
@@ -232,18 +380,23 @@ def main() -> int:
         "--data",
         type=Path,
         required=True,
-        help="本地任务目录，内含 data.yaml、train.txt、test.txt、images/ 和 labels/",
+        help="本地项目目录，内含 data.yaml、train.txt、test.txt、images/ 和 labels/",
     )
     parser.add_argument(
         "--work-dir",
         type=Path,
         default=None,
-        help="训练快照、权重和日志的本地保存目录，默认任务目录下的 runs/<编号>/",
+        help="训练快照、权重和日志的本地保存目录，默认项目目录下的 runs/<编号>/",
     )
     parser.add_argument(
         "--result-file",
         type=Path,
         help="将训练编号、模型地址和指标写入 JSON，供页面训练记录读取",
+    )
+    parser.add_argument(
+        "--extra-params",
+        default="{}",
+        help='附加训练参数的 JSON 对象，例如 \'{"lr0": 0.001, "amp": false}\'',
     )
 
     # 模型、训练规模和计算设备。
@@ -318,7 +471,18 @@ def main() -> int:
     dataset = parameters.pop("data").resolve()
     work_dir = parameters.pop("work_dir")
     result_file = parameters.pop("result_file")
+    extra_params = parameters.pop("extra_params")
     parameters = {key: value for key, value in parameters.items() if value is not None}
+
+    # JSON 参数只补充未指定的可选参数，冲突或非法输入在启动训练前返回。
+    try:
+        overrides = validate_training_options(json.loads(extra_params))
+        conflicts = parameters.keys() & overrides.keys()
+        if conflicts:
+            raise ValueError("重复训练参数：" + ", ".join(sorted(conflicts)))
+    except (ImportError, ValueError, TypeError) as error:
+        parser.error(str(error))
+    parameters.update(overrides)
 
     # 3. 训练入口不安装依赖，不修改既有 PyTorch 运行时。
     previous = signal.signal(signal.SIGTERM, terminate)

@@ -38,14 +38,14 @@ class PreAnnotationResponse(BaseModel):
         description="description: sample data, include filename, file url, or result",
     )
     created_at: Union[datetime, None] = Field(
-        default=None, description="description: task created at time"
+        default=None, description="description: project created at time"
     )
     created_by: Union[UserResp, None] = Field(
-        default=None, description="description: task created by"
+        default=None, description="description: project created by"
     )
     updated_at: Union[datetime, None] = Field(
-        default=None, description="description: task updated at time"
+        default=None, description="description: project updated at time"
     )
     updated_by: Union[UserResp, None] = Field(
-        default=None, description="description: task updated by"
+        default=None, description="description: project updated by"
     )

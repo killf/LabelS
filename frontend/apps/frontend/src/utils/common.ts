@@ -129,10 +129,10 @@ const commonController = {
     return state.user.newUsername;
   },
   getConfigStep(state: any) {
-    return state.existTask.configStep;
+    return state.existProject.configStep;
   },
   getHaveConfigedStep(state: any) {
-    return state.existTask.haveConfigedStep;
+    return state.existProject.haveConfigedStep;
   },
   findElement(arr: any[], index: number, path: string) {
     const pathsArr = path.split('/');

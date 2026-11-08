@@ -7,22 +7,22 @@ from backend.common.websocket import ConnectionData, Message, MessageType
 from backend.dependencies.user import verify_ws_token
 
 
-class TaskSampleWsPayload(BaseModel):
-    task_id: int
+class ProjectSampleWsPayload(BaseModel):
+    project_id: int
     user_id: int
     username: str
     sample_id: int
 
 
-def get_task_sample_connection_payloads(conns: ConnectionData):
+def get_project_sample_connection_payloads(conns: ConnectionData):
     if not conns:
         return Message(type=MessageType.PEERS, data=[])
 
     return Message(
         type=MessageType.PEERS,
         data=[
-            TaskSampleWsPayload(
-                task_id=conn.data.task_id,
+            ProjectSampleWsPayload(
+                project_id=conn.data.project_id,
                 user_id=conn.data.user_id,
                 username=conn.data.username,
                 sample_id=conn.data.sample_id,
@@ -32,19 +32,19 @@ def get_task_sample_connection_payloads(conns: ConnectionData):
     )
 
 
-async def task_ws_endpoint(
-    websocket: WebSocket, task_id: int, sample_id: int, user=Depends(verify_ws_token)
+async def project_ws_endpoint(
+    websocket: WebSocket, project_id: int, sample_id: int, user=Depends(verify_ws_token)
 ):
     if not user:
         await websocket.close(code=1008, reason="Unauthorized")
         return
 
-    client_id = f"task_{task_id}"
+    client_id = f"project_{project_id}"
 
     async def sync_peers():
         connections = sampleConnectionManager.active_connections
         current_connections = connections.get(client_id, {})
-        sample_payload = get_task_sample_connection_payloads(
+        sample_payload = get_project_sample_connection_payloads(
             current_connections.values()
         )
 
@@ -62,8 +62,8 @@ async def task_ws_endpoint(
         connection = await sampleConnectionManager.connect(
             client_id,
             websocket,
-            data=TaskSampleWsPayload(
-                task_id=task_id,
+            data=ProjectSampleWsPayload(
+                project_id=project_id,
                 user_id=user.id,
                 username=user.username,
                 sample_id=sample_id,

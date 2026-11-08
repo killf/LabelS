@@ -19,8 +19,8 @@ def annotated_sample(
     client: TestClient, testuser_token_headers: dict
 ) -> tuple[int, int]:
     headers = testuser_token_headers
-    task = client.post(
-        "/api/v1/tasks",
+    project = client.post(
+        "/api/v1/projects",
         headers=headers,
         json={
             "name": "YOLO dataset",
@@ -36,7 +36,7 @@ def annotated_sample(
         ]
     }
     response = client.patch(
-        f"/api/v1/tasks/{task['id']}",
+        f"/api/v1/projects/{project['id']}",
         headers=headers,
         json={"config": json.dumps(config)},
     )
@@ -45,12 +45,12 @@ def annotated_sample(
     content = BytesIO()
     Image.new("RGB", (100, 80), "blue").save(content, format="PNG")
     attachment = client.post(
-        f"/api/v1/tasks/{task['id']}/attachments",
+        f"/api/v1/projects/{project['id']}/attachments",
         headers=headers,
         files={"file": ("sample.png", content.getvalue(), "image/png")},
     ).json()["data"]
     sample_id = client.post(
-        f"/api/v1/tasks/{task['id']}/samples",
+        f"/api/v1/projects/{project['id']}/samples",
         headers=headers,
         json=[{"file_id": attachment["id"], "data": {}}],
     ).json()["data"]["ids"][0]
@@ -63,7 +63,7 @@ def annotated_sample(
         },
     }
     response = client.patch(
-        f"/api/v1/tasks/{task['id']}/samples/{sample_id}",
+        f"/api/v1/projects/{project['id']}/samples/{sample_id}",
         headers=headers,
         json={
             "state": "DONE",
@@ -72,18 +72,18 @@ def annotated_sample(
         },
     )
     assert response.status_code == 200
-    return task["id"], sample_id
+    return project["id"], sample_id
 
 
 def _read(key: str) -> str:
-    return get_storage().read_text(f"tasks/1/{key}")
+    return get_storage().read_text(f"projects/1/{key}")
 
 
 def test_annotation_and_split_update_preserve_yolo_dataset(
     client: TestClient, testuser_token_headers: dict, annotated_sample: tuple[int, int]
 ) -> None:
-    task_id, sample_id = annotated_sample
-    path = f"/api/v1/tasks/{task_id}/samples/{sample_id}"
+    project_id, sample_id = annotated_sample
+    path = f"/api/v1/projects/{project_id}/samples/{sample_id}"
     original = client.get(path, headers=testuser_token_headers).json()["data"]
     assert _read(f"labels/{sample_id}.txt") == (
         "0 0.30000000 0.37500000 0.40000000 0.25000000\n"
@@ -91,7 +91,7 @@ def test_annotation_and_split_update_preserve_yolo_dataset(
     config = yaml.safe_load(_read("data.yaml"))
     assert config["names"] == ["Object"]
     assert config["val"] == config["test"] == "test.txt"
-    assert not get_storage().exists(f"tasks/{task_id}/val.txt")
+    assert not get_storage().exists(f"projects/{project_id}/val.txt")
 
     for split in ["test", "train"]:
         response = client.patch(
@@ -107,15 +107,15 @@ def test_annotation_and_split_update_preserve_yolo_dataset(
 def test_skipped_sample_is_removed_from_training_files(
     client: TestClient, testuser_token_headers: dict, annotated_sample: tuple[int, int]
 ) -> None:
-    task_id, sample_id = annotated_sample
+    project_id, sample_id = annotated_sample
     response = client.patch(
-        f"/api/v1/tasks/{task_id}/samples/{sample_id}",
+        f"/api/v1/projects/{project_id}/samples/{sample_id}",
         headers=testuser_token_headers,
         json={"state": "SKIPPED"},
     )
     assert response.status_code == 200
     assert _read("train.txt").strip() == ""
-    assert not get_storage().exists(f"tasks/{task_id}/labels/{sample_id}.txt")
+    assert not get_storage().exists(f"projects/{project_id}/labels/{sample_id}.txt")
 
 
 def test_sync_failure_keeps_annotation_and_can_be_retried(
@@ -124,8 +124,8 @@ def test_sync_failure_keeps_annotation_and_can_be_retried(
     annotated_sample: tuple[int, int],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    task_id, sample_id = annotated_sample
-    path = f"/api/v1/tasks/{task_id}/samples/{sample_id}"
+    project_id, sample_id = annotated_sample
+    path = f"/api/v1/projects/{project_id}/samples/{sample_id}"
     failed_client = Mock()
     failed_client.save_bytes.side_effect = OSError("test disk failure")
     with monkeypatch.context() as patch:
@@ -176,10 +176,10 @@ def test_invalid_annotation_keeps_existing_training_label(
     annotated_sample: tuple[int, int],
     box: dict,
 ):
-    task_id, sample_id = annotated_sample
+    project_id, sample_id = annotated_sample
     original = _read(f"labels/{sample_id}.txt")
     response = client.patch(
-        f"/api/v1/tasks/{task_id}/samples/{sample_id}",
+        f"/api/v1/projects/{project_id}/samples/{sample_id}",
         headers=testuser_token_headers,
         json={
             "state": "DONE",
@@ -195,9 +195,9 @@ def test_background_sample_has_an_empty_label_file(
     testuser_token_headers: dict,
     annotated_sample: tuple[int, int],
 ):
-    task_id, sample_id = annotated_sample
+    project_id, sample_id = annotated_sample
     response = client.patch(
-        f"/api/v1/tasks/{task_id}/samples/{sample_id}",
+        f"/api/v1/projects/{project_id}/samples/{sample_id}",
         headers=testuser_token_headers,
         json={
             "state": "DONE",

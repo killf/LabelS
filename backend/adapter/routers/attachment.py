@@ -16,18 +16,21 @@ from backend.application.response.base import OkResp
 from backend.application.response.base import CommonDataResp
 from backend.application.response.attachment import AttachmentResponse
 
-router = APIRouter(prefix="/tasks", tags=["attachments"])
+router = APIRouter(prefix="/projects", tags=["attachments"])
 
 
-@router.get("/{task_id}/files/{filename:path}", response_class=FileResponse)
+@router.get("/{project_id}/files/{filename:path}", response_class=FileResponse)
 async def preview(
-    task_id: int, filename: str, expires: int = Query(...), signature: str = Query(...)
+    project_id: int,
+    filename: str,
+    expires: int = Query(...),
+    signature: str = Query(...),
 ):
     """用文件限定的短时签名读取本地图片，拒绝路径越界和签名篡改。"""
     from backend.common.storage import get_storage
 
     storage = get_storage()
-    key = f"tasks/{task_id}/{filename}"
+    key = f"projects/{project_id}/{filename}"
     try:
         allowed = storage.verify_read_url(key, expires, signature)
         path = storage.path(key)
@@ -41,12 +44,12 @@ async def preview(
 
 
 @router.post(
-    "/{task_id}/attachments",
+    "/{project_id}/attachments",
     response_model=OkResp[AttachmentResponse],
     status_code=status.HTTP_201_CREATED,
 )
 async def create(
-    task_id: int,
+    project_id: int,
     file: UploadFile = File(...),
     authorization: HTTPAuthorizationCredentials = Security(security),
     db: Session = Depends(db_module.get_db),
@@ -58,7 +61,7 @@ async def create(
     # business logic
     cmd = AttachmentCommand(file=file)
     data = await service.create(
-        db=db, task_id=task_id, cmd=cmd, current_user=current_user
+        db=db, project_id=project_id, cmd=cmd, current_user=current_user
     )
 
     # response
@@ -66,24 +69,24 @@ async def create(
 
 
 @router.delete(
-    "/{task_id}/attachments",
+    "/{project_id}/attachments",
     response_model=OkResp[CommonDataResp],
     status_code=status.HTTP_200_OK,
 )
 async def delete(
-    task_id: int,
+    project_id: int,
     cmd: AttachmentDeleteCommand,
     authorization: HTTPAuthorizationCredentials = Security(security),
     db: Session = Depends(db_module.get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    delete task.
+    delete project.
     """
 
     # business logic
     data = await service.delete(
-        db=db, task_id=task_id, cmd=cmd, current_user=current_user
+        db=db, project_id=project_id, cmd=cmd, current_user=current_user
     )
 
     # response
