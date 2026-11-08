@@ -1,8 +1,8 @@
 import styled, { css } from 'styled-components';
 import type { PropsWithChildren } from 'react';
 import { useCallback, useMemo } from 'react';
-import { EllipsisText, secondsToMinute } from '@labels/components-react';
-import type { MediaAnnotationInUI, MediaAnnotationWithTextAndTag } from '@labels/interface';
+import { EllipsisText, secondsToMinute } from '@yolo-mcp/components-react';
+import type { MediaAnnotationInUI, MediaAnnotationWithTextAndTag } from '@yolo-mcp/interface';
 
 import { ReactComponent as SegmentIcon } from '../assets/icons/segment.svg';
 import { ReactComponent as FrameIcon } from '../assets/icons/frame.svg';

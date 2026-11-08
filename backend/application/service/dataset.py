@@ -1,8 +1,8 @@
-"""将项目图片与人工标注同步到本地 YOLO 数据集目录。"""
+"""在训练开始时从项目原图和数据库标注生成本次运行的 YOLO 数据集。"""
 
 import json
 from io import BytesIO
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import yaml
 from fastapi import HTTPException
@@ -10,7 +10,7 @@ from loguru import logger
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from backend.common.storage import LocalStorage, get_storage
+from backend.common.storage import get_storage
 from backend.domain.models.sample import DatasetSplit, SampleState, ProjectSample
 from backend.domain.models.project import Project
 
@@ -55,20 +55,13 @@ def _label_text(result: dict, classes: list[dict], width: int, height: int) -> s
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def _write_sample(
-    storage: LocalStorage, prefix: str, sample: ProjectSample, classes: list[dict]
-) -> None:
-    """同步一个完成样本；跳过或删除的样本移除训练副本。"""
-    image_key = f"{prefix}images/{_image_name(sample)}"
-    label_key = f"{prefix}labels/{sample.id}.txt"
-    if sample.deleted_at or sample.state != SampleState.DONE.value:
-        storage.delete(image_key)
-        storage.delete(label_key)
-        return
-
-    # 1. 原图与标注使用相同旋转方向，再按照实际图片尺寸归一化。
-    content = storage.read_bytes(sample.file.path)
-    result = json.loads(json.loads(sample.data)["result"])
+def render_sample(
+    sample: ProjectSample, classes: list[dict], data: dict | None = None
+) -> tuple[bytes, str]:
+    """读取原图和标注，返回方向一致的图片字节及 YOLO 标签，不修改原图。"""
+    content = get_storage().read_bytes(sample.file.path)
+    annotation = json.loads(sample.data) if data is None else data
+    result = json.loads(annotation["result"])
     with Image.open(BytesIO(content)) as original:
         image_format = original.format
         if result.get("rotate"):
@@ -82,60 +75,57 @@ def _write_sample(
                 image.close()
         else:
             width, height = original.size
-    label = _label_text(result, classes, width, height)
-
-    # 2. 当前样本标签校验通过后才写入本地目录，背景图片保留空标签。
-    storage.save_bytes(content, image_key)
-    storage.save_bytes(label.encode("utf-8"), label_key)
+    return content, _label_text(result, classes, width, height)
 
 
-def sync_dataset(
-    db: Session, project: Project, changed_samples: list[ProjectSample] | None = None
-) -> None:
-    """同步变更图片及训练、测试清单；YOLO 验证与测试使用同一清单。"""
-    if not project.config:
-        return
-
-    # 1. 类别和目录仅从项目取得，根目录由服务端统一提供。
+def create_run_dataset(db: Session, project: Project, directory: Path) -> None:
+    """按当前类别、标注和数据划分写入独立 run，已删除或未完成样本不进入快照。"""
+    # 1. 一次读取本次完成样本，后续项目修改不再参与该次训练。
     classes = dataset_classes(json.loads(project.config))
-    prefix = f"{project.dataset_prefix}/"
     samples = (
         db.query(ProjectSample)
         .filter(
-            ProjectSample.project_id == project.id, ProjectSample.deleted_at.is_(None)
+            ProjectSample.project_id == project.id,
+            ProjectSample.deleted_at.is_(None),
+            ProjectSample.state == SampleState.DONE.value,
         )
         .order_by(ProjectSample.id)
         .all()
     )
-    storage = get_storage()
-    try:
-        # 2. 标注变化只重写相关图片；配置变化时重写全部类别编号。
-        for sample in samples if changed_samples is None else changed_samples:
-            _write_sample(storage, prefix, sample, classes)
+    if not {"train", "test"}.issubset({sample.split for sample in samples}):
+        raise HTTPException(422, "训练集和测试集都需要至少一张已完成标注的图片")
 
-        # 3. 只维护 train.txt 和 test.txt，未完成人工确认的样本不进入清单。
-        for split in DatasetSplit:
-            lines = [
-                f"images/{_image_name(sample)}"
-                for sample in samples
-                if sample.state == SampleState.DONE.value
-                and sample.split == split.value
-            ]
-            listing = "\n".join(lines) + ("\n" if lines else "")
-            storage.save_bytes(listing.encode("utf-8"), f"{prefix}{split.value}.txt")
+    try:
+        directory.mkdir()
+        (directory / "images").mkdir()
+        (directory / "labels").mkdir()
+        listings = {split.value: [] for split in DatasetSplit}
+
+        # 2. 每张图片和标签独立写入快照，旋转仅作用于训练副本。
+        for sample in samples:
+            image, label = render_sample(sample, classes)
+            name = _image_name(sample)
+            (directory / "images" / name).write_bytes(image)
+            (directory / "labels" / f"{sample.id}.txt").write_text(
+                label, encoding="utf-8"
+            )
+            listings[sample.split].append(f"./images/{name}")
+
+        # 3. 清单只记录本次样本，路径相对于当前 run 的 dataset/。
+        for split, lines in listings.items():
+            (directory / f"{split}.txt").write_text(
+                "".join(f"{line}\n" for line in lines), encoding="utf-8"
+            )
         data = {
-            "path": ".",
+            "path": str(directory.resolve()),
             "train": "train.txt",
             "val": "test.txt",
             "test": "test.txt",
             "names": [attribute["key"] for attribute in classes],
         }
-        storage.save_bytes(
-            yaml.safe_dump(data, allow_unicode=True).encode("utf-8"),
-            f"{prefix}data.yaml",
+        (directory / "data.yaml").write_text(
+            yaml.safe_dump(data, allow_unicode=True), encoding="utf-8"
         )
     except OSError:
-        logger.error("YOLO dataset synchronization failed: project_id={}", project.id)
-        raise HTTPException(
-            500, "标注已保存，本地数据集同步失败，请重新保存重试"
-        ) from None
+        logger.error("Run dataset creation failed: project_id={}", project.id)
+        raise HTTPException(500, "训练数据集生成失败，请检查本地文件后重试") from None

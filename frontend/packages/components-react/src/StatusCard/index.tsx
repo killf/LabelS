@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as CheckSvgIcon } from './check.svg';
 
@@ -103,11 +103,11 @@ export function StatusCard({ title, active, completed, skipped, children, onClic
   const { t } = useTranslation();
 
   return (
-    <StatusCardDiv className="labels-status-card" active={active} onClick={onClick}>
-      <Inner className="labels-status-card__inner">{children}</Inner>
-      {title && <Title className="labels-status-card__title">{title}</Title>}
+    <StatusCardDiv className="yolo-mcp-status-card" active={active} onClick={onClick}>
+      <Inner className="yolo-mcp-status-card__inner">{children}</Inner>
+      {title && <Title className="yolo-mcp-status-card__title">{title}</Title>}
       {completed && <CheckIcon />}
-      {skipped && <SkipWrapper className="labels-status-card__skip">{t('skipped')}</SkipWrapper>}
+      {skipped && <SkipWrapper className="yolo-mcp-status-card__skip">{t('skipped')}</SkipWrapper>}
     </StatusCardDiv>
   );
 }

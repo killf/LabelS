@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from backend.common import db as db_module
 from backend.common.security import security
 from backend.common.error_code import ErrorCode
-from backend.common.error_code import LabelSException
+from backend.common.error_code import YoloMcpException
 from backend.domain.models.user import User
 from backend.domain.models.sample import DatasetSplit
 from backend.dependencies.user import get_current_user
@@ -62,7 +62,9 @@ async def create(
 )
 async def list_by(
     project_id: int,
-    split: DatasetSplit | None = Query(default=None, description="按训练集或测试集筛选"),
+    split: DatasetSplit | None = Query(
+        default=None, description="按训练集或测试集筛选"
+    ),
     after: Union[int, None] = Query(default=None, gt=0),
     before: Union[int, None] = Query(default=None, gt=0),
     page: Union[int, None] = Query(default=None, ge=0),
@@ -81,7 +83,7 @@ async def list_by(
     """
 
     if len([i for i in (after, before, page) if i != None]) != 1:
-        raise LabelSException(
+        raise YoloMcpException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             code=ErrorCode.CODE_55000_SAMPLE_LIST_PARAMETERS_ERROR,
         )
@@ -223,6 +225,7 @@ async def get_auto_label_job_status(
     status_code=status.HTTP_200_OK,
 )
 async def delete(
+    project_id: int,
     cmd: DeleteSampleCommand,
     authorization: HTTPAuthorizationCredentials = Security(security),
     db: Session = Depends(db_module.get_db),
@@ -234,7 +237,10 @@ async def delete(
 
     # business logic
     data = await service.delete(
-        db=db, sample_ids=cmd.sample_ids, current_user=current_user
+        db=db,
+        project_id=project_id,
+        sample_ids=cmd.sample_ids,
+        current_user=current_user,
     )
 
     # response

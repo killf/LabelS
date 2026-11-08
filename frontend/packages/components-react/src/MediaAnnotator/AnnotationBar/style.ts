@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 import { darken, rgba } from 'polished';
-import type { MediaAnnotationType } from '@labels/interface';
+import type { MediaAnnotationType } from '@yolo-mcp/interface';
 
 export const Order = styled.div``;
 

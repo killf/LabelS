@@ -1,7 +1,7 @@
 {
-  "name": "@labels/components-react",
+  "name": "@yolo-mcp/components-react",
   "version": "1.8.3",
-  "description": "basic react components for LabelS",
+  "description": "basic react components for YOLO MCP",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "types": "./src/index.ts",
@@ -29,7 +29,7 @@
     "react"
   ],
   "dependencies": {
-    "@labels/i18n": "workspace:*",
+    "@yolo-mcp/i18n": "workspace:*",
     "polished": "^4.2.2",
     "rc-collapse": "^3.7.1",
     "rc-dialog": "^9.2.0",
@@ -42,7 +42,7 @@
     "styled-components": "^6.1.15"
   },
   "devDependencies": {
-    "@labels/interface": "workspace:*",
+    "@yolo-mcp/interface": "workspace:*",
     "@types/react": "^18.2.2",
     "@vitejs/plugin-react": "^3.1.0",
     "npm-run-all": "^4.1.5",

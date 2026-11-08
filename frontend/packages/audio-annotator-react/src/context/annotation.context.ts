@@ -7,7 +7,7 @@ import type {
   MediaAnnotationType,
   MediaAnnotationData,
   MediaAnnotationWithTextAndTag,
-} from '@labels/interface';
+} from '@yolo-mcp/interface';
 import { createContext, useContext } from 'react';
 
 export type GlobalAnnotation = TextAnnotationEntity | TagAnnotationEntity;

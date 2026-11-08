@@ -1,8 +1,8 @@
 import React from 'react';
 import { useState } from 'react';
 
-import { AudioAnnotator, type AudioAnnotatorProps } from '@labels/audio-react';
-import type { AudioAnnotationType, MediaAnnotationInUI } from '@labels/interface';
+import { AudioAnnotator, type AudioAnnotatorProps } from '@yolo-mcp/audio-react';
+import type { AudioAnnotationType, MediaAnnotationInUI } from '@yolo-mcp/interface';
 
 const mockData: any[] = [
   {

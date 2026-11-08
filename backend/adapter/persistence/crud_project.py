@@ -17,16 +17,15 @@ def create(db: Session, project: Project) -> Project:
 
 
 def list_by(
-    db: Session, owner_id: int, page: int = 0, size: int = 100
+    db: Session, owner_id: int | None, page: int = 0, size: int = 100
 ) -> Tuple[List[Project], int]:
     collaborator_exists = exists().where(
         ProjectCollaborator.project_id == Project.id,
         ProjectCollaborator.user_id == owner_id,
     )
-    query = db.query(Project).filter(
-        Project.deleted_at == None,
-        or_(Project.created_by == owner_id, collaborator_exists),
-    )
+    query = db.query(Project).filter(Project.deleted_at.is_(None))
+    if owner_id is not None:
+        query = query.filter(or_(Project.created_by == owner_id, collaborator_exists))
     total = query.count()
 
     return (

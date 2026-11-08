@@ -1,6 +1,6 @@
-# `@labels/formatter`
+# `@yolo-mcp/formatter`
 
-> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
+> 本目录属于 YOLO MCP 本地工作区，`@yolo-mcp/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
 
 A formatter set for sinan.
 
@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --ignore-scripts
 ## basename
 
 ```typescript
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 
 formatter.format('basename', 'foo/bar/baz/asdf/quux.html');
 // => 'quux.html'
@@ -26,7 +26,7 @@ formatter.format('basename', 'foo/bar/baz/asdf/quux.html');
 > See more options in [filesize.js](https://github.com/avoidwork/filesize.js).
 
 ```typescript
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 
 formatter.format('fileSize', 265318);
 // => '259.1 KB'
@@ -37,7 +37,7 @@ formatter.format('fileSize', 265318);
 > See more options in [dayjs](https://github.com/iamkun/dayjs).
 
 ```typescript
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 
 formatter.format('date', 1670916924956, {
   style: 'YYYY-MM-DD HH:mm',
@@ -48,7 +48,7 @@ formatter.format('date', 1670916924956, {
 ## extension
 
 ```typescript
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 
 formatter.format('extension', 'foo/bar/baz/asdf/quux.html');
 // => 'html'
@@ -57,7 +57,7 @@ formatter.format('extension', 'foo/bar/baz/asdf/quux.html');
 ### Add Your Own Formatter
 
 ```typescript
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 
 formatter.add('foo', (value: string) => {
   return value + 'foo';

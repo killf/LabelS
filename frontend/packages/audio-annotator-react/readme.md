@@ -1,6 +1,6 @@
-# @labels/audio-annotator-react
+# @yolo-mcp/audio-annotator-react
 
-> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
+> 本目录属于 YOLO MCP 本地工作区，`@yolo-mcp/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
 
 ![音频标注套件](./source/SCR-20231030-qcvf.png)
 
@@ -33,10 +33,10 @@ pnpm install --frozen-lockfile --ignore-scripts
 
 ### 首先
 
-你需要引入样式文件（这个样式文件主要包含 在 `@labels/components-react` 中使用到的 [`rc-components`](http://react-component.github.io/badgeboard/) 的样式）：
+你需要引入样式文件（这个样式文件主要包含 在 `@yolo-mcp/components-react` 中使用到的 [`rc-components`](http://react-component.github.io/badgeboard/) 的样式）：
 
 ```tsx
-import '@labels/audio-annotator-react/dist/style.css';
+import '@yolo-mcp/audio-annotator-react/dist/style.css';
 ```
 
 ### 然后
@@ -44,7 +44,7 @@ import '@labels/audio-annotator-react/dist/style.css';
 你需要引入组件：
 
 ```tsx
-import { Annotator } from '@labels/audio-annotator-react';
+import { Annotator } from '@yolo-mcp/audio-annotator-react';
 ```
 
 ### 最后
@@ -55,8 +55,8 @@ import { Annotator } from '@labels/audio-annotator-react';
 import React from 'react';
 import { useState } from 'react';
 
-import { Annotator } from '@labels/audio-annotator-react';
-import '@labels/audio-annotator-react/dist/style.css';
+import { Annotator } from '@yolo-mcp/audio-annotator-react';
+import '@yolo-mcp/audio-annotator-react/dist/style.css';
 
 const samples = [
   {
@@ -174,8 +174,8 @@ export default function App() {
 import React from 'react';
 import { useState } from 'react';
 
-import { Annotator } from '@labels/audio-annotator-react';
-import '@labels/audio-annotator-react/dist/style.css';
+import { Annotator } from '@yolo-mcp/audio-annotator-react';
+import '@yolo-mcp/audio-annotator-react/dist/style.css';
 
 export default function App() {
   const [samples, setSamples] = useState([

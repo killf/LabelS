@@ -109,7 +109,7 @@ export default function Sidebar({ renderSidebar }: SidebarProps) {
   }
 
   return (
-    <Wrapper collapsed={collapsed} className="labels-image__sidebar">
+    <Wrapper collapsed={collapsed} className="yolo-mcp-image__sidebar">
       {sidebar || (
         <Cards>
           {samples.map((sample, index) => {

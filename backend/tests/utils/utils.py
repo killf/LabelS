@@ -15,6 +15,6 @@ def random_username() -> str:
 def empty_project_upload(project_id: int, input_filename: str) -> str:
     from backend.common.storage import get_storage
 
-    key = f"projects/{project_id}/uploads/{input_filename}"
+    key = f"projects/{project_id}/images/{input_filename}"
     get_storage().delete(key)
     return key

@@ -2,7 +2,7 @@ import styled, { css } from 'styled-components';
 import type { CollapseProps } from 'rc-collapse';
 import Collapse from 'rc-collapse';
 import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as ArrowDown } from './arrow-down.svg';
 import { ReactComponent as ArrowRight } from './arrow-right.svg';
@@ -13,7 +13,7 @@ const Wrapper = styled.div`
   padding: 0.75rem;
 `;
 
-const prefixCls = 'labels-hotkey-panel';
+const prefixCls = 'yolo-mcp-hotkey-panel';
 
 const commonCss = css`
   width: 0;

@@ -14,6 +14,7 @@ security = HTTPBearer()
 class AccessToken(BaseModel):
     id: int
     username: str
+    auth_version: int = 0
     exp: Union[datetime, None] = None
 
 
@@ -40,8 +41,8 @@ def create_access_token(
 
     # generate jwt token
     encoded_jwt = jwt.encode(
-        token.dict(),
-        settings.PASSWORD_SECRET_KEY,
+        token.model_dump(),
+        settings.secret_key,
         algorithm=settings.TOKEN_GENERATE_ALGORITHM,
     )
 

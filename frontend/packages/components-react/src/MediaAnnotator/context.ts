@@ -4,7 +4,7 @@ import type {
   VideoSegmentName,
   MediaAnnotationInUI,
   AttributeOption,
-} from '@labels/interface';
+} from '@yolo-mcp/interface';
 import { createContext, useContext } from 'react';
 
 export interface MediaAnnotationContextType {

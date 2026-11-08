@@ -9,8 +9,8 @@ import React, {
   useState,
 } from 'react';
 import styled from 'styled-components';
-import type { PlayerControllerRef } from '@labels/components-react';
-import { PlayerController, VIDEO_PLAYBACK_RATE_SPEED } from '@labels/components-react';
+import type { PlayerControllerRef } from '@yolo-mcp/components-react';
+import { PlayerController, VIDEO_PLAYBACK_RATE_SPEED } from '@yolo-mcp/components-react';
 
 import './video-js.css';
 import invalidVideoIcon from './icons/video-error.svg';

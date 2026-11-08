@@ -23,11 +23,10 @@ async def list_by(
     current_user: User,
 ) -> Tuple[List[PreAnnotationResponse], int]:
 
-    if project_id is not None:
-        project = crud_project.get(db=db, project_id=project_id)
-        if project is None:
-            raise HTTPException(404, "标注项目不存在")
-        assert_project_access(project, current_user)
+    project = crud_project.get(db=db, project_id=project_id)
+    if project is None:
+        raise HTTPException(404, "标注项目不存在")
+    assert_project_access(project, current_user)
 
     pre_annotations, total = crud_pre_annotation.list_by(
         db=db,
@@ -44,7 +43,7 @@ async def list_by(
         PreAnnotationResponse(
             id=pre_annotation.id,
             data=pre_annotation.data,
-            file=build_attachment_response(pre_annotation.file),
+            file=build_attachment_response(pre_annotation.file, current_user),
             created_at=pre_annotation.created_at,
             created_by=UserResp(
                 id=pre_annotation.owner.id,

@@ -1,9 +1,9 @@
 import React, { createRef, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import type { DraggableModalRef, ValidationContextType } from '@labels/components-react';
-import { DraggableModel, AttributeForm, EllipsisText, FlexLayout, Kbd, getOS } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
-import type { Attribute } from '@labels/interface';
+import type { DraggableModalRef, ValidationContextType } from '@yolo-mcp/components-react';
+import { DraggableModel, AttributeForm, EllipsisText, FlexLayout, Kbd, getOS } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
+import type { Attribute } from '@yolo-mcp/interface';
 
 import { ReactComponent as MenuOpenIcon } from '../assets/icons/menu-open.svg';
 import { ReactComponent as MenuCloseIcon } from '../assets/icons/menu-close.svg';

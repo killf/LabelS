@@ -1,5 +1,5 @@
-import type { AnnotatorOptions } from '@labels/image';
-import { Annotator } from '@labels/image';
+import type { AnnotatorOptions } from '@yolo-mcp/image';
+import { Annotator } from '@yolo-mcp/image';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ResizeObserver from 'resize-observer-polyfill';
 

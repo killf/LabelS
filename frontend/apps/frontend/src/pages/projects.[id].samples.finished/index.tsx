@@ -2,8 +2,8 @@ import { CheckOutlined } from '@ant-design/icons';
 import { useNavigate, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Button } from 'antd';
 import styled from 'styled-components';
-import { useTranslation } from '@labels/i18n';
-import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import type { ProjectLoaderResult } from '@/loaders/project.loader';
 

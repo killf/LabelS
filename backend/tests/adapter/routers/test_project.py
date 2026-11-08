@@ -443,7 +443,7 @@ class TestClassProjectRouter:
         )
         project_id = project_response.json()["data"]["id"]
 
-        # run - 尝试添加当前用户为协作者（即使它已经是协作者）
+        # 拥有者已经有完整权限，不应再作为协作者重复保存。
         r = client.post(
             f"{settings.API_V1_STR}/projects/{project_id}/collaborators",
             headers=testuser_token_headers,
@@ -452,8 +452,8 @@ class TestClassProjectRouter:
 
         # check
         json = r.json()
-        assert r.status_code == 201
-        assert json["data"]["id"] == current_user.id
+        assert r.status_code == 400
+        assert json["err_code"] == 50003
 
     def test_project_batch_add_collaborators(
         self, client: TestClient, testuser_token_headers: dict, db: Session

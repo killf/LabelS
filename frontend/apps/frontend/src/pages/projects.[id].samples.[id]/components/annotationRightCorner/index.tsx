@@ -3,10 +3,10 @@ import { useNavigate, useParams, useRevalidator, useRouteLoaderData, useSearchPa
 import { Button, Tooltip } from 'antd';
 import _, { debounce } from 'lodash-es';
 import { set } from 'lodash/fp';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 
 import { ReactComponent as SparklesIcon } from '@/assets/svg/spark.svg';

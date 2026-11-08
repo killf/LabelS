@@ -3,7 +3,7 @@
 # 1. 固定包管理器，依赖清单先于源码复制，避免源码改动使安装层失效。
 FROM node:24-bookworm-slim AS frontend
 
-WORKDIR /labels/frontend
+WORKDIR /yolo-mcp/frontend
 
 RUN npm install --global pnpm@12.3.4 --registry=https://registry.npmmirror.com
 
@@ -28,11 +28,11 @@ RUN --mount=type=cache,id=labels-pnpm,target=/pnpm/store \
 # 2. 源码变化只重新执行本地包构建与前端打包。
 COPY frontend/ ./
 
-RUN pnpm --filter @labels/frontend run postinstall \
+RUN pnpm --filter @yolo-mcp/frontend run postinstall \
     && pnpm build:frontend
 
 # 3. 同一运行镜像提供标注服务和训练，GPU 框架复用基础镜像。
-FROM datafactory-cn-beijing.cr.volces.com/common/ultralytics
+FROM ultralytics/ultralytics
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -63,11 +63,10 @@ COPY backend/ ./
 RUN --mount=type=cache,id=labels-uv,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-COPY --from=frontend /labels/frontend/apps/frontend/dist/ ./statics/
+COPY --from=frontend /yolo-mcp/frontend/apps/frontend/dist/ ./statics/
 
 ENV PATH="/app/backend/.venv/bin:$PATH" \
-    BASE_DATA_DIR="/data" \
-    DATABASE_URL="sqlite:////data/labels.sqlite"
+    DATA_DIR="/data"
 
 EXPOSE 8000
 

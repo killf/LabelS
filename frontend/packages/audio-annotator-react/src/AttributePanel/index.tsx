@@ -8,7 +8,7 @@ import {
   uid,
   FlexLayout,
   Tooltip,
-} from '@labels/components-react';
+} from '@yolo-mcp/components-react';
 import type {
   EnumerableAttribute,
   GlobalAnnotationType,
@@ -16,8 +16,8 @@ import type {
   TagAnnotationEntity,
   TextAnnotationEntity,
   TextAttribute,
-} from '@labels/interface';
-import { useTranslation } from '@labels/i18n';
+} from '@yolo-mcp/interface';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';
 import { useTool } from '../context/tool.context';

@@ -1,4 +1,4 @@
-# LabelS 前端开发
+# YOLO MCP 前端开发
 
 项目说明和参考项目见[根 README](../README.md)，工作区启动与构建命令见[前端 README](./README.md)。
 
@@ -6,7 +6,7 @@
 
 - `apps/frontend`：管理、数据源、项目与标注页面。
 - `apps/website`：组件示例页面。
-- `packages/*`：`@labels/*` 标注引擎、React 组件、共享类型及语言包。
+- `packages/*`：`@yolo-mcp/*` 标注引擎、React 组件、共享类型及语言包。
 
 内部包通过 `workspace:*` 引用本地源码，不发布到 npm。示例子目录通过 `file:` 引用本地包。修改包名时同步更新导入、脚本和锁文件。
 

@@ -1,30 +1,30 @@
-# LabelS Frontend workspace
+# YOLO MCP Frontend workspace
 
-![LabelS](./images/labels-logo.svg)
+![YOLO MCP](./images/yolo-mcp-logo.svg)
 
-LabelS management pages, annotation components and examples. See the [root README](../README.md#参考项目) for upstream projects and licenses.
+YOLO MCP management pages, annotation components and examples. See the [root README](../README.md#致谢) for upstream projects and licenses.
 
-`@labels/*` packages are local to this repository, linked with `workspace:*`. They are not published on npm. Development and production builds use workspace sources.
+`@yolo-mcp/*` packages are local to this repository, linked with `workspace:*`. They are not published on npm. Development and production builds use workspace sources.
 
 ```bash
 pnpm --config.strictDepBuilds=false install --frozen-lockfile --ignore-scripts
-pnpm --filter @labels/frontend run postinstall
-pnpm --filter @labels/frontend start --host 127.0.0.1
+pnpm --filter @yolo-mcp/frontend run postinstall
+pnpm --filter @yolo-mcp/frontend start --host 127.0.0.1
 # Production build
 pnpm build:frontend
 ```
 
 | Package | Description |
 | --- | --- |
-| [@labels/image](./packages/image) | Image annotation engine |
-| [@labels/i18n](./packages/i18n) | Internationalization |
-| [@labels/interface](./packages/interface) | Shared types |
-| [@labels/formatter](./packages/formatter) | Data formatters |
-| [@labels/components-react](./packages/components-react) | Shared React components |
-| [@labels/image-annotator-react](./packages/image-annotator-react) | Image annotator |
-| [@labels/audio-react](./packages/audio-react) | Audio components |
-| [@labels/audio-annotator-react](./packages/audio-annotator-react) | Audio annotator |
-| [@labels/video-react](./packages/video-react) | Video components |
-| [@labels/video-annotator-react](./packages/video-annotator-react) | Video annotator |
+| [@yolo-mcp/image](./packages/image) | Image annotation engine |
+| [@yolo-mcp/i18n](./packages/i18n) | Internationalization |
+| [@yolo-mcp/interface](./packages/interface) | Shared types |
+| [@yolo-mcp/formatter](./packages/formatter) | Data formatters |
+| [@yolo-mcp/components-react](./packages/components-react) | Shared React components |
+| [@yolo-mcp/image-annotator-react](./packages/image-annotator-react) | Image annotator |
+| [@yolo-mcp/audio-react](./packages/audio-react) | Audio components |
+| [@yolo-mcp/audio-annotator-react](./packages/audio-annotator-react) | Audio annotator |
+| [@yolo-mcp/video-react](./packages/video-react) | Video components |
+| [@yolo-mcp/video-annotator-react](./packages/video-annotator-react) | Video annotator |
 
 Apache-2.0. See [LICENSE](./LICENSE).

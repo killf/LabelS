@@ -1,4 +1,4 @@
-"""创建 LabelS 2.0.0 的完整初始表结构、索引和外键。"""
+"""创建 YOLO MCP 2.0.0 的完整初始表结构、索引和外键。"""
 
 from alembic import op
 import sqlalchemy as sa
@@ -18,6 +18,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("username", sa.String(length=50), nullable=True),
         sa.Column("hashed_password", sa.String(length=255), nullable=True),
+        sa.Column("is_admin", sa.Boolean(), server_default="0", nullable=False),
+        sa.Column("is_active", sa.Boolean(), server_default="1", nullable=False),
+        sa.Column("auth_version", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -34,6 +37,22 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_user_id"), "user", ["id"], unique=False)
     op.create_index(op.f("ix_user_username"), "user", ["username"], unique=True)
+
+    op.create_table(
+        "access_token",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(64), nullable=False),
+        sa.Column("token_hash", sa.String(64), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(), nullable=True),
+        sa.Column("last_used_at", sa.DateTime(), nullable=True),
+        sa.Column("revoked_at", sa.DateTime(), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(["user_id"], ["user.id"]),
+        sa.UniqueConstraint("token_hash"),
+    )
+    op.create_index("ix_access_token_user_id", "access_token", ["user_id"])
 
     # 2. 创建项目与数据集配置表及其索引。
     op.create_table(
@@ -613,5 +632,8 @@ def downgrade() -> None:
 
     op.drop_index(op.f("ix_user_username"), table_name="user")
     op.drop_index(op.f("ix_user_id"), table_name="user")
+
+    op.drop_index("ix_access_token_user_id", table_name="access_token")
+    op.drop_table("access_token")
 
     op.drop_table("user")

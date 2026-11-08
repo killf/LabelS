@@ -1,5 +1,5 @@
 import Color from 'color';
-import type { ILabel } from '@labels/interface';
+import type { ILabel } from '@yolo-mcp/interface';
 
 import uid from '../utils/uid';
 import { DomPortal } from '../core/DomPortal';

@@ -26,7 +26,11 @@ export default defineConfig({
         target: 'ws://127.0.0.1:8002',
         ws: true,
         changeOrigin: true,
-      }
+      },
+      '/mcp': {
+        target: 'http://127.0.0.1:8002',
+        changeOrigin: true,
+      },
     },
   },
 

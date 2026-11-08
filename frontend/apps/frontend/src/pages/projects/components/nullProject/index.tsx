@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from 'antd';
-import { useTranslation } from '@labels/i18n';
-import { FlexLayout } from '@labels/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import { ReactComponent as CreateProjectIcon } from '@/assets/svg/create-project.svg';
 

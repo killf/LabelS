@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'LabelSI18n',
+      name: 'YoloMcpI18n',
       formats: ['es', 'umd'],
       fileName: 'index',
     },

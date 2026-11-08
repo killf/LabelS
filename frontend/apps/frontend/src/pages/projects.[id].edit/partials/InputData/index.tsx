@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import { Button, Popconfirm, Table, Tag } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/lib/upload/interface';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import { useRevalidator } from 'react-router';
 
 import NativeUpload from '@/components/NativeUpload';

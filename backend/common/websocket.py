@@ -1,6 +1,6 @@
 from enum import Enum
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict
 import uuid
 from fastapi import WebSocket
 from loguru import logger
@@ -43,6 +43,20 @@ class ConnectionData:
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, Dict[str, ConnectionData]] = {}
+
+    async def close_user_connections(self, user_id: int, project_id: int | None = None):
+        """撤权后关闭匹配用户的连接；可限定项目，不影响其他用户。"""
+        for client_id, connections in list(self.active_connections.items()):
+            for connection in list(connections.values()):
+                if connection.data.user_id != user_id:
+                    continue
+                if project_id is not None and connection.data.project_id != project_id:
+                    continue
+                await self.disconnect(client_id, connection.ws)
+                try:
+                    await connection.ws.close(code=4003, reason="Permission changed")
+                except RuntimeError:
+                    pass
 
     def _get_connection(
         self, client_id: str, connection_id: uuid.UUID
@@ -134,8 +148,8 @@ class ConnectionManager:
         if not conn_id:
             if client_id in self.active_connections:
                 for connection in self.active_connections[client_id].values():
-                    await connection.ws.send_json(message.dict())
+                    await connection.ws.send_json(message.model_dump())
         else:
             connection = self._get_connection(client_id, conn_id)
             if connection:
-                await connection.ws.send_json(message.dict())
+                await connection.ws.send_json(message.model_dump())

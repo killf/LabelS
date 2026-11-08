@@ -1,8 +1,8 @@
-import { Toolbar, Tooltip, HotkeyPanel } from '@labels/components-react';
+import { Toolbar, Tooltip, HotkeyPanel } from '@yolo-mcp/components-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import styled from 'styled-components';
-import { useTranslation } from '@labels/i18n';
-import type { ToolName } from '@labels/image';
+import { useTranslation } from '@yolo-mcp/i18n';
+import type { ToolName } from '@yolo-mcp/image';
 import { useCallback, useMemo } from 'react';
 
 import { ReactComponent as PointIcon } from '../assets/tools/point.svg';

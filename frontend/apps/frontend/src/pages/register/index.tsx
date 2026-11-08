@@ -2,8 +2,8 @@ import { Form, Input } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import _ from 'lodash';
 import { useMutation } from '@tanstack/react-query';
-import { FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import { FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { signUp } from '@/api/services/user';
 import { ReactComponent as EmailIcon } from '@/assets/svg/email.svg';
@@ -52,7 +52,7 @@ const SignUpPage = () => {
       <FormWrapper gap=".5rem" flex="column">
         <Form form={form} onFinish={register}>
           <FlexLayout flex="column">
-            <h1>{t('signUp')}</h1>
+            <h1>初始化管理员</h1>
             <Form.Item
               name="username"
               rules={[
@@ -108,7 +108,7 @@ const SignUpPage = () => {
 
             <Form.Item>
               <ButtonWrapper block type="primary" onClick={handleSubmit} loading={signUpMutation.isPending}>
-                {t('signUp')}
+                初始化管理员
               </ButtonWrapper>
             </Form.Item>
           </FlexLayout>

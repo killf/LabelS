@@ -36,7 +36,7 @@ export interface StyledVideoProps {
   onMouseLeave?: (e: React.MouseEvent) => void;
 }
 
-const videoClassName = 'labels-video-card';
+const videoClassName = 'yolo-mcp-video-card';
 
 const VideoWrapper = styled.div`
   padding: 0 1rem;

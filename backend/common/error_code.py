@@ -109,7 +109,8 @@ class ErrorCode(Enum):
     # project sample error code
     CODE_55000_SAMPLE_LIST_PARAMETERS_ERROR = (
         PROJECT_INIT_CODE + 5000,
-        "Paramenters error: 'after', 'before', 'page' only one must be Ture, page can be 0",
+        "Paramenters error: 'after', 'before', 'page' only one must be Ture, "
+        "page can be 0",
     )
 
     CODE_55001_SAMPLE_NOT_FOUND = (PROJECT_INIT_CODE + 5001, "Sample not found")
@@ -126,7 +127,7 @@ class ErrorCode(Enum):
 
     CODE_56000_AUTO_LABEL_DISABLED = (
         PROJECT_INIT_CODE + 6000,
-        "AI annotation is not enabled. Set AI_AUTO_LABEL_ENABLED=true to activate",
+        "AI annotation is not enabled. Set USE_AUTO_LABEL=true to activate",
     )
 
     CODE_56001_AUTO_LABEL_UNSUPPORTED_MEDIA = (
@@ -177,7 +178,7 @@ def _request_context(request: Request) -> str:
     return f"{method} {path}"
 
 
-class LabelSException(HTTPException):
+class YoloMcpException(HTTPException):
     def __init__(
         self,
         code: ErrorCode,
@@ -189,7 +190,7 @@ class LabelSException(HTTPException):
         super().__init__(status_code=status_code, detail=self.msg)
 
 
-async def labels_exception_handler(request: Request, exc: LabelSException):
+async def yolo_mcp_exception_handler(request: Request, exc: YoloMcpException):
     logger.warning("{} - {}", _request_context(request), exc)
     return JSONResponse(
         status_code=exc.status_code,
@@ -244,13 +245,18 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 
 # for http request
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.warning("{} - validation error: {}", _request_context(request), exc.errors())
+    # 校验错误可能携带密码或令牌原文，日志与响应均只返回字段和错误原因。
+    errors = [
+        {key: value for key, value in error.items() if key != "input"}
+        for error in exc.errors()
+    ]
+    logger.warning("{} - validation error: {}", _request_context(request), errors)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "msg": ErrorCode.CODE_30002_VALIDATION_ERROR.value[1],
             "err_code": ErrorCode.CODE_30002_VALIDATION_ERROR.value[0],
-            "errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str}),
+            "errors": jsonable_encoder(errors, custom_encoder={Exception: str}),
         },
     )
 
@@ -270,7 +276,7 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
 
 def add_exception_handler(app: FastAPI):
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(LabelSException, labels_exception_handler)
+    app.add_exception_handler(YoloMcpException, yolo_mcp_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
     app.add_exception_handler(Exception, unexpected_exception_handler)

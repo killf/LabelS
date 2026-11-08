@@ -1,4 +1,4 @@
-import formatter from '@labels/formatter';
+import formatter from '@yolo-mcp/formatter';
 import { Popover, Tooltip } from 'antd';
 import type { TooltipPropsWithTitle } from 'antd/lib/tooltip';
 import React from 'react';
@@ -17,7 +17,7 @@ declare global {
     __backend: {
       version: string;
       build_time: string;
-      name: 'labels';
+      name: 'yolo-mcp';
       commit: string;
     };
     __frontend: {

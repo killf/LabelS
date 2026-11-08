@@ -1,4 +1,4 @@
-import { i18n } from '@labels/i18n';
+import { i18n } from '@yolo-mcp/i18n';
 
 import { MediaType } from '@/api/types';
 

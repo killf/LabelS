@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from backend.common.db import begin_transaction
 from backend.common.error_code import ErrorCode
-from backend.common.error_code import LabelSException
+from backend.common.error_code import YoloMcpException
 from backend.common.storage import (
     build_thumbnail_key,
     get_storage,
 )
-from backend.application.service.access import assert_project_access
+from backend.application.service.access import assert_project_access, assert_owner
 from backend.adapter.persistence import (
     crud_attachment,
     crud_pre_annotation,
@@ -30,7 +30,7 @@ from backend.application.response.base import UserResp
 from backend.application.response.base import CommonDataResp
 from backend.application.response.sample import CreateSampleResponse
 from backend.application.response.sample import SampleResponse
-from backend.application.service.dataset import sync_dataset
+from backend.application.service.dataset import dataset_classes, render_sample
 from backend.application.service.attachment import build_attachment_response
 from backend.clients.ws import sampleConnectionManager
 from backend.common.websocket import Message, MessageType
@@ -72,12 +72,20 @@ async def create(
         project = crud_project.get(db=db, project_id=project_id, lock=True)
         if not project:
             logger.error("cannot find project:{}", project_id)
-            raise LabelSException(
+            raise YoloMcpException(
                 code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
         assert_project_access(project, current_user)
+
+        attachments = crud_attachment.get_by_ids(db, [sample.file_id for sample in cmd])
+        if len({attachment.id for attachment in attachments}) != len(
+            {sample.file_id for sample in cmd}
+        ) or any(attachment.project_id != project_id for attachment in attachments):
+            raise YoloMcpException(
+                code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
+            )
 
         samples = [
             ProjectSample(
@@ -104,7 +112,9 @@ async def create(
     return CreateSampleResponse(ids=ids)
 
 
-def _sample_response(db: Session, sample: ProjectSample) -> SampleResponse:
+def _sample_response(
+    db: Session, sample: ProjectSample, current_user: User
+) -> SampleResponse:
     """从样本及关联用户构造统一响应，并签发附件预览地址。"""
     return SampleResponse(
         id=sample.id,
@@ -118,7 +128,7 @@ def _sample_response(db: Session, sample: ProjectSample) -> SampleResponse:
             sample_id=sample.id,
             sample_name=sample.file.filename if sample.file else None,
         ),
-        file=build_attachment_response(sample.file),
+        file=build_attachment_response(sample.file, current_user),
         annotated_count=sample.annotated_count,
         created_at=sample.created_at,
         created_by=UserResp(
@@ -147,10 +157,12 @@ async def list_by(
     current_user: User,
     split: DatasetSplit | None = None,
 ) -> Tuple[List[SampleResponse], int]:
-    if project_id is not None:
-        project = crud_project.get(db=db, project_id=project_id)
-        if project is not None:
-            assert_project_access(project, current_user)
+    project = crud_project.get(db=db, project_id=project_id)
+    if project is None:
+        raise YoloMcpException(
+            code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND, status_code=404
+        )
+    assert_project_access(project, current_user)
     samples = crud_sample.list_by(
         db=db,
         project_id=project_id,
@@ -169,7 +181,7 @@ async def list_by(
     )
 
     # response
-    return [_sample_response(db, sample) for sample in samples], total
+    return [_sample_response(db, sample, current_user) for sample in samples], total
 
 
 async def get(
@@ -182,17 +194,20 @@ async def get(
 
     if not sample or sample.project_id != project_id:
         logger.error("cannot find sample:{}", sample_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_55001_SAMPLE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
     project = crud_project.get(db=db, project_id=sample.project_id)
-    if project is not None:
-        assert_project_access(project, current_user)
+    if project is None:
+        raise YoloMcpException(
+            code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND, status_code=404
+        )
+    assert_project_access(project, current_user)
 
     # response
-    return _sample_response(db, sample)
+    return _sample_response(db, sample, current_user)
 
 
 async def patch(
@@ -202,12 +217,12 @@ async def patch(
     cmd: PatchSampleCommand,
     current_user: User,
 ) -> SampleResponse:
-    """保存样本标注或划分，同步 YOLO 数据集，成功后通知项目客户端。"""
+    """校验并保存样本标注或划分，成功后通知项目客户端；不生成训练文件。"""
     # 1. 验证项目访问权及样本归属。
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -218,7 +233,7 @@ async def patch(
     sample = crud_sample.get(db=db, sample_id=sample_id)
     if not sample or sample.project_id != project_id:
         logger.error("cannot find sample:{}", sample_id)
-        raise LabelSException(
+        raise YoloMcpException(
             code=ErrorCode.CODE_55001_SAMPLE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
         )
@@ -244,7 +259,14 @@ async def patch(
                 else SampleState.DONE.value
             )
 
-    # 3. SQLite 保留可编辑标注，本地目录保存训练端直接使用的数据集。
+    # 3. 完成标注先校验类别与框；只更新数据库，训练文件在开始训练时生成。
+    if (
+        annotation_changed
+        and project.config
+        and sample_obj_in.get(ProjectSample.state.key) == SampleState.DONE.value
+    ):
+        render_sample(sample, dataset_classes(json.loads(project.config)), cmd.data)
+
     with begin_transaction(db):
         if annotation_changed and current_user not in sample.updaters:
             sample.updaters.append(current_user)
@@ -271,9 +293,7 @@ async def patch(
                 },
             )
 
-    sync_dataset(db, project, [updated_sample] if annotation_changed else [])
-
-    # 4. 同步成功后通知其他客户端刷新。
+    # 4. 保存成功后通知其他客户端刷新。
     await sampleConnectionManager.send_message(
         client_id=f"project_{project_id}",
         message=Message(
@@ -288,24 +308,33 @@ async def patch(
     )
 
     # response
-    return _sample_response(db, updated_sample)
+    return _sample_response(db, updated_sample, current_user)
 
 
 async def delete(
-    db: Session, sample_ids: List[int], current_user: User
+    db: Session, project_id: int, sample_ids: List[int], current_user: User
 ) -> CommonDataResp:
     storage = get_storage()
 
     with begin_transaction(db):
-        # delete media
+        # 1. 路径项目与所有样本必须一致，校验通过后才删除文件。
+        project = crud_project.get(db=db, project_id=project_id)
+        if project is None:
+            raise YoloMcpException(
+                code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND, status_code=404
+            )
+        assert_owner(project, current_user)
         samples = crud_sample.get_by_ids(db=db, sample_ids=sample_ids)
-        # authorize: caller must have access to every sample's project
-        for project_id in {sample.project_id for sample in samples}:
-            project = crud_project.get(db=db, project_id=project_id)
-            if project is not None:
-                assert_project_access(project, current_user)
+        if any(sample.project_id != project_id for sample in samples):
+            raise YoloMcpException(
+                code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
+            )
         attachment_ids = [sample.file_id for sample in samples if sample.file_id]
         attachments = crud_attachment.get_by_ids(db=db, attachment_ids=attachment_ids)
+        if any(attachment.project_id != project_id for attachment in attachments):
+            raise YoloMcpException(
+                code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
+            )
         for attachment in attachments:
             storage.delete(attachment.path)
             thumbnail_key = build_thumbnail_key(attachment.path)
@@ -313,14 +342,6 @@ async def delete(
                 storage.delete(thumbnail_key)
 
         crud_sample.delete(db=db, sample_ids=sample_ids)
-
-    for project_id in {sample.project_id for sample in samples}:
-        project = crud_project.get(db=db, project_id=project_id)
-        sync_dataset(
-            db,
-            project,
-            [sample for sample in samples if sample.project_id == project_id],
-        )
 
     # response
     return CommonDataResp(ok=True)

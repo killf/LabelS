@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import styled, { css } from 'styled-components';
-import { useSample } from '@labels/audio-annotator-react';
-import { VideoCard } from '@labels/components-react';
+import { useSample } from '@yolo-mcp/audio-annotator-react';
+import { VideoCard } from '@yolo-mcp/components-react';
 
 import { ReactComponent as ExpandIcon } from '../assets/icons/arrow.svg';
 
@@ -17,7 +17,7 @@ const Cards = styled.div`
 
 const Wrapper = styled.div.attrs<{ collapsed: boolean }>((props) => ({
   ...props,
-  className: 'labels-video__sidebar',
+  className: 'yolo-mcp-video__sidebar',
 }))`
   position: relative;
   background-color: #fff;

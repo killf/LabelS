@@ -1,7 +1,7 @@
 {
-  "name": "@labels/image",
+  "name": "@yolo-mcp/image",
   "version": "1.5.2",
-  "description": "Image annotation tool for LabelS",
+  "description": "Image annotation tool for YOLO MCP",
   "author": {
     "name": "GaryShen",
     "email": "grinson50@gmail.com"
@@ -37,7 +37,7 @@
     "rbush": "^3.0.1"
   },
   "devDependencies": {
-    "@labels/interface": "workspace:*",
+    "@yolo-mcp/interface": "workspace:*",
     "@types/color": "^3.0.6",
     "@types/lodash.clonedeep": "^4.5.9",
     "@types/lodash.mapvalues": "^4.6.9",

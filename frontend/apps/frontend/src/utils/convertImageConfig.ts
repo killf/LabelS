@@ -1,6 +1,6 @@
-import type { ImageAnnotatorProps } from '@labels/image-annotator-react';
-import type { ToolName } from '@labels/image';
-import { TOOL_NAMES } from '@labels/image';
+import type { ImageAnnotatorProps } from '@yolo-mcp/image-annotator-react';
+import type { ToolName } from '@yolo-mcp/image';
+import { TOOL_NAMES } from '@yolo-mcp/image';
 
 import type { ToolsConfigState } from '@/types/toolConfig';
 

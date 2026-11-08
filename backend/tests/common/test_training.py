@@ -12,7 +12,7 @@ from backend.training import train
 
 
 def test_training_help_does_not_load_model_runtime(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "argv", ["labels-train", "--help"])
+    monkeypatch.setattr(sys, "argv", ["yolo-mcp-train", "--help"])
     with pytest.raises(SystemExit) as result:
         train.main()
     assert result.value.code == 0
@@ -57,9 +57,7 @@ def test_local_dataset_snapshot_is_independent(local_dataset, tmp_path):
     before = (target / "images/train.png").read_bytes()
     (local_dataset / "images/train.png").write_bytes(b"changed after snapshot")
     assert (target / "images/train.png").read_bytes() == before
-    assert (target / "train.txt").read_text().strip() == str(
-        (target / "images/train.png").resolve()
-    )
+    assert (target / "train.txt").read_text().strip() == "./images/train.png"
 
 
 def test_snapshot_rejects_traversal(local_dataset, tmp_path):
@@ -140,8 +138,9 @@ def test_parameter_catalog_matches_runtime_and_excludes_managed_fields(
     }
 
 
+@pytest.mark.parametrize("prepared", [False, True])
 def test_cli_custom_parameters_reach_yolo_and_result(
-    local_dataset, tmp_path, monkeypatch
+    local_dataset, tmp_path, monkeypatch, prepared
 ):
     """核对真实 CLI、快照和产物流程，固定运行编号并替换模型计算。"""
     best = tmp_path / "best.pt"
@@ -165,13 +164,23 @@ def test_cli_custom_parameters_reach_yolo_and_result(
     monkeypatch.setenv("YOLO_AUTOINSTALL", "false")
     monkeypatch.setattr(train, "_next_run_id", lambda _dataset: "test-parameters")
     result = tmp_path / "result.json"
+    work_dir = tmp_path / "page-run"
+    model_dir = tmp_path / "project-models"
+    if prepared:
+        train.prepare_dataset(local_dataset, work_dir / "dataset", tmp_path / "input")
+        local_dataset = work_dir / "dataset"
     monkeypatch.setattr(
         sys,
         "argv",
         [
-            "labels-train",
+            "yolo-mcp-train",
             "--data",
             str(local_dataset),
+            *(
+                ["--work-dir", str(work_dir), "--models-dir", str(model_dir)]
+                if prepared
+                else []
+            ),
             "--model",
             "bootstrap.pt",
             "--epochs",
@@ -193,6 +202,9 @@ def test_cli_custom_parameters_reach_yolo_and_result(
     assert Path(passed["data"]).is_file()
     output = json.loads(result.read_text())
     assert Path(output["model_path"]).read_bytes() == best.read_bytes()
+    if prepared:
+        assert Path(output["model_path"]).parent == model_dir
+        assert not (work_dir / "input").exists()
 
 
 @pytest.mark.parametrize("value", ["{", "[]", '{"epochs": 2}', '{"amp": false}'])
@@ -204,7 +216,7 @@ def test_cli_rejects_bad_json_and_duplicate_options(tmp_path, monkeypatch, value
         sys,
         "argv",
         [
-            "labels-train",
+            "yolo-mcp-train",
             "--data",
             str(tmp_path),
             "--amp",

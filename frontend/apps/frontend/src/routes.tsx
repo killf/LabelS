@@ -1,7 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useEffect } from 'react';
-import { i18n } from '@labels/i18n';
+import { i18n } from '@yolo-mcp/i18n';
 
 import Register from '@/pages/register';
 import Projects from '@/pages/projects';
@@ -11,6 +11,8 @@ import Samples from '@/pages/projects.[id]';
 import ProjectSamplesFinished from '@/pages/projects.[id].samples.finished';
 import Page404 from '@/pages/404';
 import MainLayout from '@/layouts/MainLayoutWithNavigation';
+import Users from '@/pages/users';
+import Tokens from '@/pages/tokens';
 
 import type { ProjectLoaderResult } from './loaders/project.loader';
 import { projectLoader, projectsLoader } from './loaders/project.loader';
@@ -50,6 +52,13 @@ const routes: RouteObject[] = [
     element: <Root />,
     loader: rootLoader,
     children: [
+      {
+        element: <MainLayout />,
+        children: [
+          { path: 'users', element: <Users /> },
+          { path: 'tokens', element: <Tokens /> },
+        ],
+      },
       {
         path: 'projects',
         element: <MainLayout />,

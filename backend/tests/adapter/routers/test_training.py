@@ -6,8 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 from PIL import Image
+import yaml
 
 from backend.application.service import training
+from backend.application.service import dataset
 from backend.common.db import begin_transaction
 from backend.common.storage import get_storage
 from backend.domain.models.project import Project
@@ -86,8 +88,10 @@ def test_project_initializes_fixed_directories(client, testuser_token_headers):
     assert project["dataset_prefix"] == f"projects/{project['id']}"
     assert "dataset_data_source_id" not in project
     storage = get_storage()
-    for directory in ["", "uploads/", "images/", "labels/", "models/", "runs/"]:
+    for directory in ["", "images/", "models/", "runs/"]:
         assert storage.path(f"projects/{project['id']}/{directory}").is_dir()
+    assert not storage.path(f"projects/{project['id']}/uploads").exists()
+    assert not storage.path(f"projects/{project['id']}/labels").exists()
     client.patch(
         f"/api/v1/projects/{project['id']}",
         headers=testuser_token_headers,
@@ -178,6 +182,199 @@ def test_training_queue_and_duplicate_start(
     )
 
 
+def test_collaborator_can_train_but_cannot_clean_records(
+    client, testuser_token_headers, admin_token_headers, training_project, monkeypatch
+):
+    """协作者允许启动和读取训练，日志与模型删除仍限拥有者或管理员。"""
+    from uuid import uuid4
+
+    credentials = {
+        "username": f"train-{uuid4().hex}@example.com",
+        "password": "Train-test-123",
+    }
+    user = client.post(
+        "/api/v1/users", headers=admin_token_headers, json=credentials
+    ).json()["data"]
+    token = client.post("/api/v1/users/login", json=credentials).json()["data"]["token"]
+    headers = {"Authorization": token}
+    base = f"/api/v1/projects/{training_project}"
+    assert (
+        client.post(
+            f"{base}/collaborators",
+            headers=testuser_token_headers,
+            json={"user_id": user["id"]},
+        ).status_code
+        == 201
+    )
+
+    async def pending(_run_id):
+        return
+
+    monkeypatch.setattr(training, "_run", pending)
+    monkeypatch.setattr(training.importlib.util, "find_spec", lambda _name: object())
+    monkeypatch.setattr(training, "validate_training_options", Mock())
+    response = client.post(f"{base}/training-runs", headers=headers, json={})
+    assert response.status_code == 202, response.text
+    run_id = response.json()["data"]["id"]
+    assert (
+        client.get(f"{base}/training-runs/{run_id}", headers=headers).status_code == 200
+    )
+    assert (
+        client.delete(f"{base}/training-runs/{run_id}/log", headers=headers).status_code
+        == 403
+    )
+    assert (
+        client.delete(f"{base}/training-runs/{run_id}", headers=headers).status_code
+        == 403
+    )
+
+
+def test_each_run_freezes_current_annotation_classes_and_split(
+    client, testuser_token_headers, training_project, monkeypatch, db
+):
+    """两次训练读取各自输入；修改或删除原始样本不会改变先前快照。"""
+
+    async def pending(_run_id):
+        return
+
+    monkeypatch.setattr(training, "_run", pending)
+    monkeypatch.setattr(training.importlib.util, "find_spec", lambda _name: object())
+    monkeypatch.setattr(training, "validate_training_options", Mock())
+    headers = testuser_token_headers
+    base = f"/api/v1/projects/{training_project}"
+    first = client.post(f"{base}/training-runs", headers=headers, json={})
+    assert first.status_code == 202
+    first_id = first.json()["data"]["id"]
+    root = get_storage().path(f"projects/{training_project}")
+    first_dir = root / f"runs/{first_id}/dataset"
+    frozen = {
+        p.relative_to(first_dir): p.read_bytes()
+        for p in first_dir.rglob("*")
+        if p.is_file()
+    }
+    assert (first_dir / "train.txt").read_text() == "./images/1.png\n"
+    assert (first_dir / "test.txt").read_text() == "./images/2.png\n"
+
+    with begin_transaction(db):
+        db.get(TrainingRun, first_id).status = "SUCCEEDED"
+    config = {
+        "tools": [
+            {
+                "tool": "rectTool",
+                "config": {
+                    "attributes": [
+                        {"key": "Unused", "value": "unused"},
+                        {"key": "Person", "value": "person"},
+                    ]
+                },
+            }
+        ]
+    }
+    assert (
+        client.patch(
+            base, headers=headers, json={"config": json.dumps(config)}
+        ).status_code
+        == 200
+    )
+    for sample_id, split in ((1, "test"), (2, "train")):
+        assert (
+            client.patch(
+                f"{base}/samples/{sample_id}", headers=headers, json={"split": split}
+            ).status_code
+            == 200
+        )
+    assert (
+        client.patch(
+            f"{base}/samples/1",
+            headers=headers,
+            json={
+                "data": {
+                    "result": json.dumps(
+                        {
+                            "rectTool": {
+                                "result": [
+                                    {
+                                        "x": 2,
+                                        "y": 2,
+                                        "width": 4,
+                                        "height": 4,
+                                        "label": "person",
+                                    }
+                                ]
+                            }
+                        }
+                    )
+                },
+                "annotated_count": 1,
+            },
+        ).status_code
+        == 200
+    )
+    second = client.post(f"{base}/training-runs", headers=headers, json={})
+    assert second.status_code == 202
+    second_dir = root / f"runs/{second.json()['data']['id']}/dataset"
+    assert (second_dir / "train.txt").read_text() == "./images/2.png\n"
+    assert (second_dir / "test.txt").read_text() == "./images/1.png\n"
+    assert yaml.safe_load((second_dir / "data.yaml").read_text())["names"] == [
+        "Unused",
+        "Person",
+    ]
+    assert (second_dir / "labels/1.txt").read_text().startswith("1 0.40000000")
+    assert (first_dir / "labels/1.txt").read_text().startswith("0 0.25000000")
+    assert (
+        client.request(
+            "DELETE", f"{base}/samples", headers=headers, json={"sample_ids": [1]}
+        ).status_code
+        == 200
+    )
+    assert not (root / "images/train.png").exists()
+    assert (second_dir / "images/1.png").is_file()
+    assert frozen == {
+        p.relative_to(first_dir): p.read_bytes()
+        for p in first_dir.rglob("*")
+        if p.is_file()
+    }
+    assert not any(
+        (root / name).exists()
+        for name in ("train.txt", "test.txt", "data.yaml", "labels", "uploads")
+    )
+
+
+def test_snapshot_failure_rolls_back_run_and_allows_retry(
+    client, testuser_token_headers, training_project, monkeypatch, db
+):
+    async def pending(_run_id):
+        return
+
+    monkeypatch.setattr(training, "_run", pending)
+    monkeypatch.setattr(training.importlib.util, "find_spec", lambda _name: object())
+    monkeypatch.setattr(training, "validate_training_options", Mock())
+    render = dataset.render_sample
+    calls = 0
+
+    def fail_second(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("test disk failure")
+        return render(*args, **kwargs)
+
+    url = f"/api/v1/projects/{training_project}/training-runs"
+    with monkeypatch.context() as patch:
+        patch.setattr(dataset, "render_sample", fail_second)
+        assert (
+            client.post(url, headers=testuser_token_headers, json={}).status_code == 500
+        )
+    db.expire_all()
+    assert db.query(TrainingRun).count() == 0
+    root = get_storage().path(f"projects/{training_project}")
+    assert not list((root / "runs").iterdir())
+    assert (root / "images/train.png").is_file()
+    retry = client.post(url, headers=testuser_token_headers, json={})
+    assert retry.status_code == 202
+    assert (root / f"runs/{retry.json()['data']['id']}/dataset/data.yaml").is_file()
+
+
 @pytest.mark.parametrize(
     "body",
     [
@@ -192,6 +389,7 @@ def test_training_queue_and_duplicate_start(
         {"extra_params": None},
         {"extra_params": {"epochs": 2}},
         {"extra_params": {"data": "outside"}},
+        {"extra_params": {"models_dir": "outside"}},
         {"extra_params": {"save": False}},
     ],
 )
@@ -263,8 +461,9 @@ def test_worker_records_process_result(
     async def spawn(*args, **kwargs):
         captured["args"] = args
         assert "shell" not in kwargs
-        assert Path(args[args.index("--data") + 1]) == get_storage().path(
-            f"projects/{training_project}"
+        assert Path(args[args.index("--data") + 1]) == tmp_path / "dataset"
+        assert Path(args[args.index("--models-dir") + 1]) == get_storage().path(
+            f"projects/{training_project}/models"
         )
         result = Path(args[args.index("--result-file") + 1])
         if exit_code == 0:

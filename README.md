@@ -1,12 +1,14 @@
 <p align="center">
-  <img src="frontend/images/labels-logo.svg" alt="LabelS" width="200" />
+  <img src="frontend/images/yolo-mcp-logo.svg" alt="YOLO MCP" width="200" />
 </p>
 
-# LabelS
+# YOLO MCP
 
 **在本地完成图片标注、AI 辅助标注与模型训练。**
 
-LabelS 面向目标检测数据集的日常迭代：上传图片，编辑和确认标注，划分训练集与测试集，再使用 YOLO26 训练模型。图片、标注、模型与日志保存在本地目录，适合在自己的工作站上管理数据和运行实验。
+YOLO MCP 面向目标检测数据集的日常迭代：上传图片，编辑和确认标注，划分训练集与测试集，再使用 YOLO26 训练模型。图片、标注、模型与日志保存在本地目录，适合在自己的工作站上管理数据和运行实验。
+
+Python 发行包名为 `yolo-mcp`，源码模块为 `backend`，服务和离线训练命令分别为 `yolo-mcp`、`yolo-mcp-train`。
 
 [快速开始](#快速开始) · [使用流程](#使用流程) · [模型与训练](#模型与训练) · [数据存储](#数据存储) · [开发](#开发) · [致谢](#致谢)
 
@@ -42,13 +44,13 @@ uv sync --python 3.11 --frozen --no-dev
 cp .env.example .env
 ```
 
-编辑 `.env`，设置固定的 `PASSWORD_SECRET_KEY`。可以用 `python -c "import secrets; print(secrets.token_hex(32))"` 生成随机值，并在后续启动时保留相同配置。
+`.env` 中可以按需调整数据目录和计算设备。签名密钥在首次启动时自动生成并保存，后续启动复用，无需手动配置。
 
 ```bash
 uv run --no-sync --env-file .env uvicorn backend.main:app --host 127.0.0.1 --port 8002
 ```
 
-首次启动会初始化数据库。默认数据位于 `backend/data/`；[API 文档](http://127.0.0.1:8002/docs) 可用于查看接口。
+首次启动会初始化数据库。默认数据位于用户主目录的 `.yolo-mcp/`；[API 文档](http://127.0.0.1:8002/docs) 可用于查看接口。
 
 ### 启动前端
 
@@ -57,11 +59,11 @@ uv run --no-sync --env-file .env uvicorn backend.main:app --host 127.0.0.1 --por
 ```bash
 cd frontend
 pnpm --config.strictDepBuilds=false install --frozen-lockfile --ignore-scripts
-pnpm --filter @labels/frontend run postinstall
-pnpm --filter @labels/frontend start --host 127.0.0.1
+pnpm --filter @yolo-mcp/frontend run postinstall
+pnpm --filter @yolo-mcp/frontend start --host 127.0.0.1
 ```
 
-打开 [http://127.0.0.1:3004](http://127.0.0.1:3004)，注册账号后即可创建项目。开发服务器会将 API 和 WebSocket 请求转发到后端的 `8002` 端口。
+打开 [http://127.0.0.1:3004](http://127.0.0.1:3004)，首次访问空库时点击“初始化管理员”。初始化完成后关闭公开注册，其他账号由管理员添加。开发服务器会将 API、WebSocket 和 MCP 请求转发到后端的 `8002` 端口。
 
 ## 使用流程
 
@@ -72,6 +74,43 @@ pnpm --filter @labels/frontend start --host 127.0.0.1
 5. **训练与迭代**：在项目页点击“开始训练”，按需修改本次参数。点击弹窗标题旁的历史图标查看训练记录，下载权重或检查日志。
 
 开始训练前，训练集和测试集都需要至少一张已完成标注的图片。训练产出的权重可以在项目模型设置中选为自动标注模型，继续辅助下一轮数据标注。
+
+## 用户与项目权限
+
+点击右上角账号菜单进入“用户管理”或“访问令牌 / MCP”。管理员可以添加账号、设置系统角色、启停账号和重置密码；停用或重置密码会撤销旧会话与个人令牌。系统始终保留至少一名启用的管理员。
+
+| 身份       | 权限                                                     |
+| ---------- | -------------------------------------------------------- |
+| 系统管理员 | 管理全部用户、项目和访问令牌                             |
+| 项目拥有者 | 配置项目、添加或移除协作者、上传、标注、训练、下载及删除 |
+| 项目协作者 | 查看、上传、标注、运行 AI 标注、训练和下载               |
+
+普通用户可以创建自己的项目，不能访问其他用户尚未共享的项目。拥有者通过项目页的“项目成员”分配协作者；配置、成员管理和正式数据删除仍由拥有者或管理员执行。协作者可以撤回本人尚未提交成样本的上传。
+
+## MCP 接入
+
+服务在 `/mcp` 提供 **Streamable HTTP**。先在“访问令牌 / MCP”创建个人访问令牌，设置名称和有效期；明文仅在创建时显示一次，数据库只保存摘要。客户端需支持手动设置 Authorization 请求头，本版本不提供 OAuth 登录授权或 stdio。
+
+以已经包含前端的服务地址为例：
+
+```json
+{
+  "mcpServers": {
+    "yolo-mcp": {
+      "url": "http://127.0.0.1:8000/mcp",
+      "headers": {
+        "Authorization": "Bearer <个人访问令牌>"
+      }
+    }
+  }
+}
+```
+
+上例适用于采用此配置结构的客户端，具体字段以客户端文档为准。源码开发也可直接连接 `http://127.0.0.1:8002/mcp`。
+
+工具覆盖项目、图片上传、标注、AI 批次、训练、日志和模型下载。上传接收 Base64 图片内容；模型下载工具返回需携带同一令牌的 HTTP 接口路径。所有工具与网页共用项目权限，令牌不单独扩大权限；撤销、过期或账号停用后，后续调用立即拒绝。令牌不能用于继续创建令牌或管理账号，请登录网页执行凭据管理。
+
+默认仅接受本机 Host / Origin。远程部署时设置 `MCP_ALLOWED_HOSTS` 和 `MCP_ALLOWED_ORIGINS` 为实际域名的 JSON 数组，并通过 HTTPS 代理访问。不要将个人令牌写入仓库。
 
 ## 模型与训练
 
@@ -103,7 +142,7 @@ python -m pip install -e ./backend
 python -m uvicorn backend.main:app --env-file backend/.env --host 127.0.0.1 --port 8002
 ```
 
-上述命令安装后端基础依赖；训练和推理依赖需在同一环境中另行准备。从仓库根目录启动时，`.env` 中的相对数据路径也相对于仓库根目录，建议用绝对路径固定数据位置。
+上述命令安装后端基础依赖；训练和推理依赖需在同一环境中另行准备。默认数据目录不随启动位置变化；设置 `DATA_DIR` 时可使用绝对路径或以 `~` 开头的主目录路径。
 
 开放词汇模型只读取已准备好的本地缓存，标注请求不会下载模型或安装依赖。YOLO 官方初始权重首次用于训练时可能由 Ultralytics 下载。模型文件和代码的使用条件以各模型的许可为准。
 
@@ -126,58 +165,64 @@ python -m uvicorn backend.main:app --env-file backend/.env --host 127.0.0.1 --po
 
 测试集同时用于每轮验证和最优模型选择，`val` 与 `test` 都指向 `test.txt`，因此记录中的指标不是独立测试成绩。
 
-- **清理日志**：移除运行日志和中间文件，保留记录、指标及产出模型。
+- **清理日志**：移除本次运行目录（包括数据快照、日志和中间文件），保留记录、指标及产出模型。
 - **删除**：移除训练记录、产出模型及剩余日志。运行中或仍在使用的模型不能删除。
 
 离线训练、命令行参数和数据格式见[训练说明](backend/training/README.md)。
 
 ## 数据存储
 
-`BASE_DATA_DIR` 指定数据根目录，默认是相对于服务启动目录的 `data/`。SQLite 默认保存在同一目录，也可用 `DATABASE_URL` 单独指定。
+`DATA_DIR` 指定数据根目录，默认是用户主目录下的 `~/.yolo-mcp/`。SQLite 默认保存在同一目录，也可用 `DATABASE_URL` 单独指定。
 
 ```text
-data/
+~/.yolo-mcp/
+├── secret.key            # 首次启动生成，之后复用的签名密钥
 ├── labels.sqlite
 └── projects/<项目 ID>/
-    ├── uploads/          # 上传图片和缩略图
-    ├── images/           # 已确认的 YOLO 图片
-    ├── labels/           # YOLO 标签
-    ├── train.txt
-    ├── test.txt
-    ├── data.yaml
+    ├── images/           # 上传原图和缩略图
     ├── models/           # 项目模型权重
-    └── runs/             # 训练快照、日志和中间产物
+    └── runs/<记录 ID>/
+        ├── dataset/      # 本次训练开始时生成的独立快照
+        │   ├── images/
+        │   ├── labels/
+        │   ├── train.txt
+        │   ├── test.txt
+        │   └── data.yaml
+        ├── console.log
+        ├── train.log
+        └── training/     # 框架指标和中间权重
 ```
 
-人工保存标注后会同步 YOLO 图片、标签和清单；未完成或跳过的样本不进入训练清单，背景图片保存空标签。项目改名不影响数据目录。
+人工标注、类别配置和数据划分保存在数据库中；项目目录不预先生成训练清单或 YOLO 副本。每次开始训练时，按当时的配置和已完成样本生成独立数据集，未完成、跳过或已删除的样本不进入清单，背景图片生成空标签。旋转只作用于 run 内的训练副本，原图保持原样；后续修改项目不会改变已生成的快照。
 
-| 配置项                  | 用途                                                               |
-| ----------------------- | ------------------------------------------------------------------ |
-| `BASE_DATA_DIR`         | 图片、模型、训练日志和默认数据库的根目录                           |
-| `DATABASE_URL`          | 数据库连接地址，未指定时使用本地 SQLite                            |
-| `PASSWORD_SECRET_KEY`   | 登录令牌签名密钥，重启时应保持一致                                 |
-| `AI_AUTO_LABEL_ENABLED` | 是否启用 AI 自动标注，默认开启                                     |
-| `AI_DEVICE`             | 推理设备；留空自动选择，`0` 表示首块 CUDA/ROCm GPU，也可指定 `cpu` |
+新上传统一写入 `images/`。旧附件仍按数据库记录的路径读取，已有 `uploads/` 不会自动移动或删除。项目改名不影响数据目录。
 
-备份时请同时保留数据库和项目文件。仓库只维护 [001_init_db.py](backend/migrations/versions/001_init_db.py) 初始化脚本，当前不提供历史数据库结构升级或数据搬迁工具。
+| 配置项           | 用途                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| `DATA_DIR`       | 图片、模型、训练日志和默认数据库的根目录                           |
+| `DATABASE_URL`   | 数据库连接地址，未指定时使用本地 SQLite                            |
+| `USE_AUTO_LABEL` | 是否启用 AI 自动标注，默认开启                                     |
+| `DEVICE`         | 推理设备；留空自动选择，`0` 表示首块 CUDA/ROCm GPU，也可指定 `cpu` |
+
+备份时请保留整个数据目录，包括 `secret.key`、数据库和项目文件；保留密钥可让登录令牌和图片签名跨重启继续使用。仓库只维护 [001_init_db.py](backend/migrations/versions/001_init_db.py) 初始化脚本，当前不提供历史数据库结构升级或数据搬迁工具。
 
 ## Docker
 
-仓库维护一个 [Dockerfile](Dockerfile)，同时构建前端和后端。构建前需能拉取其中指定的基础镜像；当前 GPU 基础镜像位于 `datafactory-cn-beijing.cr.volces.com/common/ultralytics`，需要相应仓库访问权限。
+仓库维护一个 [Dockerfile](Dockerfile)，同时构建前端和后端。GPU 运行环境使用 `ultralytics/ultralytics` 基础镜像。
 
 ```bash
-docker build -t labels:local .
+docker build -t yolo-mcp:local .
 ```
 
-在终端环境中设置 `PASSWORD_SECRET_KEY`，将下方路径替换为已创建的数据目录后运行：
+将下方路径替换为已创建的数据目录后运行，容器通过 `DATA_DIR=/data` 使用挂载目录保存数据和签名密钥：
 
 ```bash
-docker run --rm -p 8000:8000 --env PASSWORD_SECRET_KEY \
+docker run --rm -p 8000:8000 \
   --mount type=bind,source=/absolute/path/to/data,target=/data \
-  labels:local
+  yolo-mcp:local
 ```
 
-打开 [http://127.0.0.1:8000](http://127.0.0.1:8000)。镜像已包含前端，无需另启开发服务器。离线训练可使用同一镜像的 `labels-train` 入口，示例见[训练说明](backend/training/README.md#共用服务镜像)。GPU 可用性取决于基础镜像和宿主机运行环境。
+打开 [http://127.0.0.1:8000](http://127.0.0.1:8000)。镜像已包含前端，无需另启开发服务器。离线训练可使用同一镜像的 `yolo-mcp-train` 入口，示例见[训练说明](backend/training/README.md#共用服务镜像)。GPU 可用性取决于基础镜像和宿主机运行环境。
 
 ## 开发
 
@@ -201,16 +246,16 @@ uv run --no-sync pytest
 
 ```bash
 cd frontend
-pnpm --filter @labels/frontend test:unit
+pnpm --filter @yolo-mcp/frontend test:unit
 pnpm build:frontend
-pnpm --filter @labels/frontend type-check
+pnpm --filter @yolo-mcp/frontend type-check
 ```
 
 后端测试使用隔离 SQLite 和临时数据目录。前端构建与类型检查是独立步骤，当前完整类型检查仍有既有类型错误。提交修改时请说明验证结果；反馈问题可使用 [GitHub Issues](https://github.com/killf/LabelS/issues)，附上复现步骤、版本和相关日志。
 
 ## 致谢
 
-LabelS 基于以下开源项目开发：
+YOLO MCP 基于以下开源项目开发：
 
 - [LabelU](https://github.com/opendatalab/labelU)：后端基础，源版本 `1.5.6`，提交 `8681ca4`。
 - [LabelU-Kit](https://github.com/opendatalab/labelU-Kit/tree/v5.12.0)：前端与标注组件，源版本 `v5.12.0`，提交 `d06cb1f5`。

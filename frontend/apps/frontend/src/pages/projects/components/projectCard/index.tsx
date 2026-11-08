@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { Button, Progress, Tooltip } from 'antd';
 import { useNavigate, useRevalidator } from 'react-router';
 import Icon from '@ant-design/icons';
-import formatter from '@labels/formatter';
-import { EllipsisText, FlexLayout } from '@labels/components-react';
-import { useTranslation } from '@labels/i18n';
+import formatter from '@yolo-mcp/formatter';
+import { EllipsisText, FlexLayout } from '@yolo-mcp/components-react';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { modal } from '@/StaticAnt';
 import { ReactComponent as DeleteIcon } from '@/assets/svg/delete.svg';
@@ -57,7 +57,7 @@ const ProjectCard = (props: ProjectCardProps) => {
   }, [cardInfo]);
   const navigate = useNavigate();
   const me = useMe();
-  const isMeTheCreator = cardInfo?.created_by?.id === me?.data?.id;
+  const isMeTheCreator = !!me.data?.is_admin || cardInfo?.created_by?.id === me?.data?.id;
   const turnToAnnotation = (e: any) => {
     if (!e.currentTarget.contains(e.target)) {
       return;

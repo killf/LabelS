@@ -1,6 +1,6 @@
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import type { RuleRender } from 'antd/es/form';
-import { i18n } from '@labels/i18n';
+import { i18n } from '@yolo-mcp/i18n';
 
 import type { FancyItemIdentifier } from '@/components/FancyInput/types';
 import FancyInput from '@/components/FancyInput';

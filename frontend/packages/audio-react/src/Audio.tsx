@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type WaveSurfer from 'wavesurfer.js';
 import styled from 'styled-components';
 import { useHotkeys } from 'react-hotkeys-hook';
-import type { MediaAnnotatorProps, MediaAnnotatorRef, PlayerControllerRef } from '@labels/components-react';
+import type { MediaAnnotatorProps, MediaAnnotatorRef, PlayerControllerRef } from '@yolo-mcp/components-react';
 import type {
   Attribute,
   AudioAnnotationType,
@@ -10,14 +10,14 @@ import type {
   AudioSegmentName,
   EnumerableAttribute,
   AudioAnnotationInUI,
-} from '@labels/interface';
+} from '@yolo-mcp/interface';
 import {
   AttributeOverlay,
   MediaAnnotationContext,
   MediaAnnotator,
   PlayerController,
   parseTime,
-} from '@labels/components-react';
+} from '@yolo-mcp/components-react';
 
 import { AudioPlayer } from './AudioPlayer';
 

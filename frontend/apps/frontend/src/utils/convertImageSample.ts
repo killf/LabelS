@@ -1,8 +1,8 @@
 import _ from 'lodash';
-import type { ImageSample } from '@labels/image-annotator-react';
+import type { ImageSample } from '@yolo-mcp/image-annotator-react';
 import { omit } from 'lodash/fp';
-import type { ToolName } from '@labels/image';
-import { TOOL_NAMES } from '@labels/image';
+import type { ToolName } from '@yolo-mcp/image';
+import { TOOL_NAMES } from '@yolo-mcp/image';
 
 import type { ParsedResult, SampleResponse } from '@/api/types';
 

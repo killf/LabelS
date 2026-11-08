@@ -1,5 +1,5 @@
 import { v4 as uuid4 } from 'uuid';
-import { i18n } from '@labels/i18n';
+import { i18n } from '@yolo-mcp/i18n';
 
 import type { MediaType } from '@/api/types';
 import { FileExtensionText } from '@/constants/mediaType';

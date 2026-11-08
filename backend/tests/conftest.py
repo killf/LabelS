@@ -11,13 +11,14 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
 # 1. 数据库与文件存储均使用隔离临时目录，不读取开发者的配置或凭据。
-_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="labels-test-"))
+_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="yolo-mcp-test-"))
 os.environ["DATABASE_URL"] = (
     f"sqlite:///{(_TEST_DATA_DIR / 'application.sqlite').as_posix()}"
 )
-os.environ["BASE_DATA_DIR"] = str(_TEST_DATA_DIR)
-os.environ["PASSWORD_SECRET_KEY"] = "labels-test-only-signing-key"
+os.environ["DATA_DIR"] = str(_TEST_DATA_DIR)
 from backend.common.config import settings
+
+settings.initialize_secret_key()
 from backend.common.storage import get_storage
 
 from backend.main import app
@@ -127,6 +128,27 @@ def client() -> Generator:
 @pytest.fixture(scope="module")
 def testuser_token_headers(client: TestClient) -> Dict[str, str]:
     return get_testuser_token_headers(client)
+
+
+@pytest.fixture(scope="module")
+def admin_token_headers(client: TestClient) -> Dict[str, str]:
+    with TestingSessionLocal() as session:
+        admin = crud_user.get_user_by_username(session, "admin@example.com")
+        if admin is None:
+            with begin_transaction(session):
+                session.add(
+                    User(
+                        username="admin@example.com",
+                        hashed_password=get_password_hash(TEST_USER_PASSWORD),
+                        is_admin=True,
+                    )
+                )
+    response = client.post(
+        f"{settings.API_V1_STR}/users/login",
+        json={"username": "admin@example.com", "password": TEST_USER_PASSWORD},
+    )
+    assert response.status_code == 200
+    return {"Authorization": response.json()["data"]["token"]}
 
 
 def get_testuser_token_headers(client: TestClient) -> Dict[str, str]:

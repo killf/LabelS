@@ -8,6 +8,7 @@ from backend.adapter.persistence import crud_project
 from backend.adapter.persistence import crud_sample
 from backend.domain.models.project import Project
 from backend.domain.models.sample import ProjectSample
+from backend.domain.models.attachment import ProjectAttachment
 
 
 class TestClassProjectSampleRouter:
@@ -119,7 +120,17 @@ class TestClassProjectSampleRouter:
                     updated_by=current_user.id,
                 ),
             )
-        data = [{"file_id": 1, "data": {}}]
+        with begin_transaction(db):
+            file = ProjectAttachment(
+                project_id=project.id,
+                path=f"projects/{project.id}/images/a.png",
+                filename="a.png",
+                created_by=current_user.id,
+                updated_by=current_user.id,
+            )
+            db.add(file)
+            db.flush()
+        data = [{"file_id": file.id, "data": {}}]
 
         # run
         r = client.post(
@@ -156,7 +167,17 @@ class TestClassProjectSampleRouter:
                     status="CONFIGURED",
                 ),
             )
-        data = [{"file_id": 1, "data": {}}]
+        with begin_transaction(db):
+            file = ProjectAttachment(
+                project_id=project.id,
+                path=f"projects/{project.id}/images/a.png",
+                filename="a.png",
+                created_by=current_user.id,
+                updated_by=current_user.id,
+            )
+            db.add(file)
+            db.flush()
+        data = [{"file_id": file.id, "data": {}}]
 
         # run
         r = client.post(
@@ -445,7 +466,7 @@ class TestClassProjectSampleRouter:
         self, client: TestClient, testuser_token_headers: dict, db: Session, monkeypatch
     ) -> None:
         # enable the AI feature so the request reaches the access check
-        monkeypatch.setattr(settings, "AI_AUTO_LABEL_ENABLED", True)
+        monkeypatch.setattr(settings, "USE_AUTO_LABEL", True)
         # project owned by another user
         with begin_transaction(db):
             project = crud_project.create(
@@ -466,7 +487,11 @@ class TestClassProjectSampleRouter:
         assert r.status_code == 403
 
     def test_collaborator_can_annotate_shared_project(
-        self, client: TestClient, testuser_token_headers: dict, db: Session
+        self,
+        client: TestClient,
+        testuser_token_headers: dict,
+        db: Session,
+        admin_token_headers,
     ) -> None:
         # owner = the default test user
         owner = crud_user.get_user_by_username(db=db, username="test@example.com")
@@ -474,7 +499,8 @@ class TestClassProjectSampleRouter:
         # a second user, added as collaborator, with a real login token
         collab_username = "collab_annotator@example.com"
         client.post(
-            f"{settings.API_V1_STR}/users/signup",
+            f"{settings.API_V1_STR}/users",
+            headers=admin_token_headers,
             json={"username": collab_username, "password": "collab@123"},
         )
         login = client.post(

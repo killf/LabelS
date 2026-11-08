@@ -25,6 +25,9 @@ async def preview(
     filename: str,
     expires: int = Query(...),
     signature: str = Query(...),
+    user_id: int = Query(...),
+    auth_version: int = Query(...),
+    db: Session = Depends(db_module.get_db),
 ):
     """用文件限定的短时签名读取本地图片，拒绝路径越界和签名篡改。"""
     from backend.common.storage import get_storage
@@ -32,15 +35,30 @@ async def preview(
     storage = get_storage()
     key = f"projects/{project_id}/{filename}"
     try:
-        allowed = storage.verify_read_url(key, expires, signature)
+        allowed = storage.verify_read_url(
+            key, expires, signature, user_id, auth_version
+        )
         path = storage.path(key)
     except ValueError:
         raise HTTPException(403, "无效的图片访问地址") from None
     if not allowed:
         raise HTTPException(403, "图片访问地址无效或已过期")
+    from backend.adapter.persistence import crud_project
+    from backend.application.service.access import assert_project_access
+
+    user = db.get(User, user_id)
+    project = crud_project.get(db, project_id)
+    if (
+        user is None
+        or not user.is_active
+        or user.auth_version != auth_version
+        or project is None
+    ):
+        raise HTTPException(403, "图片访问权限已失效")
+    assert_project_access(project, user)
     if not path.is_file():
         raise HTTPException(404, "图片不存在")
-    return FileResponse(path, headers={"Cache-Control": "private, max-age=60"})
+    return FileResponse(path, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post(

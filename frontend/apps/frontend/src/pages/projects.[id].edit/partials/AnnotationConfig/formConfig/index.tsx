@@ -1,12 +1,12 @@
-// import { ImageToolName, TOOL_NAME, EVideoToolName, EAudioToolName } from '@labels/annotation';
+// import { ImageToolName, TOOL_NAME, EVideoToolName, EAudioToolName } from '@yolo-mcp/annotation';
 import type { FormProps, SelectProps, TabsProps } from 'antd';
 import { Popconfirm, Button, Form, Tabs, Select, Tooltip } from 'antd';
 import React, { useContext, useEffect, useCallback, useMemo, useState } from 'react';
 import _, { cloneDeep, find } from 'lodash-es';
 import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 import { createGlobalStyle } from 'styled-components';
-import { useTranslation } from '@labels/i18n';
+import { useTranslation } from '@yolo-mcp/i18n';
 
 import { MediaType, ProjectStatus } from '@/api/types';
 import FancyForm from '@/components/FancyForm';
@@ -32,7 +32,7 @@ import audioFrameTemplate from './templates/audioFrame.template';
 import { AttributeBox, AttributeFormItem, ConfigForm, TabForm } from './style';
 
 const GlobalStyle = createGlobalStyle`
-  .labels-tool-select-popup .rc-virtual-list-holder {
+  .yolo-mcp-tool-select-popup .rc-virtual-list-holder {
     max-height: none !important;
   }
 `;
@@ -352,7 +352,7 @@ const FormConfig = () => {
       <Form.Item label={t('annotationTool')}>
         <Select
           placeholder={t('addTool')}
-          popupClassName="labels-tool-select-popup"
+          popupClassName="yolo-mcp-tool-select-popup"
           options={toolsMenu}
           onSelect={handleToolItemClick}
         >

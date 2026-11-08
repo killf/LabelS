@@ -1,5 +1,5 @@
-import type { EnumerableAttribute, TagAnnotationEntity, TextAnnotationEntity, TextAttribute } from '@labels/interface';
-import { uid } from '@labels/video-react';
+import type { EnumerableAttribute, TagAnnotationEntity, TextAnnotationEntity, TextAttribute } from '@yolo-mcp/interface';
+import { uid } from '@yolo-mcp/video-react';
 
 export function generateDefaultValues(
   attributes?: (TextAttribute | EnumerableAttribute)[],

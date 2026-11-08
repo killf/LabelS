@@ -1,5 +1,5 @@
-import { Kbd, getOS } from '@labels/components-react';
-import { i18n } from '@labels/i18n';
+import { Kbd, getOS } from '@yolo-mcp/components-react';
+import { i18n } from '@yolo-mcp/i18n';
 
 import { ReactComponent as MouseRightClick } from './assets/mouse-right.svg';
 import { ReactComponent as MouseLeftClick } from './assets/mouse-left.svg';

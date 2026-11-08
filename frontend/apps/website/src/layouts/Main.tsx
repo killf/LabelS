@@ -13,7 +13,7 @@ const extraLinks = [
     icon: <ExportOutlined rev={undefined} />,
   },
   {
-    name: 'LabelS',
+    name: 'YOLO MCP',
     path: 'https://github.com/killf/LabelS#readme',
     icon: <ExportOutlined rev={undefined} />,
   },

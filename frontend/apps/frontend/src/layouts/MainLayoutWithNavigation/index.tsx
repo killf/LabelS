@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { FlexLayout } from '@labels/components-react';
+import { FlexLayout } from '@yolo-mcp/components-react';
 
 import Navigate from '@/components/Navigate';
 

@@ -1,5 +1,5 @@
-import type { ToolName, Annotator as ImageAnnotator, EditType } from '@labels/image';
-import type { EnumerableAttribute, TextAttribute, ILabel, Attribute } from '@labels/interface';
+import type { ToolName, Annotator as ImageAnnotator, EditType } from '@yolo-mcp/image';
+import type { EnumerableAttribute, TextAttribute, ILabel, Attribute } from '@yolo-mcp/interface';
 import type { RefObject } from 'react';
 import { createContext, useContext } from 'react';
 

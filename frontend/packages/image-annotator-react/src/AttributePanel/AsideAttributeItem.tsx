@@ -1,7 +1,7 @@
 import styled, { css } from 'styled-components';
 import { useCallback, useMemo } from 'react';
-import { EllipsisText } from '@labels/components-react';
-import type { AnnotationData, ToolName } from '@labels/image';
+import { EllipsisText } from '@yolo-mcp/components-react';
+import type { AnnotationData, ToolName } from '@yolo-mcp/image';
 
 import { ReactComponent as EditIcon } from '../assets/icons/edit.svg';
 import { ReactComponent as DeleteIcon } from '../assets/icons/delete.svg';

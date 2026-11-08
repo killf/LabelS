@@ -1,8 +1,8 @@
 English | [简体中文](./readme.md)
 
-> 本目录属于 LabelS 本地工作区，`@labels/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
+> 本目录属于 YOLO MCP 本地工作区，`@yolo-mcp/*` 未发布到 npm。请在 `frontend/` 目录安装依赖；项目来源见仓库根 README。
 
-# @labels/interface
+# @yolo-mcp/interface
 
 
 TypeScript interface definitions for the annotation tools.

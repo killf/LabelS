@@ -24,7 +24,7 @@ export default [
     id: 'root',
     handle: {
       crumb: () => {
-        return 'LabelS Kit';
+        return 'YOLO MCP Kit';
       },
     },
     children: [

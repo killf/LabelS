@@ -36,7 +36,6 @@ async def project_ws_endpoint(
     websocket: WebSocket, project_id: int, sample_id: int, user=Depends(verify_ws_token)
 ):
     if not user:
-        await websocket.close(code=1008, reason="Unauthorized")
         return
 
     client_id = f"project_{project_id}"
@@ -75,7 +74,7 @@ async def project_ws_endpoint(
         while True:
             try:
                 data = await websocket.receive_text()
-                message = Message.parse_raw(data)
+                message = Message.model_validate_json(data)
 
                 if message.type == MessageType.PONG:
                     connection.update_heartbeat()
@@ -88,7 +87,9 @@ async def project_ws_endpoint(
 
     except WebSocketDisconnect as e:
         logger.info(
-            f"WebSocket disconnected during connection setup for client {client_id}: Code={e.code}"
+            "WebSocket disconnected during setup for client {}: Code={}",
+            client_id,
+            e.code,
         )
     except Exception as e:
         logger.error(f"WebSocket error for client {client_id}: {e}")

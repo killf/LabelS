@@ -8,16 +8,16 @@ import type {
   TagAnnotationType,
   TextAttribute,
   EnumerableAttribute,
-} from '@labels/interface';
-import { useRedoUndo } from '@labels/components-react';
-import { TOOL_NAMES } from '@labels/image';
+} from '@yolo-mcp/interface';
+import { useRedoUndo } from '@yolo-mcp/components-react';
+import { TOOL_NAMES } from '@yolo-mcp/image';
 import type {
   AnnotationData,
   ToolName,
   Annotator as ImageAnnotatorClass,
   AnnotationToolData,
   EditType,
-} from '@labels/image';
+} from '@yolo-mcp/image';
 import cloneDeep from 'lodash.clonedeep';
 
 import Sidebar from './Sidebar';
@@ -68,7 +68,7 @@ function addToolNameToAnnotationData(annotationData: Partial<Record<ToolName, An
 const Wrapper = styled.div.attrs((props) => {
   return {
     ...props,
-    className: 'labels-image-annotator',
+    className: 'yolo-mcp-image-annotator',
   };
 })`
   display: flex;
@@ -77,7 +77,7 @@ const Wrapper = styled.div.attrs((props) => {
   flex-grow: 1;
   background-color: #fff;
 
-  .labels-video-wrapper {
+  .yolo-mcp-video-wrapper {
     flex: 1;
   }
 `;
