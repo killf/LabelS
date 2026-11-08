@@ -15,7 +15,6 @@ from backend.application.service import auto_label as auto_label_service
 from backend.application.command.sample import PatchSampleCommand
 from backend.application.command.sample import CreateSampleCommand
 from backend.application.command.sample import DeleteSampleCommand
-from backend.application.command.datasource import ImportS3SamplesCommand
 from backend.application.response.base import OkResp
 from backend.application.response.base import MetaData
 from backend.application.response.base import CommonDataResp
@@ -209,27 +208,6 @@ async def get_auto_label_job_status(
         db=db, task_id=task_id, job_id=job_id, user=current_user
     )
     return OkResp[AutoLabelJobResponse](data=data)
-
-
-@router.post(
-    "/{task_id}/samples/import_s3",
-    response_model=OkResp[CreateSampleResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-async def import_s3(
-    task_id: int,
-    cmd: ImportS3SamplesCommand,
-    authorization: HTTPAuthorizationCredentials = Security(security),
-    db: Session = Depends(db_module.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    data = await service.import_from_s3(
-        db=db,
-        task_id=task_id,
-        cmd=cmd,
-        current_user=current_user,
-    )
-    return OkResp[CreateSampleResponse](data=data)
 
 
 @router.delete(

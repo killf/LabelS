@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, status, Depends, Security
 from fastapi import File, UploadFile
+from fastapi import HTTPException, Query
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
 from backend.common import db as db_module
@@ -15,6 +17,27 @@ from backend.application.response.base import CommonDataResp
 from backend.application.response.attachment import AttachmentResponse
 
 router = APIRouter(prefix="/tasks", tags=["attachments"])
+
+
+@router.get("/{task_id}/files/{filename:path}", response_class=FileResponse)
+async def preview(
+    task_id: int, filename: str, expires: int = Query(...), signature: str = Query(...)
+):
+    """用文件限定的短时签名读取本地图片，拒绝路径越界和签名篡改。"""
+    from backend.common.storage import get_storage
+
+    storage = get_storage()
+    key = f"tasks/{task_id}/{filename}"
+    try:
+        allowed = storage.verify_read_url(key, expires, signature)
+        path = storage.path(key)
+    except ValueError:
+        raise HTTPException(403, "无效的图片访问地址") from None
+    if not allowed:
+        raise HTTPException(403, "图片访问地址无效或已过期")
+    if not path.is_file():
+        raise HTTPException(404, "图片不存在")
+    return FileResponse(path, headers={"Cache-Control": "private, max-age=60"})
 
 
 @router.post(

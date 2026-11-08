@@ -35,8 +35,8 @@ def test_initial_schema_round_trip_preserves_data_on_repeated_upgrade(tmp_path: 
                 text("INSERT INTO task_sample (id, task_id) VALUES (1, 1)")
             )
             assert (
-                connection.execute(text("SELECT dataset_prefix FROM task")).scalar_one()
-                == ""
+                connection.execute(text("SELECT ai_algorithm FROM task")).scalar_one()
+                == "yolo"
             )
             assert (
                 connection.execute(

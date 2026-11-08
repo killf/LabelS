@@ -89,9 +89,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     run_db_migrations()
 
     from backend.application.service.auto_label import fail_interrupted_jobs
+    from backend.application.service.training import fail_interrupted_runs, stop_workers
 
     fail_interrupted_jobs()
-    yield
+    fail_interrupted_runs()
+    try:
+        yield
+    finally:
+        await stop_workers()
 
 
 app = FastAPI(

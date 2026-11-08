@@ -13,42 +13,11 @@ export enum UploadStatus {
   Error = 'Error',
 }
 
-export const readFile = async (file: File, type?: 'text') => {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      resolve(event.target?.result as string);
-    };
-    reader.onerror = (error) => {
-      reject(error);
-    };
-
-    if (type === 'text') {
-      reader.readAsText(file);
-    } else {
-      reader.readAsDataURL(file);
-    }
-  });
-};
-
-export const isPreAnnotationFile = (filename: string) => {
-  if (!filename) {
-    return false;
-  }
-
-  return filename.endsWith('.jsonl') || filename.endsWith('.json');
-};
-
 export const isCorrectFiles = (files: File[], type: MediaType) => {
   let result = true;
 
   for (let i = 0; i < files.length; i++) {
     const fileUnit = files[i];
-
-    // 忽略jsonl文件的类型校验
-    if (isPreAnnotationFile(fileUnit.name)) {
-      continue;
-    }
 
     const isCorrectFileType = commonController.isCorrectFileType(fileUnit.name, type);
 

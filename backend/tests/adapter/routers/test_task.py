@@ -17,7 +17,6 @@ class TestClassTaskRouter:
         # prepare data
         data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -42,7 +41,6 @@ class TestClassTaskRouter:
         # prepare data
         data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -99,7 +97,6 @@ class TestClassTaskRouter:
         # prepare data
         data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -148,7 +145,6 @@ class TestClassTaskRouter:
         # prepare data
         for_update_task_data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -245,7 +241,6 @@ class TestClassTaskRouter:
         # prepare data
         for_update_task_data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -285,7 +280,6 @@ class TestClassTaskRouter:
         # prepare data
         for_update_task_data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -403,7 +397,6 @@ class TestClassTaskRouter:
         # prepare data
         data = {
             "name": "task name",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -437,7 +430,6 @@ class TestClassTaskRouter:
         db.rollback()
         data = {
             "name": "collaborative task",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -486,7 +478,6 @@ class TestClassTaskRouter:
 
         data = {
             "name": "batch collaborative task",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -538,7 +529,6 @@ class TestClassTaskRouter:
 
         data = {
             "name": "remove collaborative task",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -598,7 +588,6 @@ class TestClassTaskRouter:
 
         data = {
             "name": "single remove task",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",
@@ -652,7 +641,6 @@ class TestClassTaskRouter:
 
         data = {
             "name": "error test task",
-            "dataset_data_source_id": 1,
             "media_type": "IMAGE",
             "description": "task description",
             "tips": "task tips",

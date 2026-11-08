@@ -9,20 +9,20 @@
 ```bash
 uv sync --python 3.11 --frozen --group test
 cp .env.example .env
-# 填写 S3_* 并设置固定 PASSWORD_SECRET_KEY。
+# 填写 本地目录_* 并设置固定 PASSWORD_SECRET_KEY。
 uv run --env-file .env uvicorn backend.main:app --host 127.0.0.1 --port 8002
 ```
 
-`labels` 也是服务 CLI 入口。模块导入和 `--help` 不初始化数据库，实际应用启动时通过 `migrations/versions/001_init_db.py` 初始化空库；已有 SQLite 文件名继续兼容 `labelu.sqlite`。不提供历史结构升级或 to_mysql。
+`labels` 也是服务 CLI 入口。模块导入和 `--help` 不初始化数据库，实际应用启动时通过 `migrations/versions/001_init_db.py` 初始化空库；默认 SQLite 文件名为 `labels.sqlite`。结构调整后使用新库，旧库不会自动迁移。不提供历史结构升级或 to_mysql。
 
 ## 训练与 AI 预标注
 
-训练代码位于 `training/`，入口为 `labels-train` 或 `python -m backend.training.train`。默认 Web 依赖不包含 PyTorch/Ultralytics，需要时安装 `.[training]`；优先复用已有 GPU 运行环境。安装和存储约定见[训练说明](training/README.md)。
+任务页可发起异步训练并查看状态、日志与产物，任务配置第 4 步选择 YOLO 算法和 AI 模型。训练代码位于 `training/`，离线入口为 `labels-train` 或 `python -m backend.training.train`。默认 Web 依赖不包含 PyTorch/Ultralytics，需要时安装 `.[training]`；优先复用已有 GPU 运行环境。安装和存储约定见[训练说明](training/README.md)。
 
-训练镜像从本目录构建：
+服务与训练共用根目录的 Dockerfile，从仓库根目录构建：
 
 ```bash
-docker build -f Dockerfile.training -t labels-training:local .
+docker build -t labels:local .
 ```
 
 ## 验证
@@ -31,4 +31,4 @@ docker build -f Dockerfile.training -t labels-training:local .
 uv run --no-sync pytest
 ```
 
-测试使用隔离 SQLite、合成凭据和 Moto S3，不连接实际对象存储。格式采用 Black（Python 3.11、88 列），核心链路同时执行 Flake8 检查。
+测试使用隔离 SQLite 和临时本地目录，不读取实际凭据。格式采用 Black（Python 3.11、88 列），核心链路同时执行 Flake8 检查。

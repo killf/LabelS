@@ -13,8 +13,8 @@ def random_username() -> str:
 
 
 def empty_task_upload(task_id: int, input_filename: str) -> str:
-    from backend.common.storage import get_storage_backend
+    from backend.common.storage import get_storage
 
-    key = f"upload/{task_id}/{input_filename}"
-    get_storage_backend().delete(key)
+    key = f"tasks/{task_id}/uploads/{input_filename}"
+    get_storage().delete(key)
     return key

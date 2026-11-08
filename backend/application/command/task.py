@@ -1,12 +1,10 @@
-from typing import List, Union
+from typing import List, Union, Literal
 from pydantic import BaseModel, Field
 
 from backend.domain.models.task import MediaType
 
 
 class BasicConfigCommand(BaseModel):
-    dataset_data_source_id: int = Field(description="YOLO 数据集的目标 S3 数据源")
-    dataset_prefix: str = Field(default="", description="数据集目录，相对于数据源前缀")
     name: str = Field(description="description: task name", max_length=50)
     media_type: Union[MediaType, None] = Field(
         default=None, description="description: media type of task files"
@@ -28,9 +26,8 @@ class CollaboratorBatchCommand(BaseModel):
 
 
 class UpdateCommand(BaseModel):
+    ai_algorithm: Literal["yolo"] = "yolo"
     ai_model_name: str | None = None
-    dataset_data_source_id: int | None = None
-    dataset_prefix: str | None = None
     name: Union[str, None] = Field(
         default=None, description="description: task name", max_length=50
     )

@@ -1,4 +1,4 @@
-export type DatasetSplit = 'train' | 'test' | 'val';
+export type DatasetSplit = 'train' | 'test';
 
 import type { EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
 
@@ -14,8 +14,6 @@ export interface AttachmentResponse {
   /** Url description: upload file url */
   url?: string;
   thumbnail_url?: string | null;
-  stream_url?: string | null;
-  storage_backend?: string | null;
 }
 
 export interface GetUsersApiV1UsersGetParams {
@@ -31,14 +29,7 @@ export interface UserResponse {
   username?: string;
 }
 
-export interface PreAnnotationFileResponse extends AttachmentResponse {
-  sample_names: string[];
-}
-
 export interface BasicConfigCommand {
-  /** YOLO 数据集的目标 S3 数据源与相对目录。 */
-  dataset_data_source_id: number;
-  dataset_prefix?: string;
   /** Name description: task name */
   name: string;
   /** Description description: task description */
@@ -240,7 +231,7 @@ export interface OkRespTaskResponseWithStatics {
 }
 
 export interface PatchSampleCommand {
-  /** 训练、测试、评估；分别对应三个 YOLO 划分清单。 */
+  /** 训练集或测试集。 */
   split?: DatasetSplit;
   /** Data description: sample data, include filename, file url, or result */
   data?: SampleData;
@@ -251,7 +242,7 @@ export interface PatchSampleCommand {
 }
 
 export interface SampleResponse {
-  /** 训练、测试、评估；分别对应三个 YOLO 划分清单。 */
+  /** 训练集或测试集。 */
   split?: DatasetSplit;
   /** Id description: annotation id */
   id?: number;
@@ -267,8 +258,6 @@ export interface SampleResponse {
     url: string;
     filename: string;
     thumbnail_url?: string | null;
-    stream_url?: string | null;
-    storage_backend?: string | null;
   };
   /** Annotated Count description: annotate result count */
   annotated_count?: number;
@@ -292,8 +281,6 @@ export interface PreAnnotationResponse {
     url: string;
     filename: string;
     thumbnail_url?: string | null;
-    stream_url?: string | null;
-    storage_backend?: string | null;
   } | null;
   /** Created At description: task created at time */
   created_at?: string;
@@ -353,10 +340,10 @@ export interface SignupResponse {
 }
 
 export interface TaskResponse {
+  ai_algorithm?: 'yolo';
   /** models/ 下用于 AI 标注的权重文件名。 */
   ai_model_name?: string | null;
-  /** YOLO 数据集的目标 S3 数据源与相对目录。 */
-  dataset_data_source_id?: number;
+  /** 自动分配的任务本地目录，只读。 */
   dataset_prefix?: string;
   /** Id description: task id */
   id?: number;
@@ -381,6 +368,9 @@ export interface TaskResponse {
 }
 
 export interface TaskResponseWithStatics {
+  ai_algorithm?: 'yolo';
+  ai_model_name?: string | null;
+  dataset_prefix?: string;
   /** Id description: task id */
   id?: number;
   /** Name description: task name */
@@ -436,11 +426,9 @@ export interface UpdateApiV1TasksTaskIdSamplesSampleIdPatchParams {
 }
 
 export interface UpdateCommand {
+  ai_algorithm?: 'yolo';
   /** models/ 下用于 AI 标注的权重文件名。 */
   ai_model_name?: string | null;
-  /** YOLO 数据集的目标 S3 数据源与相对目录。 */
-  dataset_data_source_id?: number;
-  dataset_prefix?: string;
   /** Name description: task name */
   name?: string;
   /** Description description: task description */
@@ -865,86 +853,4 @@ export interface FrameTool {
    */
   label: string;
   attributes?: Attribute;
-}
-
-// ── Data Source (S3) ────────────────────────────────────────────────
-
-export interface DataSourceResponse {
-  id: number;
-  name: string;
-  type: string;
-  endpoint?: string;
-  region?: string;
-  bucket: string;
-  prefix?: string;
-  path_style?: boolean;
-  use_ssl?: boolean;
-  presign_expire_secs?: number;
-  created_by?: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface CreateDataSourceCommand {
-  name: string;
-  type?: string;
-  endpoint?: string;
-  region?: string;
-  bucket: string;
-  prefix?: string;
-  access_key_id: string;
-  secret_access_key: string;
-  path_style?: boolean;
-  use_ssl?: boolean;
-  presign_expire_secs?: number;
-}
-
-export interface UpdateDataSourceCommand {
-  name?: string;
-  endpoint?: string;
-  region?: string;
-  bucket?: string;
-  prefix?: string;
-  access_key_id?: string;
-  secret_access_key?: string;
-  path_style?: boolean;
-  use_ssl?: boolean;
-  presign_expire_secs?: number;
-}
-
-export interface ListDataSourcesParams {
-  page?: number;
-  size?: number;
-}
-
-export interface DataSourceListResponse {
-  meta_data?: MetaData;
-  data: DataSourceResponse[];
-}
-
-export interface S3ObjectItem {
-  key: string;
-  size: number;
-  last_modified?: string | null;
-}
-
-export interface S3ObjectListResponse {
-  objects: S3ObjectItem[];
-  next_page_token?: string | null;
-  truncated: boolean;
-}
-
-export interface ListS3ObjectsParams {
-  ds_id: number;
-  prefix?: string;
-  extension?: string;
-  page_token?: string | null;
-  size?: number;
-}
-
-export interface ImportS3SamplesCommand {
-  data_source_id: number;
-  object_keys?: string[];
-  prefix?: string;
-  extension?: string;
 }

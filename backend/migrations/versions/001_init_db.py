@@ -3,7 +3,7 @@
 from alembic import op
 import sqlalchemy as sa
 
-# 保留当前修订 ID；已处于该版本的数据库无需重新建表。
+# 本脚本仅用于初始化空库，不修改已有数据库结构。
 revision = "e5f6a7b8c9d0"
 down_revision = None
 branch_labels = None
@@ -35,98 +35,10 @@ def upgrade() -> None:
     op.create_index(op.f("ix_user_id"), "user", ["id"], unique=False)
     op.create_index(op.f("ix_user_username"), "user", ["username"], unique=True)
 
-    # 2. 创建S3 数据源表及其索引。
-    op.create_table(
-        "data_source",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column(
-            "name", sa.String(length=128), nullable=False, comment="Display name"
-        ),
-        sa.Column(
-            "type", sa.String(length=32), nullable=False, comment="Source type: S3"
-        ),
-        sa.Column(
-            "endpoint", sa.String(length=512), nullable=True, comment="S3 endpoint URL"
-        ),
-        sa.Column("region", sa.String(length=64), nullable=True, comment="AWS region"),
-        sa.Column(
-            "bucket", sa.String(length=256), nullable=False, comment="Bucket name"
-        ),
-        sa.Column(
-            "prefix", sa.String(length=512), nullable=True, comment="Default key prefix"
-        ),
-        sa.Column(
-            "access_key_id",
-            sa.String(length=512),
-            nullable=True,
-            comment="Encrypted access key",
-        ),
-        sa.Column(
-            "secret_access_key",
-            sa.String(length=1024),
-            nullable=True,
-            comment="Encrypted secret key",
-        ),
-        sa.Column(
-            "path_style",
-            sa.Boolean(),
-            nullable=True,
-            comment="Use path-style addressing",
-        ),
-        sa.Column("use_ssl", sa.Boolean(), nullable=True, comment="Use HTTPS"),
-        sa.Column(
-            "presign_expire_secs",
-            sa.Integer(),
-            nullable=True,
-            comment="Presigned URL TTL",
-        ),
-        sa.Column("created_by", sa.Integer(), nullable=True),
-        sa.Column("updated_by", sa.Integer(), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=True,
-            comment="Created time",
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=True,
-            comment="Updated time",
-        ),
-        sa.Column(
-            "deleted_at", sa.DateTime(), nullable=True, comment="Soft delete time"
-        ),
-        sa.ForeignKeyConstraint(
-            ["created_by"],
-            ["user.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["updated_by"],
-            ["user.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        "idx_datasource_id_deleted_at",
-        "data_source",
-        ["id", "deleted_at"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_data_source_created_by"), "data_source", ["created_by"], unique=False
-    )
-    op.create_index(
-        op.f("ix_data_source_deleted_at"), "data_source", ["deleted_at"], unique=False
-    )
-    op.create_index(op.f("ix_data_source_id"), "data_source", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_data_source_updated_by"), "data_source", ["updated_by"], unique=False
-    )
-
-    # 3. 创建任务与数据集配置表及其索引。
+    # 2. 创建任务与数据集配置表及其索引。
     op.create_table(
         "task",
+        sa.Column("ai_algorithm", sa.String(32), nullable=False, server_default="yolo"),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=64), nullable=True),
         sa.Column(
@@ -136,19 +48,6 @@ def upgrade() -> None:
             comment="task description",
         ),
         sa.Column("tips", sa.String(length=1024), nullable=True, comment="task tips"),
-        sa.Column(
-            "dataset_data_source_id",
-            sa.Integer(),
-            nullable=True,
-            comment="YOLO 数据集的目标 S3 数据源",
-        ),
-        sa.Column(
-            "dataset_prefix",
-            sa.String(length=1024),
-            server_default="",
-            nullable=False,
-            comment="相对于数据源前缀的数据集目录",
-        ),
         sa.Column(
             "ai_model_name",
             sa.String(length=1024),
@@ -199,10 +98,6 @@ def upgrade() -> None:
             ["user.id"],
         ),
         sa.ForeignKeyConstraint(
-            ["dataset_data_source_id"],
-            ["data_source.id"],
-        ),
-        sa.ForeignKeyConstraint(
             ["updated_by"],
             ["user.id"],
         ),
@@ -216,7 +111,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_task_id"), "task", ["id"], unique=False)
     op.create_index(op.f("ix_task_name"), "task", ["name"], unique=False)
 
-    # 4. 创建AI 预标注批次表及其索引。
+    # 3. 创建 AI 预标注批次表及其索引。
     op.create_table(
         "auto_label_job",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -254,27 +149,20 @@ def upgrade() -> None:
         op.f("ix_auto_label_job_task_id"), "auto_label_job", ["task_id"], unique=False
     )
 
-    # 5. 创建图片与附件引用表及其索引。
+    # 4. 创建图片与附件引用表及其索引。
     op.create_table(
         "task_attachment",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "filename", sa.String(length=256), nullable=True, comment="file name"
         ),
-        sa.Column("url", sa.String(length=256), nullable=True, comment="file url"),
         sa.Column(
             "path",
             sa.String(length=256),
             nullable=True,
-            comment="file storage path or S3 object key",
+            comment="任务目录下的文件相对路径",
         ),
         sa.Column("task_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "data_source_id",
-            sa.Integer(),
-            nullable=True,
-            comment="NULL = global S3 upload, set = external S3 data source",
-        ),
         sa.Column("created_by", sa.Integer(), nullable=True),
         sa.Column("updated_by", sa.Integer(), nullable=True),
         sa.Column(
@@ -295,10 +183,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["created_by"],
             ["user.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["data_source_id"],
-            ["data_source.id"],
         ),
         sa.ForeignKeyConstraint(
             ["task_id"],
@@ -323,12 +207,6 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_index(
-        op.f("ix_task_attachment_data_source_id"),
-        "task_attachment",
-        ["data_source_id"],
-        unique=False,
-    )
-    op.create_index(
         op.f("ix_task_attachment_deleted_at"),
         "task_attachment",
         ["deleted_at"],
@@ -347,7 +225,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # 6. 创建任务协作者表及其索引。
+    # 5. 创建任务协作者表及其索引。
     op.create_table(
         "task_collaborator",
         sa.Column("task_id", sa.Integer(), nullable=False),
@@ -375,7 +253,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # 7. 创建样本预标注表及其索引。
+    # 6. 创建样本预标注表及其索引。
     op.create_table(
         "task_pre_annotation",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -477,7 +355,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # 8. 创建样本与数据集划分表及其索引。
+    # 7. 创建样本与数据集划分表及其索引。
     op.create_table(
         "task_sample",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -491,7 +369,7 @@ def upgrade() -> None:
             sa.String(length=16),
             server_default="train",
             nullable=False,
-            comment="训练、测试或评估集",
+            comment="训练集或测试集",
         ),
         sa.Column("created_by", sa.Integer(), nullable=True),
         sa.Column("updated_by", sa.Integer(), nullable=True),
@@ -561,7 +439,7 @@ def upgrade() -> None:
         op.f("ix_task_sample_task_id"), "task_sample", ["task_id"], unique=False
     )
 
-    # 9. 创建样本更新者表及其索引。
+    # 8. 创建样本更新者表及其索引。
     op.create_table(
         "task_sample_updater",
         sa.Column("sample_id", sa.Integer(), nullable=False),
@@ -589,9 +467,30 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # 训练记录保存参数、执行状态与产物，日志文件放在服务端工作目录。
+    op.create_table(
+        "training_run",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("task_id", sa.Integer(), sa.ForeignKey("task.id"), nullable=False),
+        sa.Column("created_by", sa.Integer(), sa.ForeignKey("user.id"), nullable=False),
+        sa.Column("initial_model", sa.String(256), nullable=False),
+        sa.Column("parameters", sa.Text(), nullable=False),
+        sa.Column("status", sa.String(32), nullable=False),
+        sa.Column("run_id", sa.String(128), nullable=True),
+        sa.Column("model_name", sa.String(256), nullable=True),
+        sa.Column("metrics", sa.Text(), nullable=True),
+        sa.Column("error_message", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_training_run_task_id", "training_run", ["task_id"])
+
 
 def downgrade() -> None:
     """按外键依赖的逆序删除初始化脚本创建的索引和业务表。"""
+    op.drop_index("ix_training_run_task_id", table_name="training_run")
+    op.drop_table("training_run")
 
     op.drop_index(
         op.f("ix_task_sample_updater_user_id"), table_name="task_sample_updater"
@@ -637,9 +536,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_task_attachment_task_id"), table_name="task_attachment")
     op.drop_index(op.f("ix_task_attachment_id"), table_name="task_attachment")
     op.drop_index(op.f("ix_task_attachment_deleted_at"), table_name="task_attachment")
-    op.drop_index(
-        op.f("ix_task_attachment_data_source_id"), table_name="task_attachment"
-    )
     op.drop_index(op.f("ix_task_attachment_created_by"), table_name="task_attachment")
     op.drop_index("idx_attachment_id_deleted_at", table_name="task_attachment")
 
@@ -655,13 +551,7 @@ def downgrade() -> None:
     op.drop_index("idx_task_id_deleted_at_index", table_name="task")
 
     op.drop_table("task")
-    op.drop_index(op.f("ix_data_source_updated_by"), table_name="data_source")
-    op.drop_index(op.f("ix_data_source_id"), table_name="data_source")
-    op.drop_index(op.f("ix_data_source_deleted_at"), table_name="data_source")
-    op.drop_index(op.f("ix_data_source_created_by"), table_name="data_source")
-    op.drop_index("idx_datasource_id_deleted_at", table_name="data_source")
 
-    op.drop_table("data_source")
     op.drop_index(op.f("ix_user_username"), table_name="user")
     op.drop_index(op.f("ix_user_id"), table_name="user")
 

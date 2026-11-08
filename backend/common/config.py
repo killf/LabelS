@@ -1,5 +1,6 @@
 from loguru import logger
-from pydantic import Field
+from pathlib import Path
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,40 +17,23 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     MEDIA_HOST: str = f"{SCHEME}://{HOST}:{PORT}"
 
-    # SQLite 的持久化目录；媒体文件统一保存在 S3 中。
+    # SQLite 的持久化目录；图片、模型和训练日志均保存在该本地目录下。
     BASE_DATA_DIR: str = "data"
-    UPLOAD_DIR: str = "upload"
     UPLOAD_FILE_MAX_SIZE: int = 200_000_000  # ~200MB
     THUMBNAIL_HEIGH_PIXEL: int = 120
-    S3_ENDPOINT: str = ""
-    S3_REGION: str = ""
-    S3_BUCKET: str = ""
-    S3_ACCESS_KEY_ID: str = ""
-    S3_SECRET_ACCESS_KEY: str = ""
-    S3_PRESIGN_EXPIRE_SECONDS: int = 3600
-    S3_PATH_STYLE: bool = False
-    S3_USE_SSL: bool = True
-
-    # Allow user-configured data-source S3 endpoints to point at private
-    # networks (RFC1918 / ULA / loopback). Enabled by default for on-prem
-    # deployments that use an internal MinIO/S3-compatible store. Even when
-    # enabled, link-local (cloud metadata 169.254.0.0/16), multicast,
-    # reserved and unspecified addresses are always rejected. Set to false to
-    # restrict data-source endpoints to public hosts only (strict SSRF mode).
-    ALLOW_PRIVATE_S3_ENDPOINT: bool = True
 
     AI_AUTO_LABEL_ENABLED: bool = True
-    AI_DEVICE: str = ""  # 留空由 PyTorch 选择设备，验证时可显式指定 cpu。
+    AI_DEVICE: str = ""  # 留空自动选择 CUDA/ROCm、MPS 或 CPU。
 
-    # 保留历史 SQLite 文件名，改名后继续读取已有数据库。
+    # SQLite 默认与本地任务文件使用同一根目录。
     DATABASE_URL: str = Field(
-        default=f"sqlite:///{BASE_DATA_DIR}/labelu.sqlite",
+        default="",
         description="Database connection URL. Supports SQLite and MySQL.",
     )
 
     PASSWORD_SECRET_KEY: str = Field(
         default="",
-        description="JWT secret key. Generate with: openssl rand -hex 32. MUST be set in production.",
+        description="JWT signing key. Generate with: openssl rand -hex 32.",
     )
 
     TOKEN_GENERATE_ALGORITHM: str = "HS256"
@@ -61,6 +45,14 @@ class Settings(BaseSettings):
     TOKEN_REFRESH_THRESHOLD_MINUTES: int = 15
     TOKEN_TYPE: str = "Bearer"
     EXPOSE_INTERNAL_ERRORS: bool = False
+
+    @model_validator(mode="after")
+    def default_database_directory(self) -> "Settings":
+        """未指定数据库地址时，将 SQLite 放到配置后的本地数据根目录。"""
+        if not self.DATABASE_URL:
+            directory = Path(self.BASE_DATA_DIR).as_posix().rstrip("/")
+            self.DATABASE_URL = f"sqlite:///{directory}/labels.sqlite"
+        return self
 
 
 settings = Settings()

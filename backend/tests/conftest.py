@@ -10,34 +10,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-# 1. 数据库与对象存储均使用合成数据，不读取开发者的配置或凭据。
+# 1. 数据库与文件存储均使用隔离临时目录，不读取开发者的配置或凭据。
 _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="labels-test-"))
 os.environ["DATABASE_URL"] = (
     f"sqlite:///{(_TEST_DATA_DIR / 'application.sqlite').as_posix()}"
 )
 os.environ["BASE_DATA_DIR"] = str(_TEST_DATA_DIR)
 os.environ["PASSWORD_SECRET_KEY"] = "labels-test-only-signing-key"
-os.environ["S3_BUCKET"] = "labels-test"
-os.environ["S3_ENDPOINT"] = ""
-os.environ["S3_REGION"] = "us-east-1"
-os.environ["S3_ACCESS_KEY_ID"] = "testing"
-os.environ["S3_SECRET_ACCESS_KEY"] = "testing"
-
-import boto3
-from moto import mock_aws
-
-_s3_mock = mock_aws()
-_s3_mock.start()
-_s3_client = boto3.client(
-    "s3",
-    region_name="us-east-1",
-    aws_access_key_id="testing",
-    aws_secret_access_key="testing",
-)
-_s3_client.create_bucket(Bucket="labels-test")
-
 from backend.common.config import settings
-from backend.common.storage import get_storage_backend
+from backend.common.storage import get_storage
 
 from backend.main import app
 from backend.common.db import Base
@@ -65,16 +46,15 @@ def _hermetic_storage() -> Generator:
     """Guarantee the isolated media root is active and clean it up afterwards.
 
     The redirect itself happens at import time (above); this fixture re-clears
-    the storage-backend cache in case anything memoized it during collection and
+    the local-storage cache in case anything memoized it during collection and
     removes the throwaway directory (test DB + media) once the session ends.
     """
-    get_storage_backend.cache_clear()
+    get_storage.cache_clear()
     try:
         yield
     finally:
         engine.dispose()
-        get_storage_backend.cache_clear()
-        _s3_mock.stop()
+        get_storage.cache_clear()
         shutil.rmtree(_TEST_DATA_DIR, ignore_errors=True)
 
 
@@ -130,9 +110,9 @@ def run_around_tests(db: Session):
             for table in reversed(meta.sorted_tables):
                 if table.key != "user":
                     cleanup.execute(table.delete())
-        objects = _s3_client.list_objects_v2(Bucket="labels-test").get("Contents", [])
-        for obj in objects:
-            _s3_client.delete_object(Bucket="labels-test", Key=obj["Key"])
+        task_files = (_TEST_DATA_DIR / "tasks").resolve()
+        assert task_files.is_relative_to(_TEST_DATA_DIR.resolve())
+        shutil.rmtree(task_files, ignore_errors=True)
     finally:
         if cleanup is not None:
             cleanup.close()
@@ -181,24 +161,6 @@ def init_db() -> None:
                     hashed_password=get_password_hash(TEST_USER_PASSWORD),
                 )
                 user = crud_user.create(db=db, user=user_in)
-            from backend.common.crypto import encrypt_value
-            from backend.domain.models.data_source import DataSource
-
-            if db.query(DataSource).filter(DataSource.id == 1).first() is None:
-                db.add(
-                    DataSource(
-                        id=1,
-                        name="Test S3 dataset",
-                        bucket="labels-test",
-                        prefix="datasets",
-                        region="us-east-1",
-                        path_style=True,
-                        access_key_id=encrypt_value("testing"),
-                        secret_access_key=encrypt_value("testing"),
-                        created_by=user.id,
-                        updated_by=user.id,
-                    )
-                )
     finally:
         if db is not None:
             db.close()
