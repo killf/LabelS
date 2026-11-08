@@ -1,5 +1,5 @@
 import { SettingOutlined } from '@ant-design/icons';
-import { useNavigate, useRouteLoaderData } from 'react-router';
+import { useNavigate, useRouteLoaderData, useSearchParams } from 'react-router-dom';
 import { Button } from 'antd';
 import _ from 'lodash-es';
 import styled from 'styled-components';
@@ -7,6 +7,7 @@ import { FlexLayout } from '@labels/components-react';
 import { useTranslation } from '@labels/i18n';
 
 import type { ProjectLoaderResult } from '@/loaders/project.loader';
+import type { DatasetSplit } from '@/api/types';
 import useMe from '@/hooks/useMe';
 
 import commonController from '../../../../utils/common';
@@ -46,7 +47,7 @@ export function ProjectStatus({ children, status, count }: React.PropsWithChildr
     <FlexLayout items="center" gap=".5rem">
       {status && <Circle color={color} />}
       <b>{title}</b>
-      {count && <b>{count}</b>}
+      {count !== undefined && <b>{count}</b>}
     </FlexLayout>
   );
 }
@@ -63,6 +64,20 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
   const samples = routerLoaderData.samples;
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedSplit = searchParams.get('split');
+
+  const filterSplit = (split?: DatasetSplit) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (split && selectedSplit !== split) next.set('split', split);
+      else next.delete('split');
+      next.set('page', '1');
+      next.delete('after');
+      next.delete('before');
+      return next;
+    });
+  };
 
   const handleGoAnnotation = () => {
     if (!samples || samples.data.length === 0) {
@@ -79,13 +94,35 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
   };
 
   return (
-    <FlexLayout justify="space-between" items="center">
-      <FlexLayout items="center" gap="3rem">
+    <FlexLayout justify="space-between" items="center" gap=".75rem 1rem" style={{ flexWrap: 'wrap' }}>
+      <FlexLayout items="center" gap="1.5rem" style={{ flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
         <b>{t('dataOverview')}</b>
         <ProjectStatus status="done" count={stats.done} />
         <ProjectStatus status="new" count={stats.new} />
         <ProjectStatus status="skipped" count={stats.skipped} />
-        <ProjectStatus count={stats.done! + stats.new! + stats.skipped!}>{t('total')}</ProjectStatus>
+        <Button type="text" size="small" aria-pressed={!selectedSplit} onClick={() => filterSplit()}>
+          <ProjectStatus count={(stats.done ?? 0) + (stats.new ?? 0) + (stats.skipped ?? 0)}>
+            {t('total')}
+          </ProjectStatus>
+        </Button>
+        <Button
+          type={selectedSplit === 'train' ? 'primary' : 'text'}
+          ghost={selectedSplit === 'train'}
+          size="small"
+          aria-pressed={selectedSplit === 'train'}
+          onClick={() => filterSplit('train')}
+        >
+          <ProjectStatus count={stats.train ?? 0}>{t('trainingSamples')}</ProjectStatus>
+        </Button>
+        <Button
+          type={selectedSplit === 'test' ? 'primary' : 'text'}
+          ghost={selectedSplit === 'test'}
+          size="small"
+          aria-pressed={selectedSplit === 'test'}
+          onClick={() => filterSplit('test')}
+        >
+          <ProjectStatus count={stats.test ?? 0}>{t('testSamples')}</ProjectStatus>
+        </Button>
       </FlexLayout>
       <FlexLayout gap=".5rem">
         {isMeTheCreator && (
@@ -94,7 +131,7 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
           </Button>
         )}
         <Button type="primary" ghost onClick={handleGoUpload}>
-          {t('uploadData')}
+          {t('uploadImages')}
         </Button>
         <Button type="primary" onClick={commonController.debounce(handleGoAnnotation, 100)}>
           {t('startAnnotate')}

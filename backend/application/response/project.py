@@ -4,12 +4,14 @@ from typing import Union
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.application.response.base import UserResp
+from backend.application.command.training import StartTrainingCommand
 
 
 class ProjectResponse(BaseModel):
     ai_algorithm: str = "yolo"
     dataset_prefix: str = ""
     ai_model_name: str | None = None
+    training_config: StartTrainingCommand | None = None
     id: Union[int, None] = Field(default=None, description="description: project id")
     name: Union[str, None] = Field(
         default=None, description="description: project name"
@@ -39,6 +41,8 @@ class ProjectResponse(BaseModel):
 
 
 class ProjectStatics(BaseModel):
+    train: int = Field(default=0, description="项目内训练集样本数")
+    test: int = Field(default=0, description="项目内测试集样本数")
     new: Union[int, None] = Field(
         default=0,
         description="description: count for project data have not labeled yet",

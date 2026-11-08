@@ -82,7 +82,10 @@ export async function deleteFile(
   });
 }
 
-export async function updateProjectConfig(projectId: number, projectConfig: UpdateCommand): Promise<OkRespProjectResponse> {
+export async function updateProjectConfig(
+  projectId: number,
+  projectConfig: UpdateCommand,
+): Promise<OkRespProjectResponse> {
   return await request.patch(`/v1/projects/${projectId}`, projectConfig);
 }
 
@@ -108,6 +111,6 @@ export async function deleteProject(projectId: number): Promise<OkRespCommonData
   });
 }
 
-export async function getProjectModels(projectId: number): Promise<OkResponse<string[]>> {
-  return await request.get(`/v1/projects/${projectId}/models`);
+export async function getProjectModels(projectId: number, algorithm = 'yolo'): Promise<OkResponse<string[]>> {
+  return await request.get(`/v1/projects/${projectId}/models`, { params: { algorithm } });
 }

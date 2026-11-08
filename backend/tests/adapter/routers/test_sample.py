@@ -11,6 +11,95 @@ from backend.domain.models.sample import ProjectSample
 
 
 class TestClassProjectSampleRouter:
+    def test_split_filter_pagination_and_global_stats(
+        self, client: TestClient, testuser_token_headers: dict, db: Session
+    ) -> None:
+        """划分筛选在分页前生效，统计排除删除样本且保持项目全量范围。"""
+        owner = crud_user.get_user_by_username(db=db, username="test@example.com")
+        with begin_transaction(db):
+            project = crud_project.create(
+                db=db,
+                project=Project(name="split", created_by=owner.id, updated_by=owner.id),
+            )
+            other = crud_project.create(
+                db=db,
+                project=Project(name="other", created_by=owner.id, updated_by=owner.id),
+            )
+            samples = crud_sample.batch(
+                db=db,
+                samples=[
+                    ProjectSample(
+                        project_id=project.id,
+                        file_id=1,
+                        created_by=owner.id,
+                        updated_by=owner.id,
+                        split=split,
+                        state=state,
+                        data="{}",
+                    )
+                    for split, state in [
+                        ("train", "DONE"),
+                        ("test", "DONE"),
+                        ("train", "NEW"),
+                        ("test", "SKIPPED"),
+                    ]
+                ],
+            )
+            crud_sample.delete(db=db, sample_ids=[samples[-1].id])
+            crud_sample.batch(
+                db=db,
+                samples=[
+                    ProjectSample(
+                        project_id=other.id,
+                        file_id=1,
+                        data="{}",
+                        split="test",
+                        created_by=owner.id,
+                        updated_by=owner.id,
+                    )
+                ],
+            )
+
+        url = f"{settings.API_V1_STR}/projects/{project.id}"
+        for split, ids in [
+            ("train", [samples[0].id, samples[2].id]),
+            ("test", [samples[1].id]),
+        ]:
+            for page, sample_id in enumerate(ids):
+                response = client.get(
+                    f"{url}/samples",
+                    headers=testuser_token_headers,
+                    params={"split": split, "page": page, "size": 1},
+                )
+                assert response.status_code == 200
+                assert [row["id"] for row in response.json()["data"]] == [sample_id]
+                assert response.json()["meta_data"]["total"] == len(ids)
+
+        all_samples = client.get(
+            f"{url}/samples",
+            headers=testuser_token_headers,
+            params={"page": 0},
+        )
+        assert all_samples.json()["meta_data"]["total"] == 3
+        invalid = client.get(
+            f"{url}/samples",
+            headers=testuser_token_headers,
+            params={"page": 0, "split": "validation"},
+        )
+        assert invalid.status_code == 422
+        expected = {"new": 1, "done": 2, "skipped": 0, "train": 2, "test": 1}
+        detail = client.get(url, headers=testuser_token_headers)
+        assert detail.json()["data"]["stats"] == expected
+        listing = client.get(
+            f"{settings.API_V1_STR}/projects",
+            headers=testuser_token_headers,
+            params={"page": 0, "size": 10},
+        )
+        listed_project = next(
+            p for p in listing.json()["data"] if p["id"] == project.id
+        )
+        assert listed_project["stats"] == expected
+
     def test_create_sample_successful(
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:

@@ -1,4 +1,5 @@
 import json
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import List, Tuple
 
 from loguru import logger
@@ -29,6 +30,7 @@ from backend.application.response.base import CommonDataResp
 from backend.application.response.project import ProjectStatics
 from backend.application.response.project import ProjectResponse
 from backend.application.response.project import ProjectResponseWithStatics
+from backend.inference import ANNOTATION_WEIGHTS
 
 
 async def create(
@@ -77,6 +79,7 @@ async def create(
         id=new_project.id,
         ai_model_name=new_project.ai_model_name,
         ai_algorithm=new_project.ai_algorithm,
+        training_config=new_project.training_config,
         dataset_prefix=new_project.dataset_prefix,
         name=new_project.name,
         description=new_project.description,
@@ -112,6 +115,7 @@ async def list_by(
             id=project.id,
             ai_model_name=project.ai_model_name,
             ai_algorithm=project.ai_algorithm,
+            training_config=project.training_config,
             dataset_prefix=project.dataset_prefix,
             name=project.name,
             description=project.description,
@@ -125,6 +129,8 @@ async def list_by(
                 username=project.owner.username,
             ),
             stats=ProjectStatics(
+                train=statics.get(f"{project.id}_split_train", 0),
+                test=statics.get(f"{project.id}_split_test", 0),
                 new=statics.get(f"{project.id}_{SampleState.NEW.value}", 0),
                 done=statics.get(f"{project.id}_{SampleState.DONE.value}", 0),
                 skipped=statics.get(f"{project.id}_{SampleState.SKIPPED.value}", 0),
@@ -175,6 +181,7 @@ async def get(
         id=project.id,
         ai_model_name=project.ai_model_name,
         ai_algorithm=project.ai_algorithm,
+        training_config=project.training_config,
         dataset_prefix=project.dataset_prefix,
         name=project.name,
         description=project.description,
@@ -188,6 +195,8 @@ async def get(
             username=project.owner.username,
         ),
         stats=ProjectStatics(
+            train=statics.get(f"{project.id}_split_train", 0),
+            test=statics.get(f"{project.id}_split_test", 0),
             new=statics.get(f"{project.id}_{SampleState.NEW.value}", 0),
             done=statics.get(f"{project.id}_{SampleState.DONE.value}", 0),
             skipped=statics.get(f"{project.id}_{SampleState.SKIPPED.value}", 0),
@@ -393,6 +402,24 @@ async def update(
 
     # update
     obj_in = cmd.model_dump(exclude_unset=True)
+    algorithm = obj_in.get("ai_algorithm", project.ai_algorithm)
+    model_name = obj_in.get("ai_model_name", project.ai_model_name)
+    if (
+        model_name
+        and algorithm == "yolo"
+        and (
+            PurePosixPath(model_name).name != model_name
+            or PureWindowsPath(model_name).name != model_name
+            or not model_name.endswith(".pt")
+        )
+    ):
+        raise HTTPException(422, "YOLO 自动标注请选择项目内的 .pt 权重")
+    if (
+        model_name
+        and algorithm != "yolo"
+        and model_name not in ANNOTATION_WEIGHTS[algorithm]
+    ):
+        raise HTTPException(422, "所选权重不属于当前自动标注算法")
     if cmd.config:
         dataset_classes(json.loads(cmd.config))
     if cmd.media_type and cmd.media_type != "IMAGE":
@@ -410,6 +437,7 @@ async def update(
         id=updated_project.id,
         ai_model_name=updated_project.ai_model_name,
         ai_algorithm=updated_project.ai_algorithm,
+        training_config=updated_project.training_config,
         dataset_prefix=updated_project.dataset_prefix,
         name=updated_project.name,
         description=updated_project.description,

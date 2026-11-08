@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy.schema import Index
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, JSON
 
 from backend.common.db import Base
 
@@ -44,12 +44,13 @@ class Project(Base):
     description = Column(String(1024), comment="project description")
     tips = Column(String(1024), comment="project tips")
     ai_model_name = Column(
-        String(1024), nullable=True, comment="models/ 下用于 AI 标注的权重文件名"
+        String(1024), nullable=True, comment="自动标注的权重文件名或官方模型 ID"
     )
 
     ai_algorithm = Column(
         String(32), nullable=False, default="yolo", server_default="yolo"
     )
+    training_config = Column(JSON, nullable=True, comment="开始训练时使用的默认参数")
 
     @property
     def dataset_prefix(self) -> str:

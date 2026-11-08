@@ -1,7 +1,9 @@
-from typing import List, Union, Literal
+from typing import List, Union
 from pydantic import BaseModel, Field
 
 from backend.domain.models.project import MediaType
+from backend.application.command.training import StartTrainingCommand
+from backend.inference import AnnotationAlgorithm
 
 
 class BasicConfigCommand(BaseModel):
@@ -26,8 +28,9 @@ class CollaboratorBatchCommand(BaseModel):
 
 
 class UpdateCommand(BaseModel):
-    ai_algorithm: Literal["yolo"] = "yolo"
+    ai_algorithm: AnnotationAlgorithm = "yolo"
     ai_model_name: str | None = None
+    training_config: StartTrainingCommand | None = None
     name: Union[str, None] = Field(
         default=None, description="description: project name", max_length=50
     )

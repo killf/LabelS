@@ -138,7 +138,7 @@ def test_batch_reuses_model_and_reports_partial_failure(
         loads.append(1)
         yield object()
 
-    def predict(model, sample, project, model_name):
+    def predict(model, sample, project, model_name, algorithm=None):
         if sample.id == second_id:
             raise RuntimeError("synthetic inference failure")
         return {
@@ -213,3 +213,122 @@ def test_model_names_reject_paths_before_loading(name: str):
         with auto_label._load_model(None, None, name):
             pytest.fail("invalid model path reached inference")
     assert error.value.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "algorithm,weights",
+    [
+        ("florence2", "microsoft/Florence-2-base"),
+        ("grounding_dino_sam", "grounding-dino-tiny+sam-vit-base"),
+        ("sam3", "facebook/sam3"),
+    ],
+)
+def test_open_vocabulary_algorithms_share_editable_annotation_contract(
+    client, testuser_token_headers, ai_project, monkeypatch, algorithm, weights
+):
+    from backend.inference import Detection
+
+    project_id, sample_id = ai_project
+    base = f"/api/v1/projects/{project_id}"
+    models = client.get(
+        base + "/models",
+        headers=testuser_token_headers,
+        params={"algorithm": algorithm},
+    )
+    assert models.status_code == 200 and weights in models.json()["data"]
+    saved = client.patch(
+        base,
+        headers=testuser_token_headers,
+        json={"ai_algorithm": algorithm, "ai_model_name": weights},
+    )
+    assert saved.status_code == 200, saved.text
+    detector = SimpleNamespace(
+        predict=lambda image, labels: [Detection([1, 2, 7, 8], labels[0], 0.9)]
+    )
+    monkeypatch.setattr(auto_label, "load_detector", lambda *args: detector)
+    response = client.post(
+        base + f"/samples/{sample_id}/auto_label", headers=testuser_token_headers
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["provider"] == algorithm
+    annotations = client.get(
+        base + "/pre_annotations",
+        headers=testuser_token_headers,
+        params={"sample_name": "sample.png", "page": 0},
+    ).json()["data"]
+    payload = json.loads(annotations[0]["data"])
+    assert payload["meta"]["provider"] == algorithm
+    assert payload["annotations"]["rectTool"]["result"][0]["label"] == "object"
+    assert (
+        client.get(
+            base + f"/samples/{sample_id}", headers=testuser_token_headers
+        ).json()["data"]["state"]
+        == "NEW"
+    )
+
+
+def test_missing_optional_model_cache_returns_actionable_error(monkeypatch):
+    from fastapi import HTTPException
+
+    def unavailable(*_args):
+        raise OSError("synthetic missing cache")
+
+    monkeypatch.setattr(auto_label, "load_detector", unavailable)
+    with pytest.raises(HTTPException) as error:
+        with auto_label._load_model(
+            None, SimpleNamespace(ai_algorithm="sam3"), "facebook/sam3"
+        ):
+            pytest.fail("missing model reached inference")
+    assert error.value.status_code == 503
+    assert "本地权重缓存" in error.value.detail
+
+
+@pytest.mark.parametrize(
+    "algorithm,weights",
+    [
+        ("yolo", "microsoft/Florence-2-base"),
+        ("yolo", "../outside.pt"),
+        ("florence2", "facebook/sam3"),
+    ],
+)
+def test_configuration_rejects_mismatched_annotation_weights(
+    client, testuser_token_headers, ai_project, algorithm, weights
+):
+    response = client.patch(
+        f"/api/v1/projects/{ai_project[0]}",
+        headers=testuser_token_headers,
+        json={"ai_algorithm": algorithm, "ai_model_name": weights},
+    )
+    assert response.status_code == 422
+
+
+def test_batch_uses_algorithm_snapshot_after_project_selection_changes(
+    db, ai_project, monkeypatch
+):
+    from backend.domain.models.project import Project
+    from backend.domain.models.pre_annotation import ProjectPreAnnotation
+    from backend.inference import Detection
+
+    project_id, sample_id = ai_project
+    sample = db.get(ProjectSample, sample_id)
+    with begin_transaction(db):
+        job = crud_auto_label_job.create(
+            db,
+            project_id,
+            sample.created_by,
+            1,
+            "microsoft/Florence-2-base",
+            "florence2",
+        )
+        job_id = job.id
+    assert db.get(Project, project_id).ai_algorithm == "yolo"
+    detector = SimpleNamespace(
+        predict=lambda image, labels: [Detection([1, 2, 7, 8], labels[0])]
+    )
+    monkeypatch.setattr(auto_label, "load_detector", lambda *args: detector)
+    monkeypatch.setattr(auto_label, "SessionLocal", TestingSessionLocal)
+    auto_label._run_batch(job_id, [sample_id])
+    db.expire_all()
+    assert db.get(AutoLabelJob, job_id).status == "COMPLETED"
+    record = db.query(ProjectPreAnnotation).one()
+    assert json.loads(record.data)["meta"]["provider"] == "florence2"

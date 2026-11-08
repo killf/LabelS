@@ -1,6 +1,8 @@
-export type DatasetSplit = 'train' | 'test';
-
 import type { EnumerableAttribute, ILabel, TextAttribute } from '@labels/interface';
+
+import type { TrainingParameters } from './services/training';
+
+export type DatasetSplit = 'train' | 'test';
 
 export interface AttachmentDeleteCommand {
   /** Attachment Ids description: attachment file id */
@@ -107,6 +109,7 @@ export interface AutoLabelResponse {
 }
 
 export interface AutoLabelJobResponse {
+  algorithm?: 'yolo' | 'florence2' | 'grounding_dino_sam' | 'sam3';
   model_name: string;
   id: number;
   project_id: number;
@@ -145,6 +148,7 @@ export interface ListByApiV1ProjectsGetParams {
 
 export interface ListByApiV1ProjectsProjectIdSamplesGetParams {
   project_id: number;
+  split?: DatasetSplit;
   after?: number;
   before?: number;
   page?: number;
@@ -340,8 +344,9 @@ export interface SignupResponse {
 }
 
 export interface ProjectResponse {
-  ai_algorithm?: 'yolo';
-  /** models/ 下用于 AI 标注的权重文件名。 */
+  ai_algorithm?: 'yolo' | 'florence2' | 'grounding_dino_sam' | 'sam3';
+  training_config?: TrainingParameters | null;
+  /** 自动标注的权重文件名或官方模型 ID。 */
   ai_model_name?: string | null;
   /** 自动分配的项目本地目录，只读。 */
   dataset_prefix?: string;
@@ -368,7 +373,8 @@ export interface ProjectResponse {
 }
 
 export interface ProjectResponseWithStatics {
-  ai_algorithm?: 'yolo';
+  ai_algorithm?: 'yolo' | 'florence2' | 'grounding_dino_sam' | 'sam3';
+  training_config?: TrainingParameters | null;
   ai_model_name?: string | null;
   dataset_prefix?: string;
   /** Id description: project id */
@@ -408,6 +414,8 @@ export interface ProjectListResponseWithStatics {
 }
 
 export interface ProjectStatics {
+  train?: number;
+  test?: number;
   /** New description: count for project data have not labeled yet */
   new?: number;
   /** Done description: count for project data already labeled */
@@ -426,8 +434,9 @@ export interface UpdateApiV1ProjectsProjectIdSamplesSampleIdPatchParams {
 }
 
 export interface UpdateCommand {
-  ai_algorithm?: 'yolo';
-  /** models/ 下用于 AI 标注的权重文件名。 */
+  ai_algorithm?: 'yolo' | 'florence2' | 'grounding_dino_sam' | 'sam3';
+  training_config?: TrainingParameters | null;
+  /** 自动标注的权重文件名或官方模型 ID。 */
   ai_model_name?: string | null;
   /** Name description: project name */
   name?: string;

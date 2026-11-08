@@ -30,7 +30,10 @@ class AutoLabelJob(Base):
         nullable=False,
         default="",
         server_default="",
-        comment="本批次使用的权重文件名",
+        comment="本批次使用的权重文件名或模型 ID",
+    )
+    algorithm = Column(
+        String(32), nullable=False, default="yolo", server_default="yolo"
     )
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now)

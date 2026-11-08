@@ -1,7 +1,14 @@
 import json
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    field_validator,
+    model_validator,
+)
 
 
 def validate_extra_params(value: dict) -> dict:
@@ -65,6 +72,9 @@ class StartTrainingCommand(BaseModel):
     batch: int = Field(
         default=2, ge=-1, le=1024, description="每批图片数；-1 为自动选择"
     )
+    lr0: float | None = Field(
+        default=None, ge=0, le=1, allow_inf_nan=False, description="初始学习率"
+    )
     extra_params: dict[str, JsonValue] = Field(
         default_factory=dict, description="额外 YOLO 训练参数，不覆盖基础表单或项目路径"
     )
@@ -73,6 +83,12 @@ class StartTrainingCommand(BaseModel):
     @classmethod
     def validate_extra_params(cls, value: dict) -> dict:
         return validate_extra_params(value)
+
+    @model_validator(mode="after")
+    def validate_learning_rate(self):
+        if self.lr0 is not None and "lr0" in self.extra_params:
+            raise ValueError("学习率已单独设置，自定义参数中不能重复设置 lr0")
+        return self
 
     @field_validator("batch")
     @classmethod

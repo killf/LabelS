@@ -39,6 +39,12 @@ def upgrade() -> None:
     op.create_table(
         "project",
         sa.Column("ai_algorithm", sa.String(32), nullable=False, server_default="yolo"),
+        sa.Column(
+            "training_config",
+            sa.JSON(),
+            nullable=True,
+            comment="开始训练时使用的默认参数",
+        ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=64), nullable=True),
         sa.Column(
@@ -54,7 +60,7 @@ def upgrade() -> None:
             "ai_model_name",
             sa.String(length=1024),
             nullable=True,
-            comment="models/ 下用于 AI 标注的权重文件名",
+            comment="自动标注的权重文件名或官方模型 ID",
         ),
         sa.Column(
             "last_sample_inner_id",
@@ -122,6 +128,7 @@ def upgrade() -> None:
     # 3. 创建 AI 预标注批次表及其索引。
     op.create_table(
         "auto_label_job",
+        sa.Column("algorithm", sa.String(32), nullable=False, server_default="yolo"),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("project_id", sa.Integer(), nullable=True),
         sa.Column("created_by", sa.Integer(), nullable=True),
@@ -135,7 +142,7 @@ def upgrade() -> None:
             sa.String(length=1024),
             server_default="",
             nullable=False,
-            comment="本批次使用的权重文件名",
+            comment="本批次使用的权重文件名或模型 ID",
         ),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),

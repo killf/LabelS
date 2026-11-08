@@ -28,9 +28,14 @@ function Breadcrumb({ className, hideHome = false, style }: BreadcrumbProps) {
   const matches = useMatches() as Match[];
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const isProjectPage = matches.some((match) => match.id === 'project');
 
   const crumbs = matches
     .filter((match) => {
+      if (match.id === 'projects' && isProjectPage) {
+        return false;
+      }
+
       if (match.pathname === '/' && hideHome) {
         return false;
       }

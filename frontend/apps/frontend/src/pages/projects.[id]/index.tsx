@@ -25,7 +25,8 @@ import type { ProjectSampleUser } from '../../hooks/useSampleWs';
 
 const HeaderWrapper = styled(FlexLayout.Header)`
   background-color: #fff;
-  height: 3.5rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 0;
 `;
 
 const Samples = () => {
@@ -148,13 +149,13 @@ const Samples = () => {
       render: (filename) => formatter.format('ellipsis', filename ?? '', { maxWidth: 160, type: 'tooltip' }),
     },
     {
-      title: '数据划分',
+      title: '类型',
       dataIndex: 'split',
       key: 'split',
       render: (split: DatasetSplit, record) => {
         return (
           <Select
-            aria-label="数据划分"
+            aria-label="类型"
             value={split}
             style={{ width: 100 }}
             options={[
@@ -405,7 +406,9 @@ const Samples = () => {
     return samples ?? [];
   }, [samples]);
 
-  const trainingActions = <TrainingPanel projectId={projectId} canClean={isMeTheCreator} />;
+  const trainingActions = (
+    <TrainingPanel projectId={projectId} canClean={isMeTheCreator} defaults={project?.training_config} />
+  );
 
   return (
     <FlexLayout flex="column" full gap="2rem">

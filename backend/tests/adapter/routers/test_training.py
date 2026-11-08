@@ -228,8 +228,9 @@ def test_training_records_require_project_access(
 
 @pytest.mark.parametrize("exit_code,expected", [(0, "SUCCEEDED"), (1, "FAILED")])
 @pytest.mark.parametrize("extra_params", [{}, {"lr0": 0.001, "amp": False}])
+@pytest.mark.parametrize("lr0", [None, 0.003])
 def test_worker_records_process_result(
-    training_project, db, monkeypatch, tmp_path, exit_code, expected, extra_params
+    training_project, db, monkeypatch, tmp_path, exit_code, expected, extra_params, lr0
 ):
     with begin_transaction(db):
         project = db.get(Project, training_project)
@@ -242,6 +243,7 @@ def test_worker_records_process_result(
                     "epochs": 2,
                     "imgsz": 640,
                     "batch": 2,
+                    **({"lr0": lr0} if lr0 is not None else {}),
                     **({"extra_params": extra_params} if extra_params else {}),
                 }
             ),
@@ -285,6 +287,8 @@ def test_worker_records_process_result(
     saved = db.get(TrainingRun, run_id)
     assert saved.status == expected and saved.finished_at is not None
     assert "--workers" in captured["args"]
+    if lr0 is not None:
+        assert float(captured["args"][captured["args"].index("--lr0") + 1]) == lr0
     if extra_params:
         arguments = captured["args"]
         assert (
@@ -376,3 +380,42 @@ def test_parameter_catalog_handles_unavailable_runtime(
         headers=testuser_token_headers,
     )
     assert response.status_code == 503
+
+
+def test_project_training_defaults_are_returned_and_applied_with_request_override(
+    client, testuser_token_headers, training_project, monkeypatch
+):
+    async def pending(_run_id):
+        return
+
+    monkeypatch.setattr(training, "_run", pending)
+    monkeypatch.setattr(training.importlib.util, "find_spec", lambda _name: object())
+    monkeypatch.setattr(training, "validate_training_options", Mock())
+    url = f"/api/v1/projects/{training_project}"
+    defaults = {
+        "initial_model": "yolo26n.pt",
+        "epochs": 23,
+        "lr0": 0.003,
+        "extra_params": {"optimizer": "AdamW", "amp": False},
+    }
+    saved = client.patch(
+        url, headers=testuser_token_headers, json={"training_config": defaults}
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["data"]["training_config"]["lr0"] == 0.003
+    loaded = client.get(url, headers=testuser_token_headers).json()["data"]
+    assert loaded["training_config"]["epochs"] == 23
+    result = client.post(
+        url + "/training-runs", headers=testuser_token_headers, json={"epochs": 2}
+    )
+    assert result.status_code == 202, result.text
+    parameters = result.json()["data"]["parameters"]
+    assert parameters["initial_model"] == "yolo26n.pt"
+    assert parameters["epochs"] == 2 and parameters["lr0"] == 0.003
+    assert parameters["extra_params"] == defaults["extra_params"]
+    assert (
+        client.get(url, headers=testuser_token_headers).json()["data"][
+            "training_config"
+        ]["epochs"]
+        == 23
+    )

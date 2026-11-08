@@ -1,3 +1,4 @@
+import { parseTrainingParameters, trainingFormValues } from '@/components/TrainingConfigFields';
 import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { Button, Form } from 'antd';
 import { useLocation, useNavigate, useParams, useRevalidator, useRouteLoaderData } from 'react-router-dom';
@@ -183,7 +184,9 @@ const CreateProject = () => {
       {
         title: stepTitleMapping[StepEnum.Config],
         value: StepEnum.Config,
-        isFinished: [ProjectStatus.CONFIGURED, ProjectStatus.FINISHED, ProjectStatus.INPROGRESS].includes(projectStatus),
+        isFinished: [ProjectStatus.CONFIGURED, ProjectStatus.FINISHED, ProjectStatus.INPROGRESS].includes(
+          projectStatus,
+        ),
       },
       {
         title: stepTitleMapping[StepEnum.Model],
@@ -212,6 +215,7 @@ const CreateProject = () => {
     modelFormInstance.setFieldsValue({
       ai_algorithm: projectData?.ai_algorithm ?? 'yolo',
       ai_model_name: projectData?.ai_model_name,
+      training_config: trainingFormValues(projectData?.training_config),
     });
   }, [annotationFormInstance, basicFormInstance, modelFormInstance, projectData]);
 
@@ -239,6 +243,11 @@ const CreateProject = () => {
       }
 
       const annotationConfig = annotationFormInstance.getFieldsValue();
+      try {
+        await modelFormInstance.validateFields();
+      } catch {
+        return;
+      }
       const emptyType = isContainEmptyOption(annotationConfig);
 
       if (emptyType === 'attribute') {
@@ -266,6 +275,7 @@ const CreateProject = () => {
           ...basicFormInstance.getFieldsValue(),
           ...modelFormInstance.getFieldsValue(),
           ai_model_name: modelFormInstance.getFieldValue('ai_model_name') ?? null,
+          training_config: parseTrainingParameters(modelFormInstance.getFieldValue('training_config')),
           config: JSON.stringify(annotationConfig),
         })
         .then(() => {
@@ -335,6 +345,7 @@ const CreateProject = () => {
       let basicFormValues;
       try {
         basicFormValues = await basicFormInstance.validateFields();
+        await modelFormInstance.validateFields();
       } catch (err) {
         return Promise.reject();
       }
@@ -373,6 +384,7 @@ const CreateProject = () => {
             ...basicFormValues,
             ...modelFormInstance.getFieldsValue(),
             ai_model_name: modelFormInstance.getFieldValue('ai_model_name') ?? null,
+            training_config: parseTrainingParameters(modelFormInstance.getFieldValue('training_config')),
             status: projectData?.status === ProjectStatus.DRAFT ? ProjectStatus.IMPORTED : projectData?.status,
             config: isCreateNewProject ? null : JSON.stringify(config),
           })
@@ -507,16 +519,7 @@ const CreateProject = () => {
         })
         .catch(() => {});
     },
-    [
-      basicFormInstance,
-      currentStep,
-      revalidator,
-      stepDataSource,
-      submitForm,
-      updateCurrentStep,
-      uploadFileList,
-      t,
-    ],
+    [basicFormInstance, currentStep, revalidator, stepDataSource, submitForm, updateCurrentStep, uploadFileList, t],
   );
 
   const handlePrevStep = async (step: ProjectStep, lastStep: ProjectStep) => {

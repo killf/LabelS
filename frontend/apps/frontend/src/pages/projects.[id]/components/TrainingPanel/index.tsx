@@ -1,22 +1,7 @@
 import { useState } from 'react';
-import { QuestionCircleOutlined } from '@ant-design/icons';
+import { HistoryOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import {
-  Alert,
-  Button,
-  Drawer,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Popconfirm,
-  Popover,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Alert, Button, Drawer, Form, Modal, Popconfirm, Popover, Space, Table, Tag, Tooltip, Typography } from 'antd';
 
 import { getProjectModels } from '@/api/services/project';
 import {
@@ -24,12 +9,13 @@ import {
   deleteTrainingRun,
   downloadModel,
   getTrainingLog,
-  getTrainingParameters,
   getTrainingRuns,
   startTraining,
 } from '@/api/services/training';
 import type { TrainingParameters, TrainingRun, TrainingStatus } from '@/api/services/training';
 import { message } from '@/StaticAnt';
+import TrainingConfigFields, { parseTrainingParameters, trainingFormValues } from '@/components/TrainingConfigFields';
+import type { TrainingFormValues } from '@/components/TrainingConfigFields';
 
 const statuses: Record<TrainingStatus, { text: string; color: string }> = {
   PENDING: { text: '等待启动', color: 'default' },
@@ -42,35 +28,21 @@ const statuses: Record<TrainingStatus, { text: string; color: string }> = {
 const active = (status: TrainingStatus) => status === 'PENDING' || status === 'RUNNING';
 const time = (value: string | null) => (value ? new Date(value).toLocaleString() : '-');
 
-type TrainingFormValues = Omit<TrainingParameters, 'extra_params'> & { extra_params?: string };
-
-function parseExtraParams(value?: string): Record<string, unknown> {
-  let parameters: unknown;
-  try {
-    parameters = value?.trim() ? JSON.parse(value) : {};
-  } catch {
-    throw new Error('请输入合法的 JSON');
-  }
-  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
-    throw new Error('自定义训练参数必须是 JSON 对象');
-  }
-  return parameters as Record<string, unknown>;
-}
-
-export default function TrainingPanel({ projectId, canClean }: { projectId: number; canClean: boolean }) {
+export default function TrainingPanel({
+  projectId,
+  canClean,
+  defaults,
+}: {
+  projectId: number;
+  canClean: boolean;
+  defaults?: TrainingParameters | null;
+}) {
   const [showStart, setShowStart] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedRun, setSelectedRun] = useState<TrainingRun>();
   const [page, setPage] = useState(1);
   const [cleaning, setCleaning] = useState<number>();
-  const [showParameters, setShowParameters] = useState(false);
-  const [parameterSearch, setParameterSearch] = useState('');
   const [form] = Form.useForm<TrainingFormValues>();
-  const parameters = useQuery({
-    queryKey: ['trainingParameters', projectId],
-    queryFn: () => getTrainingParameters(projectId),
-    enabled: showParameters,
-  });
   const runs = useQuery({
     queryKey: ['trainingRuns', projectId, page],
     queryFn: () => getTrainingRuns(projectId, page - 1),
@@ -115,25 +87,39 @@ export default function TrainingPanel({ projectId, canClean }: { projectId: numb
 
   return (
     <>
-      <Space>
-        <Button type="primary" ghost disabled={busy} onClick={() => setShowStart(true)}>
-          开始训练
-        </Button>
-        <Button
-          onClick={() => {
-            setPage(1);
-            setShowHistory(true);
-            void runs.refetch();
-          }}
-        >
-          训练记录{busy ? '（训练中）' : ''}
-        </Button>
-      </Space>
+      <Button
+        type="primary"
+        ghost
+        onClick={() => {
+          form.setFieldsValue(trainingFormValues(defaults));
+          setShowStart(true);
+        }}
+      >
+        开始训练
+      </Button>
       <Modal
-        title="开始训练"
+        title={
+          <Space size={4}>
+            开始训练
+            <Tooltip title={busy ? '训练记录（训练中）' : '训练记录'}>
+              <Button
+                type="text"
+                size="small"
+                aria-label="训练记录"
+                icon={<HistoryOutlined />}
+                onClick={() => {
+                  setPage(1);
+                  setShowHistory(true);
+                  void runs.refetch();
+                }}
+              />
+            </Tooltip>
+          </Space>
+        }
         open={showStart}
         onCancel={() => setShowStart(false)}
         confirmLoading={start.isPending}
+        okButtonProps={{ disabled: busy }}
         onOk={() => form.submit()}
         okText="开始训练"
         cancelText="取消"
@@ -141,150 +127,11 @@ export default function TrainingPanel({ projectId, canClean }: { projectId: numb
         <Form
           form={form}
           layout="vertical"
-          onFinish={({ extra_params, ...values }) =>
-            start.mutate({ ...values, extra_params: parseExtraParams(extra_params) })
-          }
-          initialValues={{
-            algorithm: 'yolo26_detect',
-            initial_model: 'yolo26s.pt',
-            epochs: 100,
-            imgsz: 1024,
-            batch: 2,
-          }}
+          onFinish={(values) => start.mutate(parseTrainingParameters(values))}
+          initialValues={trainingFormValues(defaults)}
         >
-          <Form.Item name="algorithm" label="算法" rules={[{ required: true }]}>
-            <Select options={[{ value: 'yolo26_detect', label: 'YOLO26 目标检测' }]} />
-          </Form.Item>
-          <Form.Item name="initial_model" label="初始权重" rules={[{ required: true }]}>
-            <Select
-              options={[
-                {
-                  label: 'YOLO26 预训练模型',
-                  options: ['n', 's', 'm', 'l', 'x'].map((size) => ({
-                    value: `yolo26${size}.pt`,
-                    label: `YOLO26${size}`,
-                  })),
-                },
-                {
-                  label: '本项目模型',
-                  options: (models.data?.data ?? []).map((name) => ({ value: name, label: name })),
-                },
-              ]}
-            />
-          </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-            <Form.Item name="epochs" label="训练轮数" rules={[{ required: true }]}>
-              <InputNumber min={1} max={10000} precision={0} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
-              name="imgsz"
-              label="图片尺寸（像素）"
-              rules={[
-                { required: true },
-                {
-                  validator: (_, value) =>
-                    value % 32 === 0 ? Promise.resolve() : Promise.reject(new Error('图片尺寸需要是 32 的倍数')),
-                },
-              ]}
-            >
-              <InputNumber min={32} max={4096} step={32} precision={0} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item
-              name="batch"
-              label="每批图片数"
-              rules={[
-                { required: true },
-                {
-                  validator: (_, value) =>
-                    value === -1 || value > 0 ? Promise.resolve() : Promise.reject(new Error('请输入 -1 或正整数')),
-                },
-              ]}
-            >
-              <InputNumber min={-1} max={1024} precision={0} style={{ width: '100%' }} />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="extra_params"
-            label={
-              <Space size={4}>
-                自定义训练参数（JSON）
-                <Button
-                  type="text"
-                  size="small"
-                  aria-label="查看可修改的训练参数"
-                  icon={<QuestionCircleOutlined />}
-                  onClick={() => setShowParameters(true)}
-                />
-              </Space>
-            }
-            rules={[
-              {
-                validator: (_, value) => {
-                  try {
-                    parseExtraParams(value);
-                    return Promise.resolve();
-                  } catch (error) {
-                    return Promise.reject(error);
-                  }
-                },
-              },
-            ]}
-          >
-            <Input.TextArea
-              rows={5}
-              spellCheck={false}
-              style={{ fontFamily: 'monospace' }}
-              placeholder={'{\n  "lr0": 0.001,\n  "amp": false\n}'}
-            />
-          </Form.Item>
+          <TrainingConfigFields projectId={projectId} models={models.data?.data ?? []} />
         </Form>
-      </Modal>
-      <Modal
-        title="自定义训练参数说明"
-        open={showParameters}
-        onCancel={() => setShowParameters(false)}
-        footer={null}
-        width={900}
-      >
-        <Typography.Paragraph type="secondary">
-          以下为可在 JSON 中追加的全部参数及默认值。基础表单和项目路径由系统管理，不在此列。
-          部分参数仅适用于其他算法、推理或导出，YOLO26 目标检测训练时可能不生效。
-        </Typography.Paragraph>
-        <Input.Search
-          aria-label="搜索训练参数"
-          placeholder="搜索参数名或说明"
-          allowClear
-          value={parameterSearch}
-          onChange={(event) => setParameterSearch(event.target.value)}
-          style={{ marginBottom: 12 }}
-        />
-        {parameters.isError ? (
-          <Alert
-            type="error"
-            message="无法加载参数说明"
-            action={<Button onClick={() => void parameters.refetch()}>重试</Button>}
-          />
-        ) : (
-          <Table
-            rowKey="name"
-            size="small"
-            loading={parameters.isFetching}
-            pagination={false}
-            scroll={{ y: 420, x: 650 }}
-            dataSource={parameters.data?.data.filter((parameter) =>
-              `${parameter.name} ${parameter.description}`.toLowerCase().includes(parameterSearch.trim().toLowerCase()),
-            )}
-            columns={[
-              { title: '参数', dataIndex: 'name', width: 160 },
-              {
-                title: '默认值',
-                width: 130,
-                render: (_, parameter) => <code>{JSON.stringify(parameter.default)}</code>,
-              },
-              { title: '说明', dataIndex: 'description' },
-            ]}
-          />
-        )}
       </Modal>
       <Drawer title="训练记录" open={showHistory} onClose={() => setShowHistory(false)} width={1080}>
         <Table<TrainingRun>
