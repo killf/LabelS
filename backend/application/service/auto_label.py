@@ -1,4 +1,4 @@
-"""使用项目数据集 models/ 下的 YOLO 权重生成可人工修改的预标注。"""
+"""在后端按所选算法加载本地权重，生成可人工修改的矩形预标注。"""
 
 import asyncio
 import json
@@ -35,6 +35,7 @@ from backend.domain.models.pre_annotation import ProjectPreAnnotation
 from backend.domain.models.sample import SampleState, ProjectSample
 from backend.domain.models.project import Project
 from backend.domain.models.user import User
+from backend.inference import ANNOTATION_WEIGHTS, Detection, load_detector
 
 
 def _project(db: Session, project_id: int, user: User) -> Project:
@@ -46,19 +47,37 @@ def _project(db: Session, project_id: int, user: User) -> Project:
     return project
 
 
-def list_models(db: Session, project_id: int, user: User) -> list[str]:
-    """验证项目访问权，列出本项目目录直属的模型权重。"""
+def list_models(
+    db: Session, project_id: int, user: User, algorithm: str = "yolo"
+) -> list[str]:
+    """验证项目访问权，返回算法对应的项目权重或官方模型 ID。"""
     project = _project(db, project_id, user)
+    if algorithm != "yolo":
+        return list(ANNOTATION_WEIGHTS.get(algorithm, ()))
     return get_storage().list_models(f"{project.dataset_prefix}/models/")
 
 
 @contextmanager
-def _load_model(db: Session, project: Project, model_name: str) -> Iterator[Any]:
-    """加载本项目选定的本地权重，在本批次内复用模型。"""
+def _load_model(
+    db: Session, project: Project, model_name: str, algorithm: str | None = None
+) -> Iterator[Any]:
+    """按项目选择在后端加载本地权重，在本批次内复用模型。"""
     if not settings.AI_AUTO_LABEL_ENABLED:
         raise HTTPException(400, "AI 标注未启用")
     if not model_name:
         raise HTTPException(400, "请在项目配置中选择 AI 模型")
+    algorithm = algorithm or getattr(project, "ai_algorithm", "yolo")
+    if algorithm != "yolo":
+        try:
+            model = load_detector(algorithm, model_name, settings.AI_DEVICE)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+        except (ImportError, OSError):
+            raise HTTPException(
+                503, "所选算法缺少推理依赖或本地权重缓存，请先准备运行环境"
+            ) from None
+        yield model
+        return
     if (
         PurePosixPath(model_name).name != model_name
         or PureWindowsPath(model_name).name != model_name
@@ -89,39 +108,53 @@ def _image_content(sample: ProjectSample) -> bytes:
 
 
 def _predict(
-    model: Any, sample: ProjectSample, project: Project, model_name: str
+    model: Any,
+    sample: ProjectSample,
+    project: Project,
+    model_name: str,
+    algorithm: str | None = None,
 ) -> dict:
     """使用所选模型推理图片，将匹配类别的框转换为可编辑预标注。"""
     # 1. 类别显示名和内部值均可匹配，覆盖训练 data.yaml 与标注工具的命名差异。
     attributes = dataset_classes(json.loads(project.config))
     labels = {
-        name: attribute["value"]
+        name.casefold(): attribute["value"]
         for attribute in attributes
         for name in (attribute["key"], attribute["value"])
     }
     started = time.perf_counter()
+    algorithm = algorithm or project.ai_algorithm
     with Image.open(BytesIO(_image_content(sample))) as image:
-        prediction = model.predict(
-            image,
-            imgsz=1024,
-            conf=0.25,
-            device=settings.AI_DEVICE or None,
-            verbose=False,
-        )[0]
+        if algorithm == "yolo":
+            prediction = model.predict(
+                image.convert("RGB"),
+                imgsz=1024,
+                conf=0.25,
+                device=settings.AI_DEVICE or None,
+                verbose=False,
+            )[0]
+            detections = [
+                Detection(coordinates, prediction.names[int(class_id)], confidence)
+                for coordinates, class_id, confidence in zip(
+                    prediction.boxes.xyxy.tolist(),
+                    prediction.boxes.cls.tolist(),
+                    prediction.boxes.conf.tolist(),
+                )
+            ]
+        else:
+            detections = model.predict(
+                image.convert("RGB"), [item["key"] for item in attributes]
+            )
 
     # 2. 只生成项目已配置类别的矩形框；预标注不改变样本的人工完成状态。
     boxes = []
     unmatched = 0
-    for coordinates, class_id, confidence in zip(
-        prediction.boxes.xyxy.tolist(),
-        prediction.boxes.cls.tolist(),
-        prediction.boxes.conf.tolist(),
-    ):
-        name = prediction.names[int(class_id)]
+    for detection in detections:
+        name = detection.label.casefold()
         if name not in labels:
             unmatched += 1
             continue
-        x1, y1, x2, y2 = coordinates
+        x1, y1, x2, y2 = detection.xyxy
         boxes.append(
             {
                 "id": str(uuid.uuid4()),
@@ -133,7 +166,11 @@ def _predict(
                 "y": y1,
                 "width": x2 - x1,
                 "height": y2 - y1,
-                "attributes": {"score": str(confidence)},
+                "attributes": (
+                    {"score": str(detection.score)}
+                    if detection.score is not None
+                    else {}
+                ),
             }
         )
 
@@ -144,7 +181,7 @@ def _predict(
         "config": {"rectTool": attributes},
         "meta": {
             "source_type": "ai_generated",
-            "provider": "yolo",
+            "provider": algorithm,
             "model": model_name,
             "sample_id": sample.id,
             "latency_ms": int((time.perf_counter() - started) * 1000),
@@ -207,19 +244,19 @@ def _single(
         raise
     except Exception as error:
         logger.error(
-            "YOLO prediction failed: project_id={}, sample_id={}, error={}",
+            "AI prediction failed: project_id={}, sample_id={}, error={}",
             project_id,
             sample_id,
             type(error).__name__,
         )
-        raise HTTPException(502, "YOLO 预标注失败，请检查权重与运行环境") from None
+        raise HTTPException(502, "AI 预标注失败，请检查权重与运行环境") from None
     annotation_id = _save_prediction(db, project, sample, payload, user.id)
     return AutoLabelResponse(
         status="COMPLETED",
         project_id=project.id,
         sample_id=sample.id,
         media_type=project.media_type,
-        provider="yolo",
+        provider=project.ai_algorithm,
         model=project.ai_model_name,
         pre_annotation_id=annotation_id,
         latency_ms=payload["meta"]["latency_ms"],
@@ -257,6 +294,7 @@ async def create_batch_job(
             user_id=current_user.id,
             sample_count=len(sample_ids),
             model_name=project.ai_model_name,
+            algorithm=project.ai_algorithm,
         )
         job_id = job.id
 
@@ -280,7 +318,7 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
     with SessionLocal() as db:
         job = crud_auto_label_job.get(db=db, job_id=job_id)
         if job is None:
-            logger.warning("YOLO batch no longer exists: job_id={}", job_id)
+            logger.warning("AI batch no longer exists: job_id={}", job_id)
             return
 
         try:
@@ -292,7 +330,7 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
             project = crud_project.get(db=db, project_id=job.project_id)
             if project is None:
                 raise HTTPException(404, "标注项目已不存在")
-            with _load_model(db, project, job.model_name) as model:
+            with _load_model(db, project, job.model_name, job.algorithm) as model:
                 for sample_id in sample_ids:
                     sample = crud_sample.get(db=db, sample_id=sample_id)
                     if (
@@ -307,13 +345,15 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
                             )
                         continue
                     try:
-                        payload = _predict(model, sample, project, job.model_name)
+                        payload = _predict(
+                            model, sample, project, job.model_name, job.algorithm
+                        )
                         _save_prediction(db, project, sample, payload, job.created_by)
                         success = True
                     except Exception as error:
                         db.rollback()
                         logger.error(
-                            "YOLO prediction failed: job_id={}, sample_id={}, error={}",
+                            "AI prediction failed: job_id={}, sample_id={}, error={}",
                             job_id,
                             sample_id,
                             type(error).__name__,
@@ -338,12 +378,12 @@ def _run_batch(job_id: int, sample_ids: list[int]) -> None:
         except Exception as error:
             db.rollback()
             logger.error(
-                "YOLO batch failed: job_id={}, error={}", job_id, type(error).__name__
+                "AI batch failed: job_id={}, error={}", job_id, type(error).__name__
             )
             message = (
                 error.detail
                 if isinstance(error, HTTPException)
-                else "YOLO 批量标注失败，请检查权重与运行环境"
+                else "AI 批量标注失败，请检查权重与运行环境"
             )
             with begin_transaction(db):
                 crud_auto_label_job.update_status(

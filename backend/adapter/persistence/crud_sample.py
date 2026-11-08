@@ -23,6 +23,7 @@ def list_by(
     page: Union[int, None],
     size: int,
     sorting: Union[str, None],
+    split: str | None = None,
 ) -> List[ProjectSample]:
 
     # query filter
@@ -33,6 +34,8 @@ def list_by(
         query_filter.append(ProjectSample.id > after)
     if project_id:
         query_filter.append(ProjectSample.project_id == project_id)
+    if split is not None:
+        query_filter.append(ProjectSample.split == split)
     query = db.query(ProjectSample).filter(*query_filter)
 
     # case when for state enum
@@ -123,10 +126,12 @@ def delete(db: Session, sample_ids: List[int]) -> None:
     )
 
 
-def count(db: Session, project_id: int) -> int:
+def count(db: Session, project_id: int, split: str | None = None) -> int:
     query_filter = [ProjectSample.deleted_at == None]
     if project_id:
         query_filter.append(ProjectSample.project_id == project_id)
+    if split is not None:
+        query_filter.append(ProjectSample.split == split)
     return db.query(ProjectSample).filter(*query_filter).count()
 
 
@@ -142,11 +147,18 @@ def statics(
         db.query(
             ProjectSample.project_id,
             ProjectSample.state,
+            ProjectSample.split,
             func.count(ProjectSample.state).label("count"),
         )
         .filter(*query_filter)
-        .group_by(ProjectSample.project_id, ProjectSample.state)
+        .group_by(ProjectSample.project_id, ProjectSample.state, ProjectSample.split)
         .all()
     )
-    d = {f"{s[0]}_{s[1]}": s[2] for s in statics}
+    # 同一次聚合分别累计状态和数据划分，统计范围始终为项目全部有效样本。
+    d = {}
+    for project_id, state, split, count in statics:
+        state_key = f"{project_id}_{state}"
+        split_key = f"{project_id}_split_{split}"
+        d[state_key] = d.get(state_key, 0) + count
+        d[split_key] = d.get(split_key, 0) + count
     return d

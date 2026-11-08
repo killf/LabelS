@@ -23,6 +23,7 @@ from backend.application.response.base import CommonDataResp
 from backend.application.response.base import OkRespWithMeta
 from backend.application.response.project import ProjectResponse
 from backend.application.response.project import ProjectResponseWithStatics
+from backend.inference import AnnotationAlgorithm
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -292,10 +293,13 @@ async def delete(
 @router.get("/{project_id}/models", response_model=OkResp[List[str]])
 async def list_models(
     project_id: int,
+    algorithm: AnnotationAlgorithm = "yolo",
     db: Session = Depends(db_module.get_db),
     current_user: User = Depends(get_current_user),
 ) -> OkResp[List[str]]:
     """列出项目数据集 models/ 下的权重文件。"""
     from backend.application.service import auto_label
 
-    return OkResp[List[str]](data=auto_label.list_models(db, project_id, current_user))
+    return OkResp[List[str]](
+        data=auto_label.list_models(db, project_id, current_user, algorithm)
+    )

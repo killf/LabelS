@@ -9,6 +9,7 @@ from backend.common.security import security
 from backend.common.error_code import ErrorCode
 from backend.common.error_code import LabelSException
 from backend.domain.models.user import User
+from backend.domain.models.sample import DatasetSplit
 from backend.dependencies.user import get_current_user
 from backend.application.service import sample as service
 from backend.application.service import auto_label as auto_label_service
@@ -61,6 +62,7 @@ async def create(
 )
 async def list_by(
     project_id: int,
+    split: DatasetSplit | None = Query(default=None, description="按训练集或测试集筛选"),
     after: Union[int, None] = Query(default=None, gt=0),
     before: Union[int, None] = Query(default=None, gt=0),
     page: Union[int, None] = Query(default=None, ge=0),
@@ -94,6 +96,7 @@ async def list_by(
         size=size,
         sorting=sort,
         current_user=current_user,
+        split=split,
     )
 
     # response

@@ -23,7 +23,7 @@ from backend.domain.models.user import User
 from backend.domain.models.project import Project
 from backend.domain.models.project import ProjectStatus
 from backend.domain.models.sample import ProjectSample
-from backend.domain.models.sample import SampleState
+from backend.domain.models.sample import DatasetSplit, SampleState
 from backend.application.command.sample import PatchSampleCommand
 from backend.application.command.sample import CreateSampleCommand
 from backend.application.response.base import UserResp
@@ -145,6 +145,7 @@ async def list_by(
     size: int,
     sorting: Union[str, None],
     current_user: User,
+    split: DatasetSplit | None = None,
 ) -> Tuple[List[SampleResponse], int]:
     if project_id is not None:
         project = crud_project.get(db=db, project_id=project_id)
@@ -158,9 +159,14 @@ async def list_by(
         page=page,
         size=size,
         sorting=sorting,
+        split=split.value if split is not None else None,
     )
 
-    total = crud_sample.count(db=db, project_id=project_id)
+    total = crud_sample.count(
+        db=db,
+        project_id=project_id,
+        split=split.value if split is not None else None,
+    )
 
     # response
     return [_sample_response(db, sample) for sample in samples], total

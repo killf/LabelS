@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 from backend.adapter.persistence import crud_project
 from backend.application.command.training import StartTrainingCommand
@@ -215,6 +216,12 @@ async def start(
     """检查完成样本和初始模型，保存训练记录后异步启动本机训练。"""
     # 1. 同一项目已有训练时明确返回状态；不创建GPU 预留记录。
     project = _project(db, project_id, user)
+    try:
+        cmd = StartTrainingCommand.model_validate(
+            {**(project.training_config or {}), **cmd.model_dump(exclude_unset=True)}
+        )
+    except ValidationError as error:
+        raise HTTPException(422, str(error)) from None
     active = (
         db.query(TrainingRun)
         .filter(
@@ -334,6 +341,8 @@ async def _run(run_id: int) -> None:
             ]
             if settings.AI_DEVICE:
                 args.extend(["--device", settings.AI_DEVICE])
+            if parameters.get("lr0") is not None:
+                args.extend(["--lr0", str(parameters["lr0"])])
             if parameters.get("extra_params"):
                 args.extend(
                     [

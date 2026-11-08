@@ -418,6 +418,7 @@ def main() -> int:
     )
 
     # 优化、随机性与训练输出。
+    parser.add_argument("--lr0", type=float, help="初始学习率，范围 0 至 1")
     parser.add_argument(
         "--optimizer", help="优化器名称，如 SGD、AdamW、auto，默认由 YOLO 决定"
     )

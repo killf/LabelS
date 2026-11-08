@@ -9,6 +9,7 @@ export interface TrainingParameters {
   epochs: number;
   imgsz: number;
   batch: number;
+  lr0?: number | null;
   extra_params?: Record<string, unknown>;
 }
 
@@ -19,7 +20,9 @@ export interface TrainingParameterDescription {
 }
 
 export function getTrainingParameters(projectId: number) {
-  return request.get<never, { data: TrainingParameterDescription[] }>(`/v1/projects/${projectId}/training-runs/parameters`);
+  return request.get<never, { data: TrainingParameterDescription[] }>(
+    `/v1/projects/${projectId}/training-runs/parameters`,
+  );
 }
 
 export interface TrainingRun {

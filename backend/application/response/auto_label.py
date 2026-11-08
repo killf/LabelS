@@ -23,6 +23,7 @@ class AutoLabelResponse(BaseModel):
 
 
 class AutoLabelJobResponse(BaseModel):
+    algorithm: str = "yolo"
     model_name: str = ""
     id: int
     project_id: int
