@@ -21,11 +21,11 @@ python -m pip install "yolo-mcp[annotation]"
 | 标注算法 | 权重或模型 ID | 准备方式 |
 | --- | --- | --- |
 | YOLO26 | 项目 `models/` 中的 `.pt` | 使用本项目训练产物或预先放入的权重 |
-| Florence-2 | `microsoft/Florence-2-base`、`microsoft/Florence-2-large` | 提前准备本地 Hugging Face 缓存 |
-| GroundingDINO + SAM ViT-B | `IDEA-Research/grounding-dino-tiny` | 提前缓存；当前矩形标注只使用 GroundingDINO 检测分支 |
-| SAM 3 | `facebook/sam3` | 安装[官方 sam3 包](https://github.com/facebookresearch/sam3)，提前缓存 `sam3.pt` |
+| Florence-2 | `microsoft/Florence-2-base`、`microsoft/Florence-2-large` | 首次使用自动下载，后续复用公共缓存 |
+| GroundingDINO + SAM ViT-B | `IDEA-Research/grounding-dino-tiny` | 首次使用自动下载；当前矩形标注只使用 GroundingDINO 检测分支 |
+| SAM 3 | `facebook/sam3` | 安装[官方 sam3 包](https://github.com/facebookresearch/sam3)，取得模型访问权限并完成 Hugging Face 登录后自动下载 |
 
-模型在后端进程按需加载。开放词汇标注只读取本地缓存，请求不会下载模型或安装依赖；YOLO 官方初始权重首次用于训练时可能下载。模型代码和权重遵循各自许可。
+模型在后端进程按需加载，不自动安装依赖。公共权重统一保存在 `DATA_DIR/models/`：YOLO26 官方初始权重位于 `ultralytics/`，开放词汇模型使用 `huggingface/` 缓存；不同项目和每次训练共用，删除项目或训练记录不清理公共缓存。首次使用会下载，后续复用已下载文件；下载失败或访问受限会在页面显示具体原因。首次下载耗时较长时，建议使用 AI 批量标注查看最终状态。模型代码和权重遵循各自许可。
 
 源码开发时，可从仓库根目录执行 `python -m pip install -e "./backend[training]"` 或 `python -m pip install -e "./backend[annotation]"`。页面训练复用启动后端的 Python 环境。
 

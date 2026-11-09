@@ -114,10 +114,8 @@ const Samples = () => {
           setBatchProgress(null);
         }
       }, 2500);
-    } catch (error: any) {
+    } catch {
       setIsBatchLabeling(false);
-      const msg = error?.response?.data?.msg;
-      message.error(msg || t('aiAutoLabelFailed'));
     }
   }, [projectId, t, revalidator, stopPolling]);
 

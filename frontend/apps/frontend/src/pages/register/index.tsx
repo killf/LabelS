@@ -30,9 +30,6 @@ const SignUpPage = () => {
       message.success(t('signUpSuccess'));
       navigate('/login');
     },
-    onError: () => {
-      message.error(t('signUpFailed'));
-    },
   });
 
   const register = async function () {

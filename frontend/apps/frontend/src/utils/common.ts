@@ -2,6 +2,7 @@ import { message } from '@/StaticAnt';
 import type { MediaType } from '@/api/types';
 import { FileExtension } from '@/constants/mediaType';
 import { ErrorMessages } from '@/api/constant';
+import { getErrorMessage } from '@/utils';
 
 const commonController = {
   isNullObject(obj: any) {
@@ -73,22 +74,7 @@ const commonController = {
     return result;
   },
   notificationErrorMessage(error: any, time: number) {
-    const errCode = error.err_code;
-    if (errCode || errCode === 0) {
-      const errorMessage = ErrorMessages[errCode] || error.msg;
-      if (errorMessage) {
-        message.error(errorMessage, time);
-      } else {
-        message.error('没有后端匹配的错误信息', time);
-      }
-    }
-    if (error && !error.err_code) {
-      const messageValue = error.msg ? error.msg : error.message;
-      message.error(messageValue, time);
-    }
-    if (!error) {
-      message.error('请求出现问题', 1);
-    }
+    message.error(getErrorMessage(error, undefined, ErrorMessages), time);
   },
   notificationSuccessMessage(info: any, time: number) {
     message.success(info.message, time);

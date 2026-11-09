@@ -95,6 +95,9 @@ def test_clear_record_includes_model_and_logs(
     client, testuser_token_headers, completed_run, db
 ):
     project_id, run_id = completed_run
+    get_storage().save_bytes(
+        b"shared official weights", "models/ultralytics/yolo26n.pt"
+    )
     response = client.request(
         "DELETE",
         f"/api/v1/projects/{project_id}/training-runs/{run_id}",
@@ -105,6 +108,10 @@ def test_clear_record_includes_model_and_logs(
     assert db.get(TrainingRun, run_id) is None
     assert not get_storage().exists(f"projects/{project_id}/models/test-cleanup.pt")
     assert not get_storage().path(f"projects/{project_id}/runs/{run_id}").exists()
+    assert (
+        get_storage().read_bytes("models/ultralytics/yolo26n.pt")
+        == b"shared official weights"
+    )
 
 
 def test_model_in_use_blocks_record_cleanup(

@@ -10,6 +10,7 @@ import { useUploadFileMutation } from '@/api/mutations/attachment';
 import { deleteFile } from '@/api/services/project';
 import { deleteSamples } from '@/api/services/samples';
 import { message } from '@/StaticAnt';
+import { getErrorMessage } from '@/utils';
 
 import { ProjectCreationContext } from '../../projectCreation.context';
 import { normalizeFiles, UploadStatus } from './utils';
@@ -54,8 +55,8 @@ export default function InputData() {
         try {
           const { data } = await upload.mutateAsync({ project_id: project.id!, file: file.file });
           update(file.uid, { id: data.id, url: data.url, status: UploadStatus.Success });
-        } catch {
-          update(file.uid, { status: UploadStatus.Fail, reason: '上传失败，请重试' });
+        } catch (error) {
+          update(file.uid, { status: UploadStatus.Fail, reason: getErrorMessage(error, '上传失败，请重试') });
         }
       }
     } finally {
@@ -116,7 +117,10 @@ export default function InputData() {
           {
             title: '状态',
             render: (_, file) => (
-              <Tag color={file.status === UploadStatus.Success ? 'success' : undefined}>{statusText[file.status]}</Tag>
+              <>
+                <Tag color={file.status === UploadStatus.Success ? 'success' : undefined}>{statusText[file.status]}</Tag>
+                {file.reason && <span style={{ display: 'block', color: 'var(--color-error)' }}>{file.reason}</span>}
+              </>
             ),
           },
           {

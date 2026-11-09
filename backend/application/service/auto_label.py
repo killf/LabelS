@@ -35,7 +35,12 @@ from backend.domain.models.pre_annotation import ProjectPreAnnotation
 from backend.domain.models.sample import SampleState, ProjectSample
 from backend.domain.models.project import Project
 from backend.domain.models.user import User
-from backend.inference import ANNOTATION_WEIGHTS, Detection, load_detector
+from backend.inference import (
+    ANNOTATION_WEIGHTS,
+    Detection,
+    load_detector,
+    model_load_error,
+)
 
 
 def _project(db: Session, project_id: int, user: User) -> Project:
@@ -68,14 +73,17 @@ def _load_model(
         raise HTTPException(400, "请在项目配置中选择 AI 模型")
     algorithm = algorithm or getattr(project, "ai_algorithm", "yolo")
     if algorithm != "yolo":
+        if model_name not in ANNOTATION_WEIGHTS.get(algorithm, ()):
+            raise HTTPException(422, "所选权重不属于当前自动标注算法")
         try:
             model = load_detector(algorithm, model_name, settings.DEVICE)
-        except ValueError as error:
-            raise HTTPException(422, str(error)) from None
-        except (ImportError, OSError):
-            raise HTTPException(
-                503, "所选算法缺少推理依赖或本地权重缓存，请先准备运行环境"
-            ) from None
+        except Exception as error:
+            logger.warning(
+                "AI model load failed: model={}, error={}",
+                model_name,
+                type(error).__name__,
+            )
+            raise HTTPException(503, model_load_error(error, model_name)) from None
         yield model
         return
     if (
@@ -99,7 +107,11 @@ def _load_model(
     weights = storage.path(f"{project.dataset_prefix}/models/{model_name}")
     if not weights.is_file():
         raise HTTPException(404, "所选模型文件不存在")
-    yield YOLO(str(weights))
+    try:
+        model = YOLO(str(weights))
+    except Exception as error:
+        raise HTTPException(503, model_load_error(error, model_name)) from None
+    yield model
 
 
 def _image_content(sample: ProjectSample) -> bytes:

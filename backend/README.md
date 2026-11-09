@@ -66,6 +66,9 @@ MCP_ALLOWED_ORIGINS=["https://yolo.example.com"]
 .yolo-mcp/
 ├── secret.key
 ├── labels.sqlite
+├── models/
+│   ├── ultralytics/
+│   └── huggingface/
 └── projects/<项目 ID>/
     ├── images/
     ├── models/

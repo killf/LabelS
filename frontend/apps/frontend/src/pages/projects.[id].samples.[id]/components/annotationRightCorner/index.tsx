@@ -403,9 +403,8 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
       } else {
         message.success(t('aiAutoLabelSuccess'));
       }
-    } catch (error: any) {
-      const backendMsg = error?.response?.data?.msg;
-      commonController.notificationErrorMessage({ message: backendMsg || t('aiAutoLabelFailed') }, 2);
+    } catch {
+      // 请求层已展示具体原因，保留当前标注供用户重试。
     } finally {
       setIsAutoLabeling(false);
     }

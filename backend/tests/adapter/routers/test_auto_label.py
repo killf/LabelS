@@ -279,7 +279,8 @@ def test_missing_optional_model_cache_returns_actionable_error(monkeypatch):
         ):
             pytest.fail("missing model reached inference")
     assert error.value.status_code == 503
-    assert "本地权重缓存" in error.value.detail
+    assert "facebook/sam3" in error.value.detail
+    assert "权重下载或读取失败" in error.value.detail
 
 
 @pytest.mark.parametrize(

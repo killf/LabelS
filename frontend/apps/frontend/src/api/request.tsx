@@ -4,6 +4,8 @@ import type { AxiosError, AxiosResponse } from 'axios';
 import { create } from 'axios';
 
 import commonController from '@/utils/common';
+import { getErrorMessage } from '@/utils';
+import { ErrorMessages } from '@/api/constant';
 import { goLogin } from '@/utils/sso';
 
 /**
@@ -30,29 +32,29 @@ export function successHandler(response: AxiosResponse<any>) {
 
 async function errorHandler(error: AxiosError) {
   let data = get(error, 'response.data');
-  let errMsgFromServer = get(error, 'response.data.msg');
-  let errCode = get(error, 'response.data.err_code');
 
   if (data instanceof Blob) {
-    data = await new Response(data).json();
-    errMsgFromServer = get(data, 'msg');
-    errCode = get(data, 'err_code');
+    try {
+      data = await data.text();
+    } catch {
+      data = undefined;
+    }
   }
+  const userMessage = getErrorMessage({ ...error, response: { data } }, undefined, ErrorMessages);
 
   // 开发环境和开发自测环境显示报错信息
   if (window.DEV) {
     notification.error({
-      message: `${errMsgFromServer || get(error, 'code')}【${get(error, 'response.status', '无状态码')}】`,
+      message: `${userMessage}【${get(error, 'response.status', '无状态码')}】`,
       description: (
         <>
-          <p>{errCode}</p>
           <p>{error.message}</p>
-          <p>{error.request.responseURL}</p>
+          <p>{error.request?.responseURL}</p>
         </>
       ),
     });
   } else {
-    commonController.notificationErrorMessage(data ?? error, 5);
+    commonController.notificationErrorMessage({ msg: userMessage }, 5);
   }
 
   return Promise.reject(error);
