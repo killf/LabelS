@@ -157,14 +157,18 @@ def test_unconfirmed_samples_are_excluded(
     client, testuser_token_headers, annotated_sample, db, state
 ):
     project_id, sample_id = annotated_sample
-    original = client.get(
-        f"/api/v1/projects/{project_id}/samples/{sample_id}",
+    image = BytesIO()
+    Image.new("RGB", (20, 20), "blue").save(image, format="PNG")
+    upload = client.post(
+        f"/api/v1/projects/{project_id}/attachments",
         headers=testuser_token_headers,
-    ).json()["data"]
+        files={"file": ("unconfirmed.png", image.getvalue(), "image/png")},
+    )
+    assert upload.status_code == 201
     extra = client.post(
         f"/api/v1/projects/{project_id}/samples",
         headers=testuser_token_headers,
-        json=[{"file_id": original["file"]["id"]}],
+        json=[{"file_id": upload.json()["data"]["id"]}],
     ).json()["data"]["ids"][0]
     assert (
         client.patch(

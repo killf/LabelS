@@ -13,11 +13,9 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
-    SCHEME: str = "http"
     HOST: str = "localhost"
-    PORT: str = "8000"
+    PORT: int = 8000
     API_V1_STR: str = "/api/v1"
-    MEDIA_HOST: str = f"{SCHEME}://{HOST}:{PORT}"
 
     # SQLite 的持久化目录；图片、模型和训练日志均保存在该本地目录下。
     DATA_DIR: Path = Field(default_factory=lambda: Path.home() / ".yolo-mcp")

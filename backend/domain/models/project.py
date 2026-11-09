@@ -39,7 +39,7 @@ class MediaType(str, Enum):
 class Project(Base):
     __tablename__ = "project"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(64), index=True)
     description = Column(String(1024), comment="project description")
     tips = Column(String(1024), comment="project tips")

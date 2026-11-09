@@ -1,5 +1,4 @@
 from datetime import datetime
-from sqlalchemy.schema import Index
 from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from backend.common.db import Base
 

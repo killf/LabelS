@@ -197,6 +197,8 @@ python -m uvicorn backend.main:app --env-file backend/.env --host 127.0.0.1 --po
 
 新上传统一写入 `images/`。旧附件仍按数据库记录的路径读取，已有 `uploads/` 不会自动移动或删除。项目改名不影响数据目录。
 
+每个上传附件只对应一个样本，重复提交返回冲突，不会创建重复数据。删除样本会同时删除原图和缩略图；已创建样本的附件须从样本列表删除。
+
 | 配置项           | 用途                                                               |
 | ---------------- | ------------------------------------------------------------------ |
 | `DATA_DIR`       | 图片、模型、训练日志和默认数据库的根目录                           |
@@ -204,7 +206,26 @@ python -m uvicorn backend.main:app --env-file backend/.env --host 127.0.0.1 --po
 | `USE_AUTO_LABEL` | 是否启用 AI 自动标注，默认开启                                     |
 | `DEVICE`         | 推理设备；留空自动选择，`0` 表示首块 CUDA/ROCm GPU，也可指定 `cpu` |
 
-备份时请保留整个数据目录，包括 `secret.key`、数据库和项目文件；保留密钥可让登录令牌和图片签名跨重启继续使用。仓库只维护 [001_init_db.py](backend/migrations/versions/001_init_db.py) 初始化脚本，当前不提供历史数据库结构升级或数据搬迁工具。
+备份时请保留整个数据目录，包括 `secret.key`、数据库和项目文件；保留密钥可让登录令牌和图片签名跨重启继续使用。仓库只维护 [001_init_db.py](backend/migrations/versions/001_init_db.py) 初始化脚本，当前不提供历史数据库结构升级或数据搬迁工具。结构调整后需使用新数据库；重复执行 init 不会改造已有数据库。SQLite 连接启用外键约束。
+
+## 打包与安装
+
+从完整源码仓库构建发行包。先按“快速开始”准备前端依赖，再在仓库根目录执行：
+
+```bash
+uv build --project backend --out-dir dist
+```
+
+构建会重新编译前端，生成源码包和包含页面资源的 wheel。将 wheel 复制到目标机器后安装，无需 Node.js 或 pnpm：
+
+```bash
+python -m pip install ./dist/yolo_mcp-2.0.0-py3-none-any.whl
+yolo-mcp --host 127.0.0.1 --port 8000
+```
+
+打开 [http://127.0.0.1:8000](http://127.0.0.1:8000) 即可使用。源码包也包含编译后的页面，可直接通过 pip 安装。GPU 训练和推理仍需准备对应的可选依赖与权重。
+
+开发模式使用 `python -m pip install -e ./backend`，并单独启动前端开发服务器；可编辑安装跳过前端编译。
 
 ## Docker
 
@@ -247,11 +268,12 @@ uv run --no-sync pytest
 ```bash
 cd frontend
 pnpm --filter @yolo-mcp/frontend test:unit
-pnpm build:frontend
 pnpm --filter @yolo-mcp/frontend type-check
+pnpm lint 'apps/frontend/src/**/*.{ts,tsx}'
+pnpm build:frontend
 ```
 
-后端测试使用隔离 SQLite 和临时数据目录。前端构建与类型检查是独立步骤，当前完整类型检查仍有既有类型错误。提交修改时请说明验证结果；反馈问题可使用 [GitHub Issues](https://github.com/killf/LabelS/issues)，附上复现步骤、版本和相关日志。
+后端测试使用隔离 SQLite 和临时数据目录。前端构建、类型检查和单元测试是独立步骤。提交修改时请说明验证结果；反馈问题可使用 [GitHub Issues](https://github.com/killf/LabelS/issues)，附上复现步骤、版本和相关日志。
 
 ## 致谢
 

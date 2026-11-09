@@ -5,7 +5,7 @@ import styled from 'styled-components';
 import { FlexLayout } from '@yolo-mcp/components-react';
 import { useTranslation } from '@yolo-mcp/i18n';
 
-import type { ProjectListResponseWithStatics } from '@/api/types';
+import type { getProjectList } from '@/api/services/project';
 import { ResponsiveGrid } from '@/components/ResponsiveGrid';
 
 import ProjectCard from './components/projectCard';
@@ -38,10 +38,10 @@ const ProjectCardItem = styled(ProjectCard)``;
 
 const ProjectList = () => {
   const navigate = useNavigate();
-  const routerLoaderData = useRouteLoaderData('projects') as ProjectListResponseWithStatics;
-  const projectsResponse = _.get(routerLoaderData, 'data');
-  const projects = _.get(projectsResponse, 'data', []);
-  const meta_data = _.get(projectsResponse, 'meta_data');
+  const routerLoaderData = useRouteLoaderData('projects') as Awaited<ReturnType<typeof getProjectList>>;
+  const projectsResponse = routerLoaderData?.data;
+  const projects = projectsResponse?.data ?? [];
+  const meta_data = projectsResponse?.meta_data;
   const labelsVersion = _.get(routerLoaderData, ['headers', 'yolo-mcp-version']);
   const { t } = useTranslation();
 

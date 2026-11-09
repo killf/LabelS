@@ -2,7 +2,6 @@ import time
 
 from loguru import logger
 from starlette.requests import Request
-from starlette.concurrency import iterate_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -19,12 +18,11 @@ class TracingMiddleWare(BaseHTTPMiddleware):
         finally:
             elapsed_ms = int((time.perf_counter() - start) * 1000)
 
-            # uncomments for logging response body
-            # response_body = [chunk async for chunk in response.body_iterator]
-            # response.body_iterator = iterate_in_threadpool(iter(response_body))
-            # logger.info(f"response_body={(b''.join(response_body)).decode()}")
-
             status_code = response.status_code if response else "error"
             logger.info(
-                f"{request.method} {scope['path']} end status={status_code} elapsed_ms={elapsed_ms}"
+                "{} {} end status={} elapsed_ms={}",
+                request.method,
+                scope["path"],
+                status_code,
+                elapsed_ms,
             )

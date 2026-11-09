@@ -18,7 +18,6 @@ def _make_project_with_samples(db: Session, n: int = 3):
     samples = [
         ProjectSample(
             project_id=project.id,
-            file_id=1,
             created_by=1,
             updated_by=1,
             data="{}",

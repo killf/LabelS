@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
 import React from 'react';
+// eslint-disable-next-line import/named -- react-query 通过条件导出声明 QueryClient，旧版 resolver 无法识别。
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // 创建一个 client

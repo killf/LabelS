@@ -98,19 +98,8 @@ const AnnotationPage = () => {
     };
     // 兼容json预标注
     if (preAnnotationFile.filename?.endsWith('.json')) {
-      _annotations = _.chain(preAnnotationResult)
-        .get('result.annotations')
-        .map((item) => {
-          return [
-            item.toolName,
-            {
-              toolName: item.toolName,
-              result: item.result,
-            },
-          ];
-        })
-        .fromPairs()
-        .value();
+      const annotations: { toolName: string; result: unknown[] }[] = preAnnotationResult.result?.annotations ?? [];
+      _annotations = Object.fromEntries(annotations.map(({ toolName, result }) => [toolName, { toolName, result }]));
     }
 
     if (project?.media_type === MediaType.IMAGE) {
@@ -184,14 +173,14 @@ const AnnotationPage = () => {
     setServerPage(meta_data?.page ?? 1);
     return data;
   }, [routeParams.projectId]);
-  const [samples = [] as SampleResponse[], loading, setSamples, svc] = useScrollFetch(
+  const [samples = [] as SampleResponse[], loading, setSamples, svc] = useScrollFetch<SampleResponse[]>(
     fetchSamples,
     () =>
       document.querySelector('.yolo-mcp-image__sidebar div') ||
       document.querySelector('.yolo-mcp-audio__sidebar div') ||
       document.querySelector('.yolo-mcp-video__sidebar div'),
     {
-      isEnd: () => totalCount === samples.length || serverPage === Math.ceil(totalCount / PAGE_SIZE),
+      isEnd: (allData) => totalCount === (allData?.length ?? 0) || serverPage === Math.ceil(totalCount / PAGE_SIZE),
     },
   );
 
@@ -227,13 +216,14 @@ const AnnotationPage = () => {
     return convertImageConfig(projectConfig);
   }, [project?.media_type, projectConfig]);
 
-  const editingSample = useMemo(() => {
-    if (project?.media_type === MediaType.IMAGE) {
-      return convertImageSample(sample?.data);
-    } else if (project?.media_type === MediaType.VIDEO || project?.media_type === MediaType.AUDIO) {
-      return convertAudioAndVideoSample(sample?.data, project.media_type);
-    }
-  }, [sample?.data, project?.media_type]);
+  const imageSample = useMemo(() => convertImageSample(sample?.data), [sample?.data]);
+  const mediaSample = useMemo(
+    () =>
+      project?.media_type === MediaType.VIDEO || project?.media_type === MediaType.AUDIO
+        ? convertAudioAndVideoSample(sample?.data, project.media_type)
+        : undefined,
+    [sample?.data, project?.media_type],
+  );
 
   const renderSidebar = useMemo(() => {
     return () => leftSiderContent;
@@ -266,7 +256,12 @@ const AnnotationPage = () => {
     }
   }, [currentSampleConns, isMeTheCurrentEditingUser, me.data, t]);
 
-  const requestEdit = useCallback<NonNullable<ImageAnnotatorProps['requestEdit']>>(
+  const requestEdit = useCallback<
+    (
+      type: Parameters<NonNullable<ImageAnnotatorProps['requestEdit']>>[0],
+      payload: { toolName?: AllToolName; label?: string },
+    ) => boolean
+  >(
     (editType, { toolName, label }) => {
       if (!toolName) {
         return false;
@@ -299,7 +294,7 @@ const AnnotationPage = () => {
   const [currentTool, setCurrentTool] = useState<any>();
   const [labelMapping, setLabelMapping] = useState<Record<any, string>>();
 
-  const handleLabelChange = useCallback((toolName: any, label: ILabel) => {
+  const handleLabelChange = useCallback((toolName: any, label: ILabel | undefined) => {
     if (!label) {
       return;
     }
@@ -334,7 +329,7 @@ const AnnotationPage = () => {
         onError={onError}
         // windows platform pixel issue
         offsetTop={configFromParent ? PREVIEW_OFFSET_TOP : OFFSET_TOP}
-        editingSample={editingSample}
+        editingSample={imageSample}
         config={config}
         disabled={disabled}
         requestEdit={requestEdit}
@@ -352,7 +347,8 @@ const AnnotationPage = () => {
         primaryColor="#0d53de"
         ref={videoAnnotationRef}
         offsetTop={configFromParent ? PREVIEW_OFFSET_TOP : OFFSET_TOP}
-        editingSample={editingSample}
+        samples={[]}
+        editingSample={mediaSample}
         config={config}
         toolbarRight={topActionContent}
         renderSidebar={renderSidebar}
@@ -372,7 +368,8 @@ const AnnotationPage = () => {
         primaryColor="#0d53de"
         ref={audioAnnotationRef}
         offsetTop={configFromParent ? PREVIEW_OFFSET_TOP : OFFSET_TOP}
-        editingSample={editingSample}
+        samples={[]}
+        editingSample={mediaSample}
         config={config}
         disabled={disabled}
         toolbarRight={topActionContent}

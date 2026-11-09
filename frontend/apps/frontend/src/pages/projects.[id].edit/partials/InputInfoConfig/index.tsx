@@ -14,7 +14,7 @@ const Inner = styled(FlexLayout)`
 `;
 
 const InputInfoConfig = () => {
-  const { basicFormInstance, project } = useContext(ProjectCreationContext);
+  const { basicFormInstance } = useContext(ProjectCreationContext);
   const { t } = useTranslation();
 
   return (

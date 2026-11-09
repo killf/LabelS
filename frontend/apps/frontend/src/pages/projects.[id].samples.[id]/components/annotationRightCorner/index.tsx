@@ -36,6 +36,23 @@ interface AnnotationRightCornerProps {
 
 export const SAMPLE_CHANGED = 'sampleChanged';
 
+type StoredToolName =
+  | 'pointTool'
+  | 'rectTool'
+  | 'polygonTool'
+  | 'lineTool'
+  | 'cuboidTool'
+  | 'relationTool'
+  | 'tagTool'
+  | 'textTool'
+  | 'videoFrameTool'
+  | 'videoSegmentTool'
+  | 'audioFrameTool'
+  | 'audioSegmentTool';
+type StoredAnnotation = { width?: number; height?: number; rotate?: number; duration?: number } & Partial<
+  Record<StoredToolName, { toolName: StoredToolName; result: unknown[] }>
+>;
+
 function getAnnotationCount(_result: string | object) {
   const resultParsed = typeof _result !== 'object' ? JSON.parse(_result as string) : _result;
   let result = 0;
@@ -120,11 +137,10 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
       return;
     }
 
-    const result = {};
+    const result: StoredAnnotation = {};
     let innerSample;
 
     if (project.media_type === MediaType.IMAGE) {
-      // @ts-ignore
       const exportedResult = (await imageAnnotationRef.current?.getAnnotations()) ?? {};
       const engine = await imageAnnotationRef.current?.getEngine();
 
@@ -134,11 +150,12 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
 
       innerSample = await imageAnnotationRef?.current?.getSample();
 
-      Object.keys(exportedResult).forEach((item) => {
-        if (exportedResult?.[item]?.length) {
-          result[item + 'Tool'] = {
-            toolName: item + 'Tool',
-            result: exportedResult[item],
+      Object.entries(exportedResult).forEach(([item, annotations]) => {
+        if (annotations?.length) {
+          const toolName = `${item}Tool` as StoredToolName;
+          result[toolName] = {
+            toolName,
+            result: annotations,
           };
         }
       });
@@ -159,7 +176,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.tagTool.result.push(...videoAnnotations[toolName]);
+          result.tagTool.result.push(...(videoAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'text') {
@@ -170,7 +187,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.textTool.result.push(...videoAnnotations[toolName]);
+          result.textTool.result.push(...(videoAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'frame') {
@@ -181,7 +198,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.videoFrameTool.result.push(...videoAnnotations[toolName]);
+          result.videoFrameTool.result.push(...(videoAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'segment') {
@@ -192,7 +209,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.videoSegmentTool.result.push(...videoAnnotations[toolName]);
+          result.videoSegmentTool.result.push(...(videoAnnotations?.[toolName] ?? []));
         }
       });
 
@@ -212,7 +229,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.tagTool.result.push(...audioAnnotations[toolName]);
+          result.tagTool.result.push(...(audioAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'text') {
@@ -223,7 +240,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.textTool.result.push(...audioAnnotations[toolName]);
+          result.textTool.result.push(...(audioAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'frame') {
@@ -234,7 +251,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.audioFrameTool.result.push(...audioAnnotations[toolName]);
+          result.audioFrameTool.result.push(...(audioAnnotations?.[toolName] ?? []));
         }
 
         if (toolName === 'segment') {
@@ -245,12 +262,14 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
             };
           }
 
-          result.audioSegmentTool.result.push(...audioAnnotations[toolName]);
+          result.audioSegmentTool.result.push(...(audioAnnotations?.[toolName] ?? []));
         }
       });
 
       innerSample = await audioAnnotationRef?.current?.getSample();
     }
+
+    if (!innerSample) return;
 
     // 全局标注没有值的话，填充默认值
     const tagConfig = project.config.tools.find((tool) => tool.tool === 'tagTool');
@@ -296,8 +315,7 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
         sample_id: +sampleId!,
       },
       {
-        ...currentSample,
-        state: SampleState.DONE,
+        state: SampleState.NEW,
       },
     );
 
@@ -321,7 +339,6 @@ const AnnotationRightCorner = ({ noSave, fetchNext, totalSize, isLastPage }: Ann
         sample_id: +sampleId!,
       },
       {
-        ...currentSample,
         state: SampleState.SKIPPED,
       },
     );

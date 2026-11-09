@@ -17,11 +17,11 @@ export function convertMediaAnnotations(mediaType: MediaType, result: ParsedResu
 
   return _.chain(pool)
     .map(([type, key]) => {
-      const items = _.get(result, [key, 'result'], []);
+      const items = result[key]?.result ?? [];
 
       return [
         type,
-        _.map(items, (item) => {
+        items.map((item) => {
           return {
             ...item,
             type,

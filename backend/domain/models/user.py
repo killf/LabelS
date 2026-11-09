@@ -9,7 +9,7 @@ from backend.common.db import Base
 class User(Base):
     __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, index=True)
     hashed_password = Column(String(255))
     is_admin = Column(

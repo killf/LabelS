@@ -21,7 +21,7 @@ class SampleResponse(BaseModel):
     )
     state: Union[str, None] = Field(
         default=None,
-        description="description: sample file state, NEW is has not start yet, DONE is completed, SKIPPED is skipped",
+        description="Sample state: NEW (未开始), DONE (完成), SKIPPED (跳过)",
     )
     data: Union[object, None] = Field(
         default=None,

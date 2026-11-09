@@ -70,7 +70,7 @@ def test_access_token_no_exp_time():
     # prepare data - create a token with no expiration set initially
     token = AccessToken(id=1, username="user@example.com")
     encoded = jwt.encode(
-        token.dict(),
+        token.model_dump(),
         settings.secret_key,
         algorithm=settings.TOKEN_GENERATE_ALGORITHM,
     )

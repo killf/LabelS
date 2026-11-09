@@ -129,7 +129,10 @@ const FormConfig = () => {
       return true;
     }
 
-    if ([ProjectStatus.INPROGRESS, ProjectStatus.FINISHED].includes(projectStatus as ProjectStatus) || projectDoneAmount) {
+    if (
+      [ProjectStatus.INPROGRESS, ProjectStatus.FINISHED].includes(projectStatus as ProjectStatus) ||
+      projectDoneAmount
+    ) {
       return false;
     }
 
@@ -143,7 +146,10 @@ const FormConfig = () => {
       return true;
     }
 
-    if ([ProjectStatus.INPROGRESS, ProjectStatus.FINISHED].includes(projectStatus as ProjectStatus) || projectDoneAmount) {
+    if (
+      [ProjectStatus.INPROGRESS, ProjectStatus.FINISHED].includes(projectStatus as ProjectStatus) ||
+      projectDoneAmount
+    ) {
       return false;
     }
 
@@ -231,7 +237,7 @@ const FormConfig = () => {
       },
       {
         label: t('tools'),
-        options: _.map(toolOptions, ({ value, label }) => {
+        options: toolOptions.map(({ value, label }) => {
           let disabled = selectedTools.includes(value);
 
           if (

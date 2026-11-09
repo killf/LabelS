@@ -2,8 +2,9 @@ import json
 from typing import List, Tuple, Union
 
 from loguru import logger
-from fastapi import status
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from backend.common.db import begin_transaction
 from backend.common.error_code import ErrorCode
@@ -66,46 +67,66 @@ def is_sample_pre_annotated(
 async def create(
     db: Session, project_id: int, cmd: List[CreateSampleCommand], current_user: User
 ) -> CreateSampleResponse:
-    obj_in = {}
-    with begin_transaction(db):
-        # check project exist
-        project = crud_project.get(db=db, project_id=project_id, lock=True)
-        if not project:
-            logger.error("cannot find project:{}", project_id)
-            raise YoloMcpException(
-                code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+    """按项目校验每个附件，创建一一对应的样本并返回新 ID。"""
+    file_ids = [item.file_id for item in cmd]
+    try:
+        with begin_transaction(db):
+            # 1. 先验证项目权限与附件归属，再检查是否重复提交。
+            project = crud_project.get(db=db, project_id=project_id, lock=True)
+            if not project:
+                logger.error("cannot find project:{}", project_id)
+                raise YoloMcpException(
+                    code=ErrorCode.CODE_50002_PROJECT_NOT_FOUND,
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
 
-        assert_project_access(project, current_user)
+            assert_project_access(project, current_user)
 
-        attachments = crud_attachment.get_by_ids(db, [sample.file_id for sample in cmd])
-        if len({attachment.id for attachment in attachments}) != len(
-            {sample.file_id for sample in cmd}
-        ) or any(attachment.project_id != project_id for attachment in attachments):
-            raise YoloMcpException(
-                code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
-            )
+            attachments = crud_attachment.get_by_ids(db, file_ids)
+            if len(attachments) != len(set(file_ids)) or any(
+                attachment.project_id != project_id for attachment in attachments
+            ):
+                raise YoloMcpException(
+                    code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
+                )
+            if len(file_ids) != len(set(file_ids)):
+                raise HTTPException(409, "同一附件只能创建一个样本")
+            if (
+                db.query(ProjectSample.id)
+                .filter(ProjectSample.file_id.in_(file_ids))
+                .first()
+            ):
+                raise HTTPException(409, "附件已创建样本，请勿重复提交")
 
-        samples = [
-            ProjectSample(
-                inner_id=project.last_sample_inner_id + i + 1,
-                project_id=project_id,
-                file_id=sample.file_id,
-                split=sample.split.value,
-                created_by=current_user.id,
-                updated_by=current_user.id,
-                data=json.dumps(sample.data, ensure_ascii=False),
-            )
-            for i, sample in enumerate(cmd)
-        ]
-        obj_in[Project.last_sample_inner_id.key] = project.last_sample_inner_id + len(
-            cmd
-        )
-        if project.status == ProjectStatus.DRAFT.value:
-            obj_in[Project.status.key] = ProjectStatus.IMPORTED
-        crud_project.update(db=db, db_obj=project, obj_in=obj_in)
-        new_samples = crud_sample.batch(db=db, samples=samples)
+            # 2. 分配项目内编号；数据库唯一约束兜底拒绝并发重复提交。
+            samples = [
+                ProjectSample(
+                    inner_id=project.last_sample_inner_id + i + 1,
+                    project_id=project_id,
+                    file_id=sample.file_id,
+                    split=sample.split.value,
+                    created_by=current_user.id,
+                    updated_by=current_user.id,
+                    data=json.dumps(sample.data, ensure_ascii=False),
+                )
+                for i, sample in enumerate(cmd)
+            ]
+            obj_in = {
+                Project.last_sample_inner_id.key: project.last_sample_inner_id
+                + len(cmd)
+            }
+            if project.status == ProjectStatus.DRAFT.value:
+                obj_in[Project.status.key] = ProjectStatus.IMPORTED
+            crud_project.update(db=db, db_obj=project, obj_in=obj_in)
+            new_samples = crud_sample.batch(db=db, samples=samples)
+    except IntegrityError:
+        if (
+            db.query(ProjectSample.id)
+            .filter(ProjectSample.file_id.in_(file_ids))
+            .first()
+        ):
+            raise HTTPException(409, "附件已创建样本，请勿重复提交") from None
+        raise
 
     # response
     ids = [s.id for s in new_samples]
@@ -238,7 +259,7 @@ async def patch(
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    # 2. 修改划分标签时保留现有标注；提交标注时更新其完成状态。
+    # 2. 只更新提交的字段，状态变更不能覆盖已有标注和数量。
     sample_obj_in = {}
     if cmd.split is not None:
         sample_obj_in[ProjectSample.split.key] = cmd.split.value
@@ -246,26 +267,43 @@ async def patch(
         {"data", "state", "annotated_count"} & cmd.model_fields_set
     )
     if annotation_changed:
-        if cmd.state == SampleState.SKIPPED.value:
-            sample_obj_in[ProjectSample.state.key] = SampleState.SKIPPED.value
-        else:
+        if "data" in cmd.model_fields_set:
             sample_obj_in[ProjectSample.data.key] = json.dumps(
                 cmd.data, ensure_ascii=False
             )
+        if (
+            "annotated_count" in cmd.model_fields_set
+            and cmd.annotated_count is not None
+        ):
             sample_obj_in[ProjectSample.annotated_count.key] = cmd.annotated_count
-            sample_obj_in[ProjectSample.state.key] = (
-                SampleState.NEW.value
-                if cmd.state == SampleState.NEW.value
-                else SampleState.DONE.value
-            )
+        if cmd.state is not None:
+            sample_obj_in[ProjectSample.state.key] = cmd.state.value
+        elif {"data", "annotated_count"} & cmd.model_fields_set:
+            sample_obj_in[ProjectSample.state.key] = SampleState.DONE.value
+
+    if sample_obj_in:
+        sample_obj_in[ProjectSample.updated_by.key] = current_user.id
 
     # 3. 完成标注先校验类别与框；只更新数据库，训练文件在开始训练时生成。
     if (
         annotation_changed
         and project.config
-        and sample_obj_in.get(ProjectSample.state.key) == SampleState.DONE.value
+        and sample_obj_in.get(ProjectSample.state.key, sample.state)
+        == SampleState.DONE.value
     ):
-        render_sample(sample, dataset_classes(json.loads(project.config)), cmd.data)
+        effective_data = json.loads(
+            sample_obj_in.get(ProjectSample.data.key, sample.data) or "null"
+        )
+        if not isinstance(effective_data, dict) or not isinstance(
+            effective_data.get("result"), str
+        ):
+            raise HTTPException(422, "完成标注需要有效的标注结果")
+        try:
+            render_sample(
+                sample, dataset_classes(json.loads(project.config)), effective_data
+            )
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise HTTPException(422, "标注结果格式无效") from None
 
     with begin_transaction(db):
         if annotation_changed and current_user not in sample.updaters:
@@ -330,6 +368,16 @@ async def delete(
                 code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
             )
         attachment_ids = [sample.file_id for sample in samples if sample.file_id]
+        # 2. 旧库若已经有重复引用，保留仍被其他有效样本使用的图片。
+        shared_ids = {
+            file_id
+            for (file_id,) in db.query(ProjectSample.file_id).filter(
+                ProjectSample.file_id.in_(attachment_ids),
+                ProjectSample.id.not_in(sample_ids),
+                ProjectSample.deleted_at.is_(None),
+            )
+        }
+        attachment_ids = [item for item in attachment_ids if item not in shared_ids]
         attachments = crud_attachment.get_by_ids(db=db, attachment_ids=attachment_ids)
         if any(attachment.project_id != project_id for attachment in attachments):
             raise YoloMcpException(
@@ -342,6 +390,7 @@ async def delete(
                 storage.delete(thumbnail_key)
 
         crud_sample.delete(db=db, sample_ids=sample_ids)
+        crud_attachment.delete(db=db, attachment_ids=attachment_ids)
 
     # response
     return CommonDataResp(ok=True)

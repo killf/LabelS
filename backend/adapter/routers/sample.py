@@ -82,9 +82,9 @@ async def list_by(
     Get a annotation result.
     """
 
-    if len([i for i in (after, before, page) if i != None]) != 1:
+    if len([i for i in (after, before, page) if i is not None]) != 1:
         raise YoloMcpException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             code=ErrorCode.CODE_55000_SAMPLE_LIST_PARAMETERS_ERROR,
         )
 

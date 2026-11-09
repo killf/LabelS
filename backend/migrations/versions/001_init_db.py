@@ -35,7 +35,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_user_id"), "user", ["id"], unique=False)
     op.create_index(op.f("ix_user_username"), "user", ["username"], unique=True)
 
     op.create_table(
@@ -141,7 +140,6 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_project_deleted_at"), "project", ["deleted_at"], unique=False
     )
-    op.create_index(op.f("ix_project_id"), "project", ["id"], unique=False)
     op.create_index(op.f("ix_project_name"), "project", ["name"], unique=False)
 
     # 3. 创建 AI 预标注批次表及其索引。
@@ -175,9 +173,6 @@ def upgrade() -> None:
             ["project.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_auto_label_job_id"), "auto_label_job", ["id"], unique=False
     )
     op.create_index(
         op.f("ix_auto_label_job_project_id"),
@@ -248,9 +243,6 @@ def upgrade() -> None:
         "project_attachment",
         ["deleted_at"],
         unique=False,
-    )
-    op.create_index(
-        op.f("ix_project_attachment_id"), "project_attachment", ["id"], unique=False
     )
     op.create_index(
         op.f("ix_project_attachment_project_id"),
@@ -356,12 +348,6 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_index(
-        "idx_pre_annotation_sample_name",
-        "project_pre_annotation",
-        ["sample_name"],
-        unique=False,
-    )
-    op.create_index(
         op.f("ix_project_pre_annotation_created_by"),
         "project_pre_annotation",
         ["created_by"],
@@ -377,12 +363,6 @@ def upgrade() -> None:
         op.f("ix_project_pre_annotation_file_id"),
         "project_pre_annotation",
         ["file_id"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_project_pre_annotation_id"),
-        "project_pre_annotation",
-        ["id"],
         unique=False,
     )
     op.create_index(
@@ -464,6 +444,7 @@ def upgrade() -> None:
             ["user.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("file_id"),
     )
     op.create_index(
         "idx_sample_id_deleted_at", "project_sample", ["id", "deleted_at"], unique=False
@@ -479,12 +460,6 @@ def upgrade() -> None:
         "project_sample",
         ["deleted_at"],
         unique=False,
-    )
-    op.create_index(
-        op.f("ix_project_sample_file_id"), "project_sample", ["file_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_project_sample_id"), "project_sample", ["id"], unique=False
     )
     op.create_index(
         op.f("ix_project_sample_project_id"),
@@ -559,8 +534,6 @@ def downgrade() -> None:
 
     op.drop_table("project_sample_updater")
     op.drop_index(op.f("ix_project_sample_project_id"), table_name="project_sample")
-    op.drop_index(op.f("ix_project_sample_id"), table_name="project_sample")
-    op.drop_index(op.f("ix_project_sample_file_id"), table_name="project_sample")
     op.drop_index(op.f("ix_project_sample_deleted_at"), table_name="project_sample")
     op.drop_index(op.f("ix_project_sample_created_by"), table_name="project_sample")
     op.drop_index("idx_sample_id_deleted_at", table_name="project_sample")
@@ -575,9 +548,6 @@ def downgrade() -> None:
         table_name="project_pre_annotation",
     )
     op.drop_index(
-        op.f("ix_project_pre_annotation_id"), table_name="project_pre_annotation"
-    )
-    op.drop_index(
         op.f("ix_project_pre_annotation_file_id"), table_name="project_pre_annotation"
     )
     op.drop_index(
@@ -588,7 +558,6 @@ def downgrade() -> None:
         op.f("ix_project_pre_annotation_created_by"),
         table_name="project_pre_annotation",
     )
-    op.drop_index("idx_pre_annotation_sample_name", table_name="project_pre_annotation")
     op.drop_index(
         "idx_pre_annotation_id_deleted_at", table_name="project_pre_annotation"
     )
@@ -608,7 +577,6 @@ def downgrade() -> None:
     op.drop_index(
         op.f("ix_project_attachment_project_id"), table_name="project_attachment"
     )
-    op.drop_index(op.f("ix_project_attachment_id"), table_name="project_attachment")
     op.drop_index(
         op.f("ix_project_attachment_deleted_at"), table_name="project_attachment"
     )
@@ -619,11 +587,9 @@ def downgrade() -> None:
 
     op.drop_table("project_attachment")
     op.drop_index(op.f("ix_auto_label_job_project_id"), table_name="auto_label_job")
-    op.drop_index(op.f("ix_auto_label_job_id"), table_name="auto_label_job")
 
     op.drop_table("auto_label_job")
     op.drop_index(op.f("ix_project_name"), table_name="project")
-    op.drop_index(op.f("ix_project_id"), table_name="project")
     op.drop_index(op.f("ix_project_deleted_at"), table_name="project")
     op.drop_index(op.f("ix_project_created_by"), table_name="project")
     op.drop_index("idx_project_id_deleted_at_index", table_name="project")
@@ -631,7 +597,6 @@ def downgrade() -> None:
     op.drop_table("project")
 
     op.drop_index(op.f("ix_user_username"), table_name="user")
-    op.drop_index(op.f("ix_user_id"), table_name="user")
 
     op.drop_index("ix_access_token_user_id", table_name="access_token")
     op.drop_table("access_token")

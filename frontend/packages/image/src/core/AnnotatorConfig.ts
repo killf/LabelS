@@ -15,17 +15,17 @@ export interface AnnotatorOptions {
 
   height: number;
 
-  line?: LineToolOptions;
+  line?: Omit<LineToolOptions, 'getTools'>;
 
-  point?: PointToolOptions;
+  point?: Omit<PointToolOptions, 'getTools'>;
 
-  rect?: RectToolOptions;
+  rect?: Omit<RectToolOptions, 'getTools'>;
 
-  polygon?: PolygonToolOptions;
+  polygon?: Omit<PolygonToolOptions, 'getTools'>;
 
-  cuboid?: CuboidToolOptions;
+  cuboid?: Omit<CuboidToolOptions, 'getTools'>;
 
-  relation?: RelationToolOptions;
+  relation?: Omit<RelationToolOptions, 'getTools'>;
 
   /**
    * 全局的是否可编辑设置，权重高于requestEdit函数
@@ -87,17 +87,17 @@ export default class AnnotatorConfig {
 
   public height: number;
 
-  public line?: LineToolOptions;
+  public line?: Omit<LineToolOptions, 'getTools'>;
 
-  public point?: PointToolOptions;
+  public point?: Omit<PointToolOptions, 'getTools'>;
 
-  public rect?: RectToolOptions;
+  public rect?: Omit<RectToolOptions, 'getTools'>;
 
-  public polygon?: PolygonToolOptions;
+  public polygon?: Omit<PolygonToolOptions, 'getTools'>;
 
-  public cuboid?: CuboidToolOptions;
+  public cuboid?: Omit<CuboidToolOptions, 'getTools'>;
 
-  public relation?: RelationToolOptions;
+  public relation?: Omit<RelationToolOptions, 'getTools'>;
 
   public editable?: boolean = true;
 

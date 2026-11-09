@@ -181,8 +181,8 @@ async def create(
 async def delete(
     db: Session, project_id: int, cmd: AttachmentDeleteCommand, current_user: User
 ) -> CommonDataResp:
-    """由项目创建者删除本项目上传图片和缩略图。"""
-    # 1. 验证项目创建者及待删除附件的归属。
+    """撤回尚未关联样本的上传图片和缩略图；已提交的图片走样本删除。"""
+    # 1. 验证项目访问权与待删除附件的归属。
     project = crud_project.get(db=db, project_id=project_id)
     if not project:
         logger.error("cannot find project:{}", project_id)
@@ -191,7 +191,7 @@ async def delete(
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
-    # 本地文件删除失败时保留数据库记录，避免出现不可重试的悬空引用。
+    assert_project_access(project, current_user)
     attachments = crud_attachment.get_by_ids(db=db, attachment_ids=cmd.attachment_ids)
     if any(attachment.project_id != project_id for attachment in attachments):
         raise YoloMcpException(
@@ -199,17 +199,16 @@ async def delete(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    if project.created_by != current_user.id and not current_user.is_admin:
-        assert_project_access(project, current_user)
-        referenced = (
-            db.query(ProjectSample.id)
-            .filter(
-                ProjectSample.file_id.in_(cmd.attachment_ids),
-                ProjectSample.deleted_at.is_(None),
-            )
-            .first()
+    can_manage = project.created_by == current_user.id or current_user.is_admin
+    referenced = (
+        db.query(ProjectSample.id)
+        .filter(
+            ProjectSample.file_id.in_(cmd.attachment_ids),
+            ProjectSample.deleted_at.is_(None),
         )
-        # 协作者只能撤回本人尚未提交成样本的上传，不能删除正式数据。
+        .first()
+    )
+    if not can_manage:
         if (
             referenced
             or not attachments
@@ -218,6 +217,8 @@ async def delete(
             raise YoloMcpException(
                 code=ErrorCode.CODE_30001_NO_PERMISSION, status_code=403
             )
+    if referenced:
+        raise HTTPException(409, "附件已创建样本，请从样本列表删除")
 
     # 2. 先清理自有对象，成功后再移除数据库引用。
     storage = get_storage()

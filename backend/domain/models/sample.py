@@ -29,10 +29,10 @@ class DatasetSplit(str, Enum):
 class ProjectSample(Base):
     __tablename__ = "project_sample"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     inner_id = Column(Integer, comment="sample id in a project")
     project_id = Column(Integer, ForeignKey("project.id"), index=True)
-    file_id = Column(Integer, ForeignKey("project_attachment.id"), index=True)
+    file_id = Column(Integer, ForeignKey("project_attachment.id"), unique=True)
     split = Column(
         String(16),
         nullable=False,

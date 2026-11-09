@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Button, Progress, Tooltip } from 'antd';
 import { useNavigate, useRevalidator } from 'react-router';
 import Icon from '@ant-design/icons';
@@ -13,7 +13,6 @@ import Status from '@/components/Status';
 import { MediaTypeText } from '@/constants/mediaType';
 import type { MediaType, ProjectResponse } from '@/api/types';
 import { ProjectStatus } from '@/api/types';
-import { jsonParse } from '@/utils';
 import useMe from '@/hooks/useMe';
 
 import { ActionRow, CardWrapper, MediaBadge, Row, ProjectName } from './style';
@@ -52,9 +51,6 @@ const ProjectCard = (props: ProjectCardProps) => {
   const unDoneSample = stats.new ?? 0;
   const doneSample = (stats?.done ?? 0) + (stats?.skipped ?? 0);
   const total = unDoneSample + doneSample;
-  const tools = useMemo(() => {
-    return jsonParse(cardInfo?.config ?? '{}')?.tools;
-  }, [cardInfo]);
   const navigate = useNavigate();
   const me = useMe();
   const isMeTheCreator = !!me.data?.is_admin || cardInfo?.created_by?.id === me?.data?.id;
@@ -95,8 +91,6 @@ const ProjectCard = (props: ProjectCardProps) => {
           <MediaTypeTag type={cardInfo.media_type as MediaType} status={cardInfo.status!} />
         </FlexLayout>
         <ActionRow justify="flex-end" items="center">
-
-
           {isMeTheCreator && (
             <Tooltip title={t('deleteProject')} placement={'top'}>
               <Button onClick={handleDeleteProject} size="small" type="text" icon={<Icon component={DeleteIcon} />} />

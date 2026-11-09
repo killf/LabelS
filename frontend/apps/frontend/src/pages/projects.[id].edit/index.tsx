@@ -434,13 +434,6 @@ const CreateProject = () => {
     // 在上传数据界面取消时，需要删除已上传的文件\删除已创建的项目
     const uploadedFiles = filter(uploadFileList, (item) => item.status === UploadStatus.Success);
     if (uploadedFiles.length > 0) {
-      await deleteFile(
-        { project_id: projectId },
-        {
-          attachment_ids: uploadedFiles.map((item) => item.id!),
-        },
-      );
-
       const uploadedSampleIds = uploadedFiles
         .filter((item) => correctSampleIdsMappings[item.id!])
         .map((item) => correctSampleIdsMappings[item.id!].id!);
@@ -452,6 +445,11 @@ const CreateProject = () => {
           },
           { sample_ids: uploadedSampleIds },
         );
+      }
+
+      const pendingFiles = uploadedFiles.filter((item) => !correctSampleIdsMappings[item.id!]);
+      if (pendingFiles.length > 0) {
+        await deleteFile({ project_id: projectId }, { attachment_ids: pendingFiles.map((item) => item.id!) });
       }
     }
 
@@ -670,7 +668,6 @@ const CreateProject = () => {
     bridgeRef.current = new Bridge(previewIframeRef.current.contentWindow!);
     bridgeRef.current.on('ready', () => {
       if (!projectData?.media_type) {
-        console.warn('media_type is empty');
         return;
       }
 

@@ -25,7 +25,7 @@ def list_by(
 ) -> Tuple[List[ProjectPreAnnotation], int]:
 
     # query filter
-    query_filter = [ProjectPreAnnotation.deleted_at == None]
+    query_filter = [ProjectPreAnnotation.deleted_at.is_(None)]
     if before:
         query_filter.append(ProjectPreAnnotation.id < before)
     if after:

@@ -1,7 +1,7 @@
 import { notification } from 'antd';
 import { get } from 'lodash-es';
 import type { AxiosError, AxiosResponse } from 'axios';
-import axios from 'axios';
+import { create } from 'axios';
 
 import commonController from '@/utils/common';
 import { goLogin } from '@/utils/sso';
@@ -87,9 +87,9 @@ const requestConfig = {
   baseURL: '/api',
 };
 
-const request = axios.create(requestConfig);
+const request = create(requestConfig);
 
-export const requestWithHeaders = axios.create(requestConfig);
+export const requestWithHeaders = create(requestConfig);
 
 requestWithHeaders.interceptors.request.use(authorizationBearerSuccess, authorizationBearerFailed);
 requestWithHeaders.interceptors.response.use((response) => {
