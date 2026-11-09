@@ -160,7 +160,10 @@ class TestClassProjectRouter:
             "name": "new name",
             "description": "new description",
             "tips": "new tips",
-            "config": '{"tools":[{"tool":"rectTool","config":{"attributes":[{"key":"Object","value":"object"}]}}]}',
+            "config": (
+                '{"tools":[{"tool":"rectTool","config":{"attributes":'
+                '[{"key":"Object","value":"object"}]}}]}'
+            ),
             "media_type": "IMAGE",
         }
 
@@ -181,7 +184,11 @@ class TestClassProjectRouter:
         assert json["data"]["media_type"] == "IMAGE"
 
     def test_project_update_forbidden_for_non_owner(
-        self, client: TestClient, testuser_token_headers: dict, db: Session
+        self,
+        client: TestClient,
+        testuser_token_headers: dict,
+        db: Session,
+        other_user_id,
     ) -> None:
         # project owned by another user
         with begin_transaction(db):
@@ -191,8 +198,8 @@ class TestClassProjectRouter:
                     name="other",
                     description="d",
                     tips="t",
-                    created_by=999,
-                    updated_by=999,
+                    created_by=other_user_id,
+                    updated_by=other_user_id,
                 ),
             )
 
@@ -218,7 +225,10 @@ class TestClassProjectRouter:
             "name": "new name",
             "description": "new description",
             "tips": "new tips",
-            "config": '{"tools":[{"tool":"rectTool","config":{"attributes":[{"key":"Object","value":"object"}]}}]}',
+            "config": (
+                '{"tools":[{"tool":"rectTool","config":{"attributes":'
+                '[{"key":"Object","value":"object"}]}}]}'
+            ),
             "media_type": "IMAGE",
         }
 
@@ -254,7 +264,10 @@ class TestClassProjectRouter:
             "name": "new name",
             "description": "new description",
             "tips": "new tips",
-            "config": '{"tools":[{"tool":"rectTool","config":{"attributes":[{"key":"Object","value":"object"}]}}]}',
+            "config": (
+                '{"tools":[{"tool":"rectTool","config":{"attributes":'
+                '[{"key":"Object","value":"object"}]}}]}'
+            ),
         }
 
         # run
@@ -293,7 +306,10 @@ class TestClassProjectRouter:
             "name": "new name",
             "description": "new description",
             "tips": "new tips",
-            "config": '{"tools":[{"tool":"rectTool","config":{"attributes":[{"key":"Object","value":"object"}]}}]}',
+            "config": (
+                '{"tools":[{"tool":"rectTool","config":{"attributes":'
+                '[{"key":"Object","value":"object"}]}}]}'
+            ),
             "media_type": "IMAGE",
         }
 
@@ -344,7 +360,7 @@ class TestClassProjectRouter:
         # check
         json = r.json()
         assert r.status_code == 200
-        assert json["data"]["ok"] == True
+        assert json["data"]["ok"] is True
 
     def test_project_delete_not_found(
         self, client: TestClient, testuser_token_headers: dict, db: Session
@@ -365,7 +381,11 @@ class TestClassProjectRouter:
         assert json["err_code"] == 50002
 
     def test_project_delete_no_permission(
-        self, client: TestClient, testuser_token_headers: dict, db: Session
+        self,
+        client: TestClient,
+        testuser_token_headers: dict,
+        db: Session,
+        other_user_id,
     ) -> None:
 
         # prepare data
@@ -376,8 +396,8 @@ class TestClassProjectRouter:
                     name="name",
                     description="description",
                     tips="tips",
-                    created_by=0,
-                    updated_by=0,
+                    created_by=other_user_id,
+                    updated_by=other_user_id,
                 ),
             )
 
@@ -417,10 +437,8 @@ class TestClassProjectRouter:
         )
 
         # check
-        json = r.json()
         assert r.status_code == 200
-        # 创建者可能不会自动成为协作者，根据实际业务逻辑修改断言
-        # assert len(json["data"]) >= 1
+        assert r.json()["data"] == []
 
     def test_project_add_collaborator(
         self, client: TestClient, testuser_token_headers: dict, db: Session
@@ -510,9 +528,6 @@ class TestClassProjectRouter:
         self, client: TestClient, testuser_token_headers: dict, db: Session
     ) -> None:
         # prepare data
-        current_user = crud_user.get_user_by_username(
-            db=db, username="test@example.com"
-        )
         # 获取或创建测试用户
         new_user = crud_user.get_user_by_username(
             db=db, username="to_remove@example.com"
@@ -559,7 +574,7 @@ class TestClassProjectRouter:
         # check
         json = r.json()
         assert r.status_code == 201
-        assert json["data"]["ok"] == True
+        assert json["data"]["ok"] is True
 
         # 验证协作者已被移除
         collaborators = client.get(
@@ -617,7 +632,7 @@ class TestClassProjectRouter:
         # check
         json = r.json()
         assert r.status_code == 200
-        assert json["data"]["ok"] == True
+        assert json["data"]["ok"] is True
 
         # 验证协作者已被移除
         collaborators = client.get(

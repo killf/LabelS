@@ -1,3 +1,5 @@
+import type { AxiosResponse } from 'axios';
+
 import request, { requestWithHeaders } from '../request';
 import type {
   BasicConfigCommand,
@@ -92,7 +94,7 @@ export async function updateProjectConfig(
 export async function getProjectList({
   page,
   ...params
-}: ListByApiV1ProjectsGetParams): Promise<ProjectListResponseWithStatics> {
+}: ListByApiV1ProjectsGetParams): Promise<AxiosResponse<ProjectListResponseWithStatics>> {
   return await requestWithHeaders.get('/v1/projects', {
     timeout: 0,
     params: {

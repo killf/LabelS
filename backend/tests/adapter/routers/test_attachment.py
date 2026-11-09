@@ -22,6 +22,65 @@ def _image() -> bytes:
     return content.getvalue()
 
 
+def test_attachment_sample_lifecycle(client, testuser_token_headers, db):
+    """拒绝重复建样本和绕过样本删除图片，删除后可重新上传同名图片。"""
+    from backend.domain.models.attachment import ProjectAttachment
+
+    headers = testuser_token_headers
+    project_id = _create_project(client, headers)
+    base = f"/api/v1/projects/{project_id}"
+
+    def upload():
+        response = client.post(
+            f"{base}/attachments",
+            headers=headers,
+            files={"file": ("same.png", _image(), "image/png")},
+        )
+        assert response.status_code == 201
+        return response.json()["data"]
+
+    attachment = upload()
+    command = {"file_id": attachment["id"]}
+    duplicate = client.post(f"{base}/samples", headers=headers, json=[command, command])
+    assert duplicate.status_code == 409
+    assert (
+        client.get(f"{base}/samples", headers=headers, params={"page": 0}).json()[
+            "data"
+        ]
+        == []
+    )
+
+    created = client.post(f"{base}/samples", headers=headers, json=[command])
+    assert created.status_code == 201
+    sample_id = created.json()["data"]["ids"][0]
+    assert (
+        client.post(f"{base}/samples", headers=headers, json=[command]).status_code
+        == 409
+    )
+    assert (
+        client.request(
+            "DELETE",
+            f"{base}/attachments",
+            headers=headers,
+            json={"attachment_ids": [attachment["id"]]},
+        ).status_code
+        == 409
+    )
+    assert client.get(attachment["url"]).status_code == 200
+    assert (
+        client.request(
+            "DELETE",
+            f"{base}/samples",
+            headers=headers,
+            json={"sample_ids": [sample_id]},
+        ).status_code
+        == 200
+    )
+    assert client.get(attachment["url"]).status_code == 404
+    assert db.get(ProjectAttachment, attachment["id"]).deleted_at is not None
+    assert upload()["id"] != attachment["id"]
+
+
 def test_upload_preview_and_delete_local_attachment(
     client: TestClient, testuser_token_headers: dict
 ) -> None:

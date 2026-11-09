@@ -42,18 +42,18 @@ def get(db: Session, project_id: int, lock: bool = False) -> Project:
     Args:
         db (Session): a session connect to table
         project_id (int): a given project id
-        lock (bool, optional): if lock is True, means add exclusive lock in a row. Defaults to False.
+        lock (bool, optional): 是否锁定返回行，默认 False。
     """
     if not lock:
         return (
             db.query(Project)
-            .filter(Project.id == project_id, Project.deleted_at == None)
+            .filter(Project.id == project_id, Project.deleted_at.is_(None))
             .first()
         )
     else:
         return (
             db.query(Project)
-            .filter(Project.id == project_id, Project.deleted_at == None)
+            .filter(Project.id == project_id, Project.deleted_at.is_(None))
             .with_for_update()
             .first()
         )
@@ -81,6 +81,6 @@ def delete(db: Session, db_obj: Project) -> Project:
 def count(db: Session, owner_id: int) -> int:
     return (
         db.query(Project)
-        .filter(Project.created_by == owner_id, Project.deleted_at == None)
+        .filter(Project.created_by == owner_id, Project.deleted_at.is_(None))
         .count()
     )

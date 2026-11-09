@@ -30,7 +30,9 @@ class ProjectResponse(BaseModel):
     )
     status: Union[str, None] = Field(
         default=None,
-        description="description: project status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED",
+        description=(
+            "Project status: DRAFT, IMPORTED, CONFIGURED, INPROGRESS, FINISHED"
+        ),
     )
     created_at: Union[datetime, None] = Field(
         default=None, description="description: project created at time"

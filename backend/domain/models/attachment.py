@@ -9,7 +9,7 @@ from backend.common.db import Base
 class ProjectAttachment(Base):
     __tablename__ = "project_attachment"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     filename = Column(String(256), comment="file name")
     path = Column(String(256), comment="项目目录下的文件相对路径")
     project_id = Column(Integer, ForeignKey("project.id"), index=True)

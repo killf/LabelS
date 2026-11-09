@@ -36,3 +36,12 @@ uv run --no-sync pytest
 ```
 
 测试使用隔离 SQLite 和临时本地目录，不读取实际凭据。格式采用 Black（Python 3.11、88 列），核心链路同时执行 Flake8 检查。
+
+```bash
+uv run --no-sync black --check .
+uv run --no-sync flake8 .
+```
+
+## 发行包
+
+在完整仓库根目录执行 `uv build --project backend --out-dir dist`。构建钩子会运行 `pnpm build:frontend`，请先安装前端工作区依赖。生成的 wheel 和源码包均包含前端页面，安装后直接运行 `yolo-mcp`；从源码包构建 wheel 无需前端工具链。可编辑安装跳过构建钩子中的前端编译，开发时单独运行 Vite。

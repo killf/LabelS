@@ -1,10 +1,13 @@
 import os
+import json
+from io import BytesIO
 import shutil
 import tempfile
 from pathlib import Path
 from typing import Dict, Generator
 
 import pytest
+from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -130,6 +133,23 @@ def testuser_token_headers(client: TestClient) -> Dict[str, str]:
     return get_testuser_token_headers(client)
 
 
+@pytest.fixture
+def other_user_id(db: Session) -> int:
+    """提供真实的非成员账户，用于项目权限测试。"""
+    username = "other-owner@example.com"
+    user = crud_user.get_user_by_username(db, username)
+    if user is None:
+        with begin_transaction(db):
+            user = crud_user.create(
+                db,
+                User(
+                    username=username,
+                    hashed_password=get_password_hash(TEST_USER_PASSWORD),
+                ),
+            )
+    return user.id
+
+
 @pytest.fixture(scope="module")
 def admin_token_headers(client: TestClient) -> Dict[str, str]:
     with TestingSessionLocal() as session:
@@ -186,3 +206,63 @@ def init_db() -> None:
     finally:
         if db is not None:
             db.close()
+
+
+@pytest.fixture
+def training_project(client, testuser_token_headers):
+    """通过公共接口准备分别含一张人工完成图片的训练集和测试集。"""
+    headers = testuser_token_headers
+    project = client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={
+            "name": "Page training",
+            "media_type": "IMAGE",
+        },
+    ).json()["data"]
+    project_id = project["id"]
+    config = {
+        "tools": [
+            {
+                "tool": "rectTool",
+                "config": {"attributes": [{"key": "person", "value": "person"}]},
+            }
+        ]
+    }
+    response = client.patch(
+        f"/api/v1/projects/{project_id}",
+        headers=headers,
+        json={"config": json.dumps(config)},
+    )
+    assert response.status_code == 200
+    content = BytesIO()
+    Image.new("RGB", (10, 10), "blue").save(content, format="PNG")
+    result = {
+        "width": 10,
+        "height": 10,
+        "rectTool": {
+            "result": [{"x": 1, "y": 1, "width": 3, "height": 4, "label": "person"}]
+        },
+    }
+    for split in ["train", "test"]:
+        attachment = client.post(
+            f"/api/v1/projects/{project_id}/attachments",
+            headers=headers,
+            files={"file": (f"{split}.png", content.getvalue(), "image/png")},
+        ).json()["data"]
+        sample_id = client.post(
+            f"/api/v1/projects/{project_id}/samples",
+            headers=headers,
+            json=[{"file_id": attachment["id"], "split": split}],
+        ).json()["data"]["ids"][0]
+        response = client.patch(
+            f"/api/v1/projects/{project_id}/samples/{sample_id}",
+            headers=headers,
+            json={
+                "state": "DONE",
+                "data": {"result": json.dumps(result)},
+                "annotated_count": 1,
+            },
+        )
+        assert response.status_code == 200
+    return project_id

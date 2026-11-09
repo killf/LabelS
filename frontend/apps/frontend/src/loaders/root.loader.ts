@@ -30,7 +30,6 @@ export async function rootLoader({ request }: LoaderFunctionArgs) {
         return data;
       }
     } catch (err) {
-      console.error(err);
       return null;
     }
   }

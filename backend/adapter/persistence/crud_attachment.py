@@ -18,7 +18,10 @@ def list_by(
     sorting: Optional[str] = None,
 ) -> Tuple[List[ProjectAttachment], int]:
     # query filter
-    query_filter = [ProjectAttachment.deleted_at == None, ProjectAttachment.id.in_(ids)]
+    query_filter = [
+        ProjectAttachment.deleted_at.is_(None),
+        ProjectAttachment.id.in_(ids),
+    ]
     if owner_id:
         query_filter.append(ProjectAttachment.created_by == owner_id)
 
@@ -65,7 +68,8 @@ def get(db: Session, attachment_id: int) -> ProjectAttachment:
     return (
         db.query(ProjectAttachment)
         .filter(
-            ProjectAttachment.id == attachment_id, ProjectAttachment.deleted_at == None
+            ProjectAttachment.id == attachment_id,
+            ProjectAttachment.deleted_at.is_(None),
         )
         .first()
     )
@@ -76,7 +80,7 @@ def get_by_ids(db: Session, attachment_ids: List[int]) -> List[ProjectAttachment
         db.query(ProjectAttachment)
         .filter(
             ProjectAttachment.id.in_(attachment_ids),
-            ProjectAttachment.deleted_at == None,
+            ProjectAttachment.deleted_at.is_(None),
         )
         .all()
     )

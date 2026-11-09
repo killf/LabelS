@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
@@ -9,6 +10,65 @@ from backend.adapter.persistence import crud_sample
 from backend.domain.models.project import Project
 from backend.domain.models.sample import ProjectSample
 from backend.domain.models.attachment import ProjectAttachment
+
+
+@pytest.mark.parametrize("state", ["SKIPPED", "NEW", "DONE"])
+def test_state_only_patch_preserves_annotation(
+    client, testuser_token_headers, training_project, state
+):
+    """切换状态不能抹掉已保存标注及数量，重新完成时校验原有结果。"""
+    base = f"/api/v1/projects/{training_project}/samples"
+    before = client.get(
+        base, headers=testuser_token_headers, params={"page": 0}
+    ).json()["data"][0]
+    response = client.patch(
+        f"{base}/{before['id']}",
+        headers=testuser_token_headers,
+        json={"state": state},
+    )
+    assert response.status_code == 200
+    after = response.json()["data"]
+    assert after["state"] == state
+    assert after["data"] == before["data"]
+    assert after["annotated_count"] == before["annotated_count"] == 1
+
+
+def test_count_only_patch_preserves_annotation(
+    client, testuser_token_headers, training_project
+):
+    base = f"/api/v1/projects/{training_project}/samples"
+    before = client.get(
+        base, headers=testuser_token_headers, params={"page": 0}
+    ).json()["data"][0]
+    response = client.patch(
+        f"{base}/{before['id']}",
+        headers=testuser_token_headers,
+        json={"annotated_count": 2},
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["data"] == before["data"]
+    assert response.json()["data"]["annotated_count"] == 2
+
+
+@pytest.mark.parametrize("data", [None, {}, {"result": {}}, {"result": "broken"}])
+def test_invalid_completed_annotation_does_not_overwrite_saved_data(
+    client, testuser_token_headers, training_project, data
+):
+    base = f"/api/v1/projects/{training_project}/samples"
+    before = client.get(
+        base, headers=testuser_token_headers, params={"page": 0}
+    ).json()["data"][0]
+    response = client.patch(
+        f"{base}/{before['id']}",
+        headers=testuser_token_headers,
+        json={"state": "DONE", "data": data},
+    )
+    assert response.status_code == 422
+    after = client.get(f"{base}/{before['id']}", headers=testuser_token_headers).json()[
+        "data"
+    ]
+    assert after["data"] == before["data"]
+    assert after["annotated_count"] == before["annotated_count"]
 
 
 class TestClassProjectSampleRouter:
@@ -31,7 +91,6 @@ class TestClassProjectSampleRouter:
                 samples=[
                     ProjectSample(
                         project_id=project.id,
-                        file_id=1,
                         created_by=owner.id,
                         updated_by=owner.id,
                         split=split,
@@ -52,7 +111,6 @@ class TestClassProjectSampleRouter:
                 samples=[
                     ProjectSample(
                         project_id=other.id,
-                        file_id=1,
                         data="{}",
                         split="test",
                         created_by=owner.id,
@@ -234,8 +292,7 @@ class TestClassProjectSampleRouter:
             )
         samples = [
             ProjectSample(
-                project_id=1,
-                file_id=12,
+                project_id=project.id,
                 created_by=current_user.id,
                 updated_by=current_user.id,
                 data="{}",
@@ -283,8 +340,7 @@ class TestClassProjectSampleRouter:
             )
         samples = [
             ProjectSample(
-                project_id=1,
-                file_id=1,
+                project_id=project.id,
                 created_by=current_user.id,
                 updated_by=current_user.id,
                 data="{}",
@@ -333,8 +389,7 @@ class TestClassProjectSampleRouter:
             )
         samples = [
             ProjectSample(
-                project_id=1,
-                file_id=1,
+                project_id=project.id,
                 created_by=current_user.id,
                 updated_by=current_user.id,
                 data="{}",
@@ -384,7 +439,6 @@ class TestClassProjectSampleRouter:
         samples = [
             ProjectSample(
                 project_id=project.id,
-                file_id=1,
                 created_by=current_user.id,
                 updated_by=current_user.id,
                 data="{}",
@@ -463,7 +517,12 @@ class TestClassProjectSampleRouter:
         assert r.status_code == 422
 
     def test_batch_auto_label_forbidden_for_non_owner(
-        self, client: TestClient, testuser_token_headers: dict, db: Session, monkeypatch
+        self,
+        client: TestClient,
+        testuser_token_headers: dict,
+        db: Session,
+        other_user_id,
+        monkeypatch,
     ) -> None:
         # enable the AI feature so the request reaches the access check
         monkeypatch.setattr(settings, "USE_AUTO_LABEL", True)
@@ -476,8 +535,8 @@ class TestClassProjectSampleRouter:
                     description="d",
                     tips="t",
                     media_type="IMAGE",
-                    created_by=999,
-                    updated_by=999,
+                    created_by=other_user_id,
+                    updated_by=other_user_id,
                 ),
             )
         r = client.post(
@@ -527,7 +586,6 @@ class TestClassProjectSampleRouter:
                 samples=[
                     ProjectSample(
                         project_id=project.id,
-                        file_id=1,
                         created_by=owner.id,
                         updated_by=owner.id,
                         data="{}",
@@ -564,9 +622,13 @@ class TestClassProjectSampleRouter:
         assert r.status_code == 200
 
     def test_sample_access_forbidden_for_non_member(
-        self, client: TestClient, testuser_token_headers: dict, db: Session
+        self,
+        client: TestClient,
+        testuser_token_headers: dict,
+        db: Session,
+        other_user_id,
     ) -> None:
-        # a project owned by someone else; the test user is neither owner nor collaborator
+        # 项目属于其他用户，当前用户既非拥有者也非协作者。
         with begin_transaction(db):
             project = crud_project.create(
                 db=db,
@@ -574,8 +636,8 @@ class TestClassProjectSampleRouter:
                     name="other",
                     description="d",
                     tips="t",
-                    created_by=999,
-                    updated_by=999,
+                    created_by=other_user_id,
+                    updated_by=other_user_id,
                 ),
             )
         with begin_transaction(db):
@@ -584,9 +646,8 @@ class TestClassProjectSampleRouter:
                 samples=[
                     ProjectSample(
                         project_id=project.id,
-                        file_id=1,
-                        created_by=999,
-                        updated_by=999,
+                        created_by=other_user_id,
+                        updated_by=other_user_id,
                         data="{}",
                     )
                 ],
@@ -647,7 +708,6 @@ class TestClassProjectSampleRouter:
                 samples=[
                     ProjectSample(
                         project_id=project.id,
-                        file_id=1,
                         created_by=current_user.id,
                         updated_by=current_user.id,
                         data="{}",
@@ -664,8 +724,8 @@ class TestClassProjectSampleRouter:
         )
 
         # check
-        json = r.json()
         assert r.status_code == 200
+        assert r.json()["data"]["id"] == samples[0].id
 
     def test_sample_get_not_found(
         self, client: TestClient, testuser_token_headers: dict, db: Session
@@ -722,8 +782,7 @@ class TestClassProjectSampleRouter:
                 db=db,
                 samples=[
                     ProjectSample(
-                        project_id=1,
-                        file_id=1,
+                        project_id=project.id,
                         created_by=current_user.id,
                         updated_by=current_user.id,
                         data="{}",
@@ -771,8 +830,7 @@ class TestClassProjectSampleRouter:
                 db=db,
                 samples=[
                     ProjectSample(
-                        project_id=1,
-                        file_id=1,
+                        project_id=project.id,
                         created_by=current_user.id,
                         updated_by=current_user.id,
                         data="{}",
@@ -867,8 +925,7 @@ class TestClassProjectSampleRouter:
                 db=db,
                 samples=[
                     ProjectSample(
-                        project_id=1,
-                        file_id=1,
+                        project_id=project.id,
                         created_by=current_user.id,
                         updated_by=current_user.id,
                         data="{}",

@@ -7,7 +7,6 @@ from backend.common.db import begin_transaction
 from backend.common.storage import get_storage
 from backend.domain.models.project import Project
 from backend.domain.models.training_run import TrainingRun
-from backend.tests.adapter.routers.test_training import training_project
 
 
 @pytest.fixture

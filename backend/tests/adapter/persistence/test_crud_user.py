@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from backend.domain.models.user import User
 from backend.adapter.persistence import crud_user
 from backend.common.db import begin_transaction
-from backend.common.security import verify_password
 from backend.common.security import get_password_hash
 
 from backend.tests.utils.utils import random_username

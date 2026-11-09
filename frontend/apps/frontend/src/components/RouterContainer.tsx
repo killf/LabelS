@@ -7,13 +7,9 @@ import React, { useMemo } from 'react';
 import _ from 'lodash';
 import DocumentTitle from 'react-document-title';
 import type { RouteObject } from 'react-router-dom';
-import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, useMatches } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, useMatches } from 'react-router-dom';
 
 import type { Match } from '@/components/Breadcrumb';
-
-export type RouteWithParent = RouteObject & {
-  parent: RouteWithParent | null;
-};
 
 // 将对应的面包屑信息添加到页面标题中
 function RouteWithTitle({ children }: { children: React.ReactNode }) {
@@ -32,33 +28,11 @@ function RouteWithTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function mapRoutes(
-  inputRoutes: RouteObject[],
-  parentPath: string = '',
-  parentRoute: RouteWithParent | null = null,
-): React.ReactNode {
+function mapRoutes(inputRoutes: RouteObject[]): RouteObject[] {
   return inputRoutes.map((route) => {
-    const { path, element, children, index, ...restProps } = route;
-    const routeWithParent: RouteWithParent = { ...route, parent: parentRoute };
-    const comp = <RouteWithTitle key={`${parentPath}-${path}`}>{element}</RouteWithTitle>;
-
-    if (index) {
-      return (
-        <Route
-          index={Boolean(index)}
-          key={`${parentPath}-${path}`}
-          path={undefined}
-          element={comp as React.ReactElement}
-          {...restProps}
-        />
-      );
-    }
-
-    return (
-      <Route key={`${parentPath}-${path}`} path={path} element={comp as React.ReactElement} {...restProps}>
-        {Array.isArray(children) ? mapRoutes(children, path, routeWithParent) : null}
-      </Route>
-    );
+    const element = <RouteWithTitle>{route.element}</RouteWithTitle>;
+    if (route.index) return { ...route, element };
+    return { ...route, element, children: route.children ? mapRoutes(route.children) : undefined };
   });
 }
 
@@ -70,7 +44,7 @@ export interface RouterProps {
 export default function RouterContainer({ routes, basename }: RouterProps) {
   const router = useMemo(
     () =>
-      createBrowserRouter(createRoutesFromElements(mapRoutes(routes)), {
+      createBrowserRouter(mapRoutes(routes), {
         basename,
       }),
     [basename, routes],

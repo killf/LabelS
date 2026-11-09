@@ -1,3 +1,4 @@
+import type { AnnotationData } from '@yolo-mcp/image';
 import type { EnumerableAttribute, ILabel, TextAttribute } from '@yolo-mcp/interface';
 
 import type { TrainingParameters } from './services/training';
@@ -493,6 +494,7 @@ interface TagTool {
 }
 
 export interface ParsedResult {
+  relationTool?: { toolName?: 'relationTool'; result?: AnnotationData[] };
   pointTool?: PointResult;
   rectTool?: RectResult;
   polygonTool?: PolygonResult;

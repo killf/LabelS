@@ -118,7 +118,6 @@ def test_batch_reuses_model_and_reports_partial_failure(
     with begin_transaction(db):
         second = ProjectSample(
             project_id=project_id,
-            file_id=first.file_id,
             inner_id=2,
             created_by=first.created_by,
             updated_by=first.created_by,

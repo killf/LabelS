@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from backend.domain.models.auto_label_job import AutoLabelJob, AutoLabelStatus
+from backend.domain.models.auto_label_job import AutoLabelJob
 
 
 def create(

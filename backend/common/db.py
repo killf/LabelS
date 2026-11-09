@@ -1,6 +1,8 @@
+import sqlite3
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session, SessionTransaction
@@ -9,6 +11,18 @@ from backend.common.config import settings
 
 database_url = settings.DATABASE_URL
 parsed_url = make_url(database_url)
+
+
+@event.listens_for(Engine, "connect")
+def _enable_sqlite_foreign_keys(connection, _record) -> None:
+    """每个 SQLite 连接启用外键校验；其他数据库沿用自身的约束实现。"""
+    if isinstance(connection, sqlite3.Connection):
+        cursor = connection.cursor()
+        try:
+            cursor.execute("PRAGMA foreign_keys=ON")
+        finally:
+            cursor.close()
+
 
 if parsed_url.get_backend_name() == "sqlite":
     engine = create_engine(

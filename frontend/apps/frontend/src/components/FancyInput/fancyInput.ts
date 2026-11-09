@@ -12,7 +12,6 @@ export const inputs: Record<string, React.FC<any>> = {
 
 export function add<T>(type: string, component: React.FC<T>) {
   if (inputs[type]) {
-    console.warn(`[FancyInput] ${type} already exists`);
     return;
   }
 

@@ -31,7 +31,7 @@ export function set(key: string, payload: unknown) {
     } else {
       throw new Error('payload type error');
     }
-  } catch (err) {
-    console.warn(err);
+  } catch {
+    // 浏览器禁用存储或配额已满时，跳过本地缓存写入。
   }
 }

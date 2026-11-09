@@ -146,12 +146,10 @@ app.mount("", NoCacheStaticFiles(packages=["backend"], html=True))
 @click.command()
 @click.option("--host", default="localhost", help="Server host")
 @click.option("--port", default=8000, help="Server port")
-@click.option("--media-host", default="http://localhost:8000", help="Media Host")
-def cli(host: str, port: int, media_host: str):
+def cli(host: str, port: int):
     """按指定地址启动 YOLO MCP HTTP 与 WebSocket 服务。"""
     settings.PORT = port
     settings.HOST = host
-    settings.MEDIA_HOST = media_host
 
     uvicorn.run(app=app, host=settings.HOST, port=settings.PORT, ws="websockets")
 

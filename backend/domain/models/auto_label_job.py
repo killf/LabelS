@@ -17,7 +17,7 @@ class AutoLabelStatus(str, Enum):
 class AutoLabelJob(Base):
     __tablename__ = "auto_label_job"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("project.id"), index=True)
     created_by = Column(Integer, ForeignKey("user.id"))
     status = Column(String(32), default=AutoLabelStatus.PENDING.value)

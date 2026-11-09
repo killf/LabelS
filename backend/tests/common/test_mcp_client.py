@@ -37,7 +37,6 @@ def test_official_client_upload_annotation_download_and_revocation(
         "PYTHONPATH": str(root),
         "DATA_DIR": str(data),
         "DATABASE_URL": f"sqlite:///{(data / 'app.sqlite').as_posix()}",
-        "MEDIA_HOST": f"http://127.0.0.1:{port}",
     }
     base = f"http://127.0.0.1:{port}"
     with (tmp_path / "server.log").open("w", encoding="utf-8") as log:

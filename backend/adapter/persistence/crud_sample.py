@@ -27,7 +27,7 @@ def list_by(
 ) -> List[ProjectSample]:
 
     # query filter
-    query_filter = [ProjectSample.deleted_at == None]
+    query_filter = [ProjectSample.deleted_at.is_(None)]
     if before:
         query_filter.append(ProjectSample.id < before)
     if after:
@@ -83,7 +83,7 @@ def list_by(
 def get(db: Session, sample_id: int) -> ProjectSample:
     return (
         db.query(ProjectSample)
-        .filter(ProjectSample.id == sample_id, ProjectSample.deleted_at == None)
+        .filter(ProjectSample.id == sample_id, ProjectSample.deleted_at.is_(None))
         .first()
     )
 
@@ -91,7 +91,10 @@ def get(db: Session, sample_id: int) -> ProjectSample:
 def get_by_ids(
     db: Session, sample_ids: List[int], project_id: Union[int, None] = None
 ) -> List[ProjectSample]:
-    query_filter = [ProjectSample.id.in_(sample_ids), ProjectSample.deleted_at == None]
+    query_filter = [
+        ProjectSample.id.in_(sample_ids),
+        ProjectSample.deleted_at.is_(None),
+    ]
     if project_id is not None:
         query_filter.append(ProjectSample.project_id == project_id)
     return db.query(ProjectSample).filter(*query_filter).all()
@@ -103,7 +106,7 @@ def list_new_samples(db: Session, project_id: int) -> List[ProjectSample]:
         .filter(
             ProjectSample.project_id == project_id,
             ProjectSample.state == SampleState.NEW.value,
-            ProjectSample.deleted_at == None,
+            ProjectSample.deleted_at.is_(None),
         )
         .all()
     )
@@ -127,7 +130,7 @@ def delete(db: Session, sample_ids: List[int]) -> None:
 
 
 def count(db: Session, project_id: int, split: str | None = None) -> int:
-    query_filter = [ProjectSample.deleted_at == None]
+    query_filter = [ProjectSample.deleted_at.is_(None)]
     if project_id:
         query_filter.append(ProjectSample.project_id == project_id)
     if split is not None:
@@ -139,7 +142,7 @@ def statics(
     db: Session,
     project_ids: List[int],
 ) -> dict:
-    query_filter = [ProjectSample.deleted_at == None]
+    query_filter = [ProjectSample.deleted_at.is_(None)]
     if project_ids:
         query_filter.append(ProjectSample.project_id.in_(project_ids))
 

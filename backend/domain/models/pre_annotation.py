@@ -12,7 +12,7 @@ class ProjectPreAnnotation(Base):
     """Project pre-annotations for a sample of a project.
     """
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(
         Integer, ForeignKey("project.id"), index=True, comment="Project ID"
     )
@@ -45,5 +45,4 @@ class ProjectPreAnnotation(Base):
     owner = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
 
-    Index("idx_pre_annotation_sample_name", sample_name)
     Index("idx_pre_annotation_id_deleted_at", id, deleted_at)

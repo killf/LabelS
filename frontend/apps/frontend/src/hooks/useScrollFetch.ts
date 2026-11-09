@@ -50,7 +50,8 @@ export function useScrollFetch<T extends any[] | undefined>(
       const promise = service(!!reset);
 
       if (!(promise instanceof Promise)) {
-        console.warn('service must be an async function');
+        toggleLoading(false);
+        isFetching.current = false;
         return Promise.resolve(promise);
       }
       return promise
@@ -69,6 +70,7 @@ export function useScrollFetch<T extends any[] | undefined>(
           toggleLoading(false);
         })
         .catch(() => {
+          isFetching.current = false;
           toggleLoading(false);
         });
     },

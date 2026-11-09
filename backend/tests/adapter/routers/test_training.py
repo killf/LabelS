@@ -1,11 +1,9 @@
 import asyncio
 import json
-from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-from PIL import Image
 import yaml
 
 from backend.application.service import training
@@ -15,66 +13,6 @@ from backend.common.storage import get_storage
 from backend.domain.models.project import Project
 from backend.domain.models.training_run import TrainingRun
 from backend.tests.conftest import TestingSessionLocal
-
-
-@pytest.fixture
-def training_project(client, testuser_token_headers):
-    """通过公共接口准备分别含一张人工完成图片的训练集和测试集。"""
-    headers = testuser_token_headers
-    project = client.post(
-        "/api/v1/projects",
-        headers=headers,
-        json={
-            "name": "Page training",
-            "media_type": "IMAGE",
-        },
-    ).json()["data"]
-    project_id = project["id"]
-    config = {
-        "tools": [
-            {
-                "tool": "rectTool",
-                "config": {"attributes": [{"key": "person", "value": "person"}]},
-            }
-        ]
-    }
-    response = client.patch(
-        f"/api/v1/projects/{project_id}",
-        headers=headers,
-        json={"config": json.dumps(config)},
-    )
-    assert response.status_code == 200
-    content = BytesIO()
-    Image.new("RGB", (10, 10), "blue").save(content, format="PNG")
-    result = {
-        "width": 10,
-        "height": 10,
-        "rectTool": {
-            "result": [{"x": 1, "y": 1, "width": 3, "height": 4, "label": "person"}]
-        },
-    }
-    for split in ["train", "test"]:
-        attachment = client.post(
-            f"/api/v1/projects/{project_id}/attachments",
-            headers=headers,
-            files={"file": (f"{split}.png", content.getvalue(), "image/png")},
-        ).json()["data"]
-        sample_id = client.post(
-            f"/api/v1/projects/{project_id}/samples",
-            headers=headers,
-            json=[{"file_id": attachment["id"], "split": split}],
-        ).json()["data"]["ids"][0]
-        response = client.patch(
-            f"/api/v1/projects/{project_id}/samples/{sample_id}",
-            headers=headers,
-            json={
-                "state": "DONE",
-                "data": {"result": json.dumps(result)},
-                "annotated_count": 1,
-            },
-        )
-        assert response.status_code == 200
-    return project_id
 
 
 def test_project_initializes_fixed_directories(client, testuser_token_headers):
