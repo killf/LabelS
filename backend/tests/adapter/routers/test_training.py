@@ -26,7 +26,7 @@ def test_project_initializes_fixed_directories(client, testuser_token_headers):
     assert project["dataset_prefix"] == f"projects/{project['id']}"
     assert "dataset_data_source_id" not in project
     storage = get_storage()
-    for directory in ["", "images/", "models/", "runs/"]:
+    for directory in ["", "images/", "thumbnails/", "models/", "runs/"]:
         assert storage.path(f"projects/{project['id']}/{directory}").is_dir()
     assert not storage.path(f"projects/{project['id']}/uploads").exists()
     assert not storage.path(f"projects/{project['id']}/labels").exists()
@@ -360,6 +360,14 @@ def test_training_records_require_project_access(
             ).status_code
             == 403
         )
+    for action in ["pause", "resume"]:
+        assert (
+            client.post(
+                f"/api/v1/projects/{training_project}/training-runs/1/{action}",
+                headers=testuser_token_headers,
+            ).status_code
+            == 403
+        )
 
 
 @pytest.mark.parametrize("exit_code,expected", [(0, "SUCCEEDED"), (1, "FAILED")])
@@ -399,6 +407,9 @@ def test_worker_records_process_result(
     async def spawn(*args, **kwargs):
         captured["args"] = args
         assert "shell" not in kwargs
+        assert Path(kwargs["env"]["YOLO_CONFIG_DIR"]) == get_storage().path(
+            ".ultralytics"
+        )
         assert Path(args[args.index("--data") + 1]) == tmp_path / "dataset"
         assert Path(args[args.index("--models-dir") + 1]) == get_storage().path(
             f"projects/{training_project}/models"
@@ -542,6 +553,9 @@ def test_project_training_defaults_are_returned_and_applied_with_request_overrid
         "initial_model": "yolo26n.pt",
         "epochs": 23,
         "lr0": 0.003,
+        "augmentation": False,
+        "training_scope": "head_then_full",
+        "unfreeze_steps": 8,
         "extra_params": {"optimizer": "AdamW", "amp": False},
     }
     saved = client.patch(
@@ -559,6 +573,9 @@ def test_project_training_defaults_are_returned_and_applied_with_request_overrid
     assert parameters["initial_model"] == "yolo26n.pt"
     assert parameters["epochs"] == 2 and parameters["lr0"] == 0.003
     assert parameters["extra_params"] == defaults["extra_params"]
+    assert parameters["augmentation"] is False
+    assert parameters["training_scope"] == "head_then_full"
+    assert parameters["unfreeze_steps"] == 8
     assert (
         client.get(url, headers=testuser_token_headers).json()["data"][
             "training_config"

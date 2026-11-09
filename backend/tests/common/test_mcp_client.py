@@ -35,8 +35,8 @@ def test_official_client_upload_annotation_download_and_revocation(
         "TEMP": str(tmp_path),
         "TMP": str(tmp_path),
         "PYTHONPATH": str(root),
-        "DATA_DIR": str(data),
-        "DATABASE_URL": f"sqlite:///{(data / 'app.sqlite').as_posix()}",
+        "YOLO_MCP_DATA_DIR": str(data),
+        "YOLO_MCP_DATABASE_URL": f"sqlite:///{(data / 'app.sqlite').as_posix()}",
     }
     base = f"http://127.0.0.1:{port}"
     with (tmp_path / "server.log").open("w", encoding="utf-8") as log:

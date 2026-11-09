@@ -11,6 +11,8 @@ import {
   getTrainingLog,
   getTrainingRuns,
   startTraining,
+  pauseTraining,
+  resumeTraining,
 } from '@/api/services/training';
 import type { TrainingParameters, TrainingRun, TrainingStatus } from '@/api/services/training';
 import { message } from '@/StaticAnt';
@@ -20,12 +22,14 @@ import type { TrainingFormValues } from '@/components/TrainingConfigFields';
 const statuses: Record<TrainingStatus, { text: string; color: string }> = {
   PENDING: { text: '等待启动', color: 'default' },
   RUNNING: { text: '训练中', color: 'processing' },
+  PAUSING: { text: '等待暂停', color: 'processing' },
+  PAUSED: { text: '已暂停', color: 'warning' },
   SUCCEEDED: { text: '成功', color: 'success' },
   FAILED: { text: '失败', color: 'error' },
   INTERRUPTED: { text: '已中断', color: 'warning' },
 };
 
-const active = (status: TrainingStatus) => status === 'PENDING' || status === 'RUNNING';
+const active = (status: TrainingStatus) => ['PENDING', 'RUNNING', 'PAUSING'].includes(status);
 const time = (value: string | null) => (value ? new Date(value).toLocaleString() : '-');
 
 export default function TrainingPanel({
@@ -71,6 +75,14 @@ export default function TrainingPanel({
     },
   });
   const busy = runs.data?.data.some((run) => active(run.status));
+  const control = useMutation({
+    mutationFn: ({ run, action }: { run: TrainingRun; action: 'pause' | 'resume' }) =>
+      action === 'pause' ? pauseTraining(projectId, run.id) : resumeTraining(projectId, run.id),
+    onSuccess: (_, { action }) => {
+      message.success(action === 'pause' ? '将在当前 epoch 保存完成后暂停' : '已提交继续训练');
+      void runs.refetch();
+    },
+  });
   const cleanup = async (run: TrainingRun, includeModel: boolean) => {
     setCleaning(run.id);
     try {
@@ -199,6 +211,25 @@ export default function TrainingPanel({
               width: 230,
               render: (_, run) => (
                 <Space size={0} wrap>
+                  {run.pause_available && (
+                    <Button
+                      type="link"
+                      loading={control.isPending && control.variables?.run.id === run.id}
+                      onClick={() => control.mutate({ run, action: 'pause' })}
+                    >
+                      暂停训练
+                    </Button>
+                  )}
+                  {run.status === 'PAUSED' && (
+                    <Button
+                      type="link"
+                      disabled={!run.resume_available || busy}
+                      loading={control.isPending && control.variables?.run.id === run.id}
+                      onClick={() => control.mutate({ run, action: 'resume' })}
+                    >
+                      继续训练
+                    </Button>
+                  )}
                   <Button
                     type="link"
                     disabled={!run.log_available && !active(run.status)}
@@ -209,7 +240,13 @@ export default function TrainingPanel({
                   <Popconfirm title="清理日志和中间文件？执行记录及模型会保留。" onConfirm={() => cleanup(run, false)}>
                     <Button
                       type="link"
-                      disabled={!canClean || active(run.status) || !run.log_available || cleaning === run.id}
+                      disabled={
+                        !canClean ||
+                        active(run.status) ||
+                        run.status === 'PAUSED' ||
+                        !run.log_available ||
+                        cleaning === run.id
+                      }
                     >
                       清理日志
                     </Button>

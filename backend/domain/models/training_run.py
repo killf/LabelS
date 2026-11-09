@@ -13,6 +13,10 @@ class TrainingStatus(str, Enum):
 
     RUNNING = "RUNNING"
 
+    PAUSING = "PAUSING"
+
+    PAUSED = "PAUSED"
+
     SUCCEEDED = "SUCCEEDED"
 
     FAILED = "FAILED"

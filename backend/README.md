@@ -10,20 +10,20 @@ yolo-mcp --host 127.0.0.1 --port 8000
 
 网页和 API 文档分别位于 `http://127.0.0.1:8000` 和 `http://127.0.0.1:8000/docs`。首次启动会初始化空库并生成签名密钥。
 
-以下配置均为可选项，通过环境变量设置：
+以下配置均为可选项，通过环境变量设置。项目配置统一使用 `YOLO_MCP_` 前缀，旧的无前缀名称不再生效；Ultralytics、Python 等第三方运行时变量保留原名。
 
 | 配置项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `DATA_DIR` | `~/.yolo-mcp` | 图片、模型、日志和默认数据库的根目录 |
-| `DATABASE_URL` | `DATA_DIR/labels.sqlite` 对应的 SQLite URL | 自定义数据库连接 |
-| `USE_AUTO_LABEL` | `true` | 是否启用 AI 标注 |
-| `DEVICE` | 空 | 自动选择 CUDA/ROCm、MPS 或 CPU；也可指定 `0`、`cuda:0`、`cpu` |
+| `YOLO_MCP_DATA_DIR` | `~/.yolo-mcp` | 图片、模型、日志和默认数据库的根目录 |
+| `YOLO_MCP_DATABASE_URL` | `YOLO_MCP_DATA_DIR/labels.sqlite` 对应的 SQLite URL | 自定义数据库连接 |
+| `YOLO_MCP_USE_AUTO_LABEL` | `true` | 是否启用 AI 标注 |
+| `YOLO_MCP_DEVICE` | 空 | 自动选择 CUDA/ROCm、MPS 或 CPU；也可指定 `0`、`cuda:0`、`cpu` |
 
 例如，在 PowerShell 中指定目录和设备：
 
 ```powershell
-$env:DATA_DIR = "D:/yolo-data"
-$env:DEVICE = "0"
+$env:YOLO_MCP_DATA_DIR = "D:/yolo-data"
+$env:YOLO_MCP_DEVICE = "0"
 yolo-mcp --host 127.0.0.1 --port 8000
 ```
 
@@ -54,8 +54,8 @@ MCP 地址为 `/mcp`，使用 Streamable HTTP 和 `Authorization: Bearer <个人
 默认仅接受本机 Host / Origin。远程部署时通过 HTTPS 代理访问，并填写实际域名的 JSON 数组：
 
 ```dotenv
-MCP_ALLOWED_HOSTS=["yolo.example.com"]
-MCP_ALLOWED_ORIGINS=["https://yolo.example.com"]
+YOLO_MCP_MCP_ALLOWED_HOSTS=["yolo.example.com"]
+YOLO_MCP_MCP_ALLOWED_ORIGINS=["https://yolo.example.com"]
 ```
 
 ## 数据与备份
@@ -71,11 +71,12 @@ MCP_ALLOWED_ORIGINS=["https://yolo.example.com"]
 │   └── huggingface/
 └── projects/<项目 ID>/
     ├── images/
+    ├── thumbnails/
     ├── models/
     └── runs/<记录 ID>/
 ```
 
-原图及缩略图位于 `images/`，标注、类别和数据划分保存在数据库中。每个附件对应一个样本；删除样本会删除对应图片，已提交的附件应从样本列表删除。项目改名不改变目录。
+原图位于 `images/`，缩略图单独位于 `thumbnails/`。标注、类别和数据划分保存在数据库中。每个附件对应一个样本；删除样本会删除对应图片及缩略图，已提交的附件应从样本列表删除。项目改名不改变目录。项目数据总览支持标注状态与训练／测试类型组合筛选，点击“总计”清除筛选。
 
 训练开始时才生成该次数据快照，结构见[项目目录](training/README.md#项目目录)。旧附件按数据库中的路径读取，已有 `uploads/` 不会自动搬迁。
 
@@ -169,6 +170,6 @@ uv build --project backend --out-dir dist
 在目标环境安装生成的 wheel：
 
 ```bash
-python -m pip install ./dist/yolo_mcp-2.0.1-py3-none-any.whl
+python -m pip install ./dist/yolo_mcp-2.0.3-py3-none-any.whl
 yolo-mcp --host 127.0.0.1 --port 8000
 ```

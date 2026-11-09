@@ -12,7 +12,7 @@ from backend.common.error_code import YoloMcpException
 from backend.domain.models.user import User
 from backend.domain.models.project import Project
 from backend.domain.models.attachment import ProjectAttachment
-from backend.common.storage import get_storage, build_thumbnail_key
+from backend.common.storage import get_storage
 from backend.domain.models.project import ProjectStatus
 from backend.domain.models.sample import SampleState
 from backend.application.service.access import assert_project_access, assert_owner
@@ -57,7 +57,7 @@ async def create(
             project_directory = storage.path(new_project.dataset_prefix)
             project_directory.mkdir(parents=True, exist_ok=False)
             created_directories.append(project_directory)
-            for name in ("images", "models", "runs"):
+            for name in ("images", "thumbnails", "models", "runs"):
                 directory = project_directory / name
                 directory.mkdir()
                 created_directories.append(directory)
@@ -487,7 +487,7 @@ async def delete(db: Session, project_id: int, current_user: User) -> CommonData
     )
     for attachment in attachments:
         storage.delete(attachment.path)
-        storage.delete(build_thumbnail_key(attachment.path))
+        storage.delete(storage.thumbnail_key(attachment.path))
 
     # delete
     with begin_transaction(db):

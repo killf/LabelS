@@ -67,12 +67,26 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSplit = searchParams.get('split');
+  const selectedState = searchParams.get('state');
 
   const filterSplit = (split?: DatasetSplit) => {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       if (split && selectedSplit !== split) next.set('split', split);
       else next.delete('split');
+      if (!split) next.delete('state');
+      next.set('page', '1');
+      next.delete('after');
+      next.delete('before');
+      return next;
+    });
+  };
+
+  const filterState = (state: string) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (selectedState === state) next.delete('state');
+      else next.set('state', state);
       next.set('page', '1');
       next.delete('after');
       next.delete('before');
@@ -98,10 +112,19 @@ const Statistical = ({ children }: React.PropsWithChildren) => {
     <FlexLayout justify="space-between" items="center" gap=".75rem 1rem" style={{ flexWrap: 'wrap' }}>
       <FlexLayout items="center" gap="1.5rem" style={{ flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
         <b>{t('dataOverview')}</b>
-        <ProjectStatus status="done" count={stats.done} />
-        <ProjectStatus status="new" count={stats.new} />
-        <ProjectStatus status="skipped" count={stats.skipped} />
-        <Button type="text" size="small" aria-pressed={!selectedSplit} onClick={() => filterSplit()}>
+        {(['done', 'new', 'skipped'] as const).map((status) => (
+          <Button
+            key={status}
+            type={selectedState === status.toUpperCase() ? 'primary' : 'text'}
+            ghost={selectedState === status.toUpperCase()}
+            size="small"
+            aria-pressed={selectedState === status.toUpperCase()}
+            onClick={() => filterState(status.toUpperCase())}
+          >
+            <ProjectStatus status={status} count={stats[status]} />
+          </Button>
+        ))}
+        <Button type="text" size="small" aria-pressed={!selectedSplit && !selectedState} onClick={() => filterSplit()}>
           <ProjectStatus count={(stats.done ?? 0) + (stats.new ?? 0) + (stats.skipped ?? 0)}>
             {t('total')}
           </ProjectStatus>

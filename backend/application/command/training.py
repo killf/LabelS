@@ -46,6 +46,10 @@ RESERVED_TRAINING_PARAMETERS = {
     "models_dir",
     "result_file",
     "extra_params",
+    "augmentation",
+    "training_scope",
+    "unfreeze_steps",
+    "resume_checkpoint",
 }
 
 
@@ -76,6 +80,13 @@ class StartTrainingCommand(BaseModel):
     lr0: float | None = Field(
         default=None, ge=0, le=1, allow_inf_nan=False, description="初始学习率"
     )
+    augmentation: bool = Field(default=True, description="启用训练图像增强")
+    training_scope: Literal["full", "head", "head_then_full"] = Field(
+        default="full", description="全部参数、仅 Detect 检测头或检测头预热后解冻"
+    )
+    unfreeze_steps: int = Field(
+        default=100, ge=1, le=10000000, description="解冻前检测头的优化器更新次数"
+    )
     extra_params: dict[str, JsonValue] = Field(
         default_factory=dict, description="额外 YOLO 训练参数，不覆盖基础表单或项目路径"
     )
@@ -89,6 +100,13 @@ class StartTrainingCommand(BaseModel):
     def validate_learning_rate(self):
         if self.lr0 is not None and "lr0" in self.extra_params:
             raise ValueError("学习率已单独设置，自定义参数中不能重复设置 lr0")
+        if (
+            self.training_scope != "full"
+            and self.extra_params.get("freeze") is not None
+        ):
+            raise ValueError("选择检测头训练时，不能在自定义参数中重复设置 freeze")
+        if self.training_scope != "full" and self.extra_params.get("compile"):
+            raise ValueError("检测头冻结与解冻暂不支持 compile，请关闭编译")
         return self
 
     @field_validator("batch")

@@ -22,6 +22,8 @@ class TrainingRunResponse(BaseModel):
     model_name: str | None
     model_available: bool
     log_available: bool
+    pause_available: bool
+    resume_available: bool
     metrics: dict
     error_message: str | None
     created_at: datetime

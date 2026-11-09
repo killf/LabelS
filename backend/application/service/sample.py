@@ -177,6 +177,7 @@ async def list_by(
     sorting: Union[str, None],
     current_user: User,
     split: DatasetSplit | None = None,
+    state: SampleState | None = None,
 ) -> Tuple[List[SampleResponse], int]:
     project = crud_project.get(db=db, project_id=project_id)
     if project is None:
@@ -193,12 +194,14 @@ async def list_by(
         size=size,
         sorting=sorting,
         split=split.value if split is not None else None,
+        state=state,
     )
 
     total = crud_sample.count(
         db=db,
         project_id=project_id,
         split=split.value if split is not None else None,
+        state=state,
     )
 
     # response

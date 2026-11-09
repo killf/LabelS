@@ -67,7 +67,7 @@ RUN --mount=type=cache,id=labels-uv,target=/root/.cache/uv \
 COPY --from=frontend /yolo-mcp/frontend/apps/frontend/dist/ ./statics/
 
 ENV PATH="/app/backend/.venv/bin:$PATH" \
-    DATA_DIR="/data"
+    YOLO_MCP_DATA_DIR="/data"
 
 EXPOSE 8000
 
