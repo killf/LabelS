@@ -2,8 +2,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
+from click.testing import CliRunner
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
@@ -151,6 +153,31 @@ assert not database.parent.exists()
     )
 
 
+@pytest.mark.parametrize(
+    "host, browser_host",
+    [
+        ("localhost", "localhost"),
+        ("0.0.0.0", "127.0.0.1"),
+        ("::", "[::1]"),
+        ("2001:db8::1", "[2001:db8::1]"),
+    ],
+)
+def test_cli_displays_browser_url_without_changing_bind_address(
+    monkeypatch, host, browser_host
+):
+    """控制台提供可复制的地址，通配监听与 IPv6 地址均正确显示。"""
+    from backend import main
+
+    run = Mock()
+    monkeypatch.setattr(main.uvicorn, "run", run)
+    monkeypatch.setattr(main.settings, "HOST", main.settings.HOST)
+    monkeypatch.setattr(main.settings, "PORT", main.settings.PORT)
+    response = CliRunner().invoke(main.cli, ["--host", host, "--port", "9234"])
+    assert response.exit_code == 0, response.output
+    assert f"YOLO MCP 服务地址: http://{browser_host}:9234" in response.output
+    run.assert_called_once_with(app=main.app, host=host, port=9234, ws="websockets")
+
+
 def test_startup_initializes_database_and_marks_interrupted_jobs(tmp_path: Path):
     _run_isolated_app(
         tmp_path,
@@ -164,7 +191,7 @@ from backend.main import app
 database = Path(sys.argv[1])
 assert not database.exists()
 with TestClient(app) as client:
-    assert client.get("/openapi.json").json()["info"]["version"] == "2.0.0"
+    assert client.get("/openapi.json").json()["info"]["version"] == "2.0.1"
     with sqlite3.connect(database) as connection:
         connection.execute(
             "INSERT INTO auto_label_job (id, status, model_name) "

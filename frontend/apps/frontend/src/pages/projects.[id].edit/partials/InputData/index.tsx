@@ -46,6 +46,7 @@ export default function InputData() {
 
   // 1. 只接受图片，按队列上传；失败项保留，供用户明确重试。
   const process = async (queue: QueuedFile[]) => {
+    if (!project?.id) return;
     setUploading(true);
     try {
       for (const file of queue) {
@@ -74,6 +75,7 @@ export default function InputData() {
 
   // 2. 已创建样本通过样本接口清理，未提交队列只清理上传附件。
   const remove = async (file: QueuedFile) => {
+    if (!project?.id) return;
     if (file.refId) {
       await deleteSamples({ project_id: project.id! }, { sample_ids: [file.refId] });
     } else if (file.id) {
@@ -97,7 +99,7 @@ export default function InputData() {
           icon={<FileOutlined />}
           multiple
           directory={false}
-          disabled={uploading}
+          disabled={uploading || !project?.id}
           accept=".jpg,.jpeg,.png,.bmp,.webp,.tif,.tiff"
           onChange={onFiles}
         >

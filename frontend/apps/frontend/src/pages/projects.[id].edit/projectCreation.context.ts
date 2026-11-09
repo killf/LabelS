@@ -6,7 +6,7 @@ import type { ProjectInLoader } from '@/loaders/project.loader';
 import type { QueuedFile } from './partials/InputData';
 
 export interface ProjectCreationContextValue {
-  project: NonNullable<ProjectInLoader>;
+  project?: ProjectInLoader;
   uploadFileList: QueuedFile[];
   setUploadFileList: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
   annotationFormInstance: FormInstance;

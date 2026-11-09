@@ -119,8 +119,9 @@ const CreateProject = () => {
   const { t } = useTranslation();
 
   const projectId = routeParams.projectId ? parseInt(routeParams.projectId, 10) : 0;
+  const isExistProject = projectId > 0;
   const [currentStep, setCurrentStep] = useState<StepEnum>(
-    location.hash ? (location.hash.replace('#', '') as StepEnum) : StepEnum.Basic,
+    isExistProject && location.hash ? (location.hash.replace('#', '') as StepEnum) : StepEnum.Basic,
   );
   const searchParams = new URLSearchParams(location.search);
   const isCreateNewProject = searchParams.get('isNew') === 'true';
@@ -159,8 +160,10 @@ const CreateProject = () => {
   );
 
   const partials = useMemo(() => {
+    // 新建时只挂载基础表单，其余步骤依赖已保存的项目。
     return _.chain(partialMapping)
       .toPairs()
+      .filter(([key]) => isExistProject || key === StepEnum.Basic)
       .map(([key, Partial], index) => {
         return (
           <FlexLayout.Content key={index} style={{ display: currentStep === key ? 'flex' : 'none' }} flex="column">
@@ -169,9 +172,8 @@ const CreateProject = () => {
         );
       })
       .value();
-  }, [currentStep]);
+  }, [currentStep, isExistProject]);
   const loading = isMutating > 0 || isFetching > 0;
-  const isExistProject = projectId > 0;
   const projectStatus = _.get(projectData, 'status') as ProjectStatus;
   const stepDataSource: ProjectStep[] = useMemo(
     () => [
@@ -206,8 +208,8 @@ const CreateProject = () => {
       return;
     }
 
-    setCurrentStep(location.hash.replace('#', '') as StepEnum);
-  }, [location.hash]);
+    setCurrentStep(isExistProject ? (location.hash.replace('#', '') as StepEnum) : StepEnum.Basic);
+  }, [isExistProject, location.hash]);
 
   // 将store中的project toolConfig数据同步到本地页面中
   useEffect(() => {
@@ -641,7 +643,7 @@ const CreateProject = () => {
       onTemplateSelect: setTemplate,
       basicFormInstance,
       modelFormInstance,
-      project: projectData as NonNullable<ProjectLoaderResult['project']>,
+      project: projectData,
       onAnnotationFormChange,
     }),
     [

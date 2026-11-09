@@ -151,6 +151,12 @@ def cli(host: str, port: int):
     settings.PORT = port
     settings.HOST = host
 
+    # 监听所有网卡时，显示可直接在本机浏览器打开的地址。
+    browser_host = {"0.0.0.0": "127.0.0.1", "::": "::1"}.get(host, host)
+    if ":" in browser_host and not browser_host.startswith("["):
+        browser_host = f"[{browser_host}]"
+    click.echo(f"YOLO MCP 服务地址: http://{browser_host}:{port}")
+
     uvicorn.run(app=app, host=settings.HOST, port=settings.PORT, ws="websockets")
 
 

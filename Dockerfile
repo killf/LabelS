@@ -58,6 +58,7 @@ RUN --mount=type=cache,id=labels-uv,target=/root/.cache/uv \
     && uv sync --frozen --no-dev --no-install-project
 
 COPY backend/ ./
+COPY README.md /app/README.md
 
 # 4. 源码变化只重新安装项目，生成 Web 与训练两个命令入口。
 RUN --mount=type=cache,id=labels-uv,target=/root/.cache/uv \
