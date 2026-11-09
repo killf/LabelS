@@ -10,17 +10,20 @@ import { ProjectCreationContext } from '../../projectCreation.context';
 
 export default function ModelConfig() {
   const { modelFormInstance, project } = useContext(ProjectCreationContext);
+  const projectId = project?.id;
   const algorithm = Form.useWatch('ai_algorithm', modelFormInstance) ?? 'yolo';
   const models = useQuery({
     queryKey: ['annotationModels', project?.id, algorithm],
-    queryFn: () => getProjectModels(project.id!, algorithm),
+    queryFn: () => getProjectModels(projectId!, algorithm),
     enabled: Boolean(project?.id),
   });
   const trainingModels = useQuery({
     queryKey: ['projectModels', project?.id],
-    queryFn: () => getProjectModels(project.id!),
+    queryFn: () => getProjectModels(projectId!),
     enabled: Boolean(project?.id),
   });
+
+  if (!projectId) return null;
 
   return (
     <FlexLayout flex="column" padding="1.5rem" gap="1rem" style={{ maxWidth: 820, margin: '0 auto', width: '100%' }}>
@@ -69,7 +72,7 @@ export default function ModelConfig() {
         </div>
         <h3>训练模型</h3>
         <TrainingConfigFields
-          projectId={project.id!}
+          projectId={projectId}
           models={trainingModels.data?.data ?? []}
           prefix="training_config"
           showImageSettings={false}

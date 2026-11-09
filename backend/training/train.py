@@ -26,6 +26,7 @@ from backend.application.command.training import (
 )
 
 LOGGER = logging.getLogger("backend.training")
+OFFICIAL_MODELS = {f"yolo26{size}.pt" for size in "nsmlx"}
 
 # 中文说明覆盖当前框架参数；框架新增字段时保留配置文件中的原文说明。
 PARAMETER_DESCRIPTIONS = {
@@ -291,6 +292,17 @@ def error_text(exc: BaseException) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _initial_weights(model: str) -> str:
+    """官方初始权重跨项目共用，用户提供的项目权重或路径保持原样。"""
+    if model not in OFFICIAL_MODELS:
+        return model
+    from backend.common.storage import get_storage
+
+    path = get_storage().path(f"models/ultralytics/{model}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
 def run_training(
     dataset: Path,
     parameters: dict[str, object],
@@ -342,7 +354,18 @@ def run_training(
             LOGGER.info(
                 "Training device: %s, parameters: %s", train_args["device"], train_args
             )
-            model = YOLO(train_args.pop("model"))
+            initial_model = train_args.pop("model")
+            try:
+                model = YOLO(_initial_weights(initial_model))
+            except Exception as error:
+                from backend.inference import model_load_error
+
+                message = model_load_error(error, Path(initial_model).name)
+                if result_file is not None:
+                    result_file.write_text(
+                        json.dumps({"error_message": message}), encoding="utf-8"
+                    )
+                raise RuntimeError(message) from None
             model.train(
                 data=str(data), project=str(run_dir), name="training", **train_args
             )

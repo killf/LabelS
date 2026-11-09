@@ -1,4 +1,4 @@
-"""验证模型调用协议、精度和本地缓存边界，替换权重计算。"""
+"""验证模型调用协议、精度、公共缓存和下载失败边界，替换权重计算。"""
 
 import sys
 from contextlib import nullcontext
@@ -10,6 +10,86 @@ from PIL import Image
 
 from backend import inference
 from backend.application.command.training import StartTrainingCommand
+from backend.common.storage import get_storage
+
+
+@pytest.mark.parametrize(
+    "algorithm,weights",
+    [
+        ("florence2", "microsoft/Florence-2-base"),
+        ("grounding_dino_sam", "grounding-dino-tiny+sam-vit-base"),
+        ("sam3", "facebook/sam3"),
+    ],
+)
+def test_model_loaders_share_public_cache_and_allow_downloads(
+    monkeypatch, algorithm, weights
+):
+    runtime = SimpleNamespace(
+        AutoProcessor=Mock(),
+        AutoModelForCausalLM=Mock(),
+        AutoModelForZeroShotObjectDetection=Mock(),
+    )
+    hub = SimpleNamespace(hf_hub_download=Mock(return_value="cached-sam3.pt"))
+    monkeypatch.setitem(sys.modules, "transformers", runtime)
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(float32="float32"))
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+    monkeypatch.setitem(
+        sys.modules,
+        "sam3.model_builder",
+        SimpleNamespace(build_sam3_image_model=Mock()),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "sam3.model.sam3_image_processor",
+        SimpleNamespace(Sam3Processor=Mock()),
+    )
+    monkeypatch.setattr(inference, "torch_device", lambda _value: "cpu")
+    for _project in range(2):
+        inference.load_detector(algorithm, weights, "cpu")
+    calls = (
+        hub.hf_hub_download.call_args_list
+        if algorithm == "sam3"
+        else runtime.AutoProcessor.from_pretrained.call_args_list
+    )
+    assert len(calls) == 2
+    for call in calls:
+        assert call.kwargs["cache_dir"] == str(get_storage().path("models/huggingface"))
+        assert not call.kwargs.get("local_files_only", False)
+    if algorithm != "sam3":
+        factory = (
+            runtime.AutoModelForCausalLM
+            if algorithm == "florence2"
+            else runtime.AutoModelForZeroShotObjectDetection
+        )
+        assert (
+            factory.from_pretrained.call_args.kwargs["cache_dir"]
+            == calls[0].kwargs["cache_dir"]
+        )
+
+
+@pytest.mark.parametrize(
+    "error,expected",
+    [
+        (ImportError("private package location"), "缺少推理依赖"),
+        (OSError("private url and token"), "权重下载或读取失败"),
+        (PermissionError("private directory"), "缓存写入失败"),
+        (RuntimeError("private backend detail"), "加载失败"),
+    ],
+)
+def test_model_load_errors_are_actionable_and_do_not_expose_internal_details(
+    error, expected
+):
+    message = inference.model_load_error(error, "facebook/sam3")
+    assert "facebook/sam3" in message and expected in message
+    assert "private" not in message
+
+
+def test_wrapped_gated_model_error_explains_authorization():
+    denied = RuntimeError("private authentication response")
+    denied.response = SimpleNamespace(status_code=403)
+    wrapped = OSError("could not load model")
+    wrapped.__cause__ = denied
+    assert "访问受限" in inference.model_load_error(wrapped, "facebook/sam3")
 
 
 def test_unsupported_weights_fail_before_loading_runtime():

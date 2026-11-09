@@ -28,9 +28,12 @@ from backend.domain.models.project import Project
 from backend.domain.models.training_run import TrainingRun, TrainingStatus
 from backend.domain.models.auto_label_job import AutoLabelJob
 from backend.domain.models.user import User
-from backend.training.train import training_parameter_catalog, validate_training_options
+from backend.training.train import (
+    OFFICIAL_MODELS,
+    training_parameter_catalog,
+    validate_training_options,
+)
 
-OFFICIAL_MODELS = {f"yolo26{size}.pt" for size in "nsmlx"}
 _workers: set[asyncio.Task] = set()
 
 
@@ -305,13 +308,13 @@ async def _run(run_id: int) -> None:
         if run is None:
             return
         try:
-            # 1. 项目模型直接使用本地文件，官方权重保存在本次工作目录。
+            # 1. 项目模型使用本地文件，官方权重由训练进程下载到公共缓存。
             project = crud_project.get(db, run.project_id)
             if project is None:
                 raise RuntimeError("标注项目已不存在")
             workspace = _workspace(run.project_id, run_id)
             workspace.mkdir(parents=True, exist_ok=True)
-            model = workspace / run.initial_model
+            model = run.initial_model
             if run.initial_model not in OFFICIAL_MODELS:
                 model = get_storage().path(
                     f"{project.dataset_prefix}/models/{run.initial_model}"
@@ -388,6 +391,12 @@ async def _run(run_id: int) -> None:
                 else:
                     run.status = TrainingStatus.FAILED.value
                     run.error_message = f"训练进程退出码为 {code}，请查看训练日志"
+                    result_file = workspace / "result.json"
+                    if result_file.is_file():
+                        result = json.loads(result_file.read_text(encoding="utf-8"))
+                        run.error_message = (
+                            result.get("error_message") or run.error_message
+                        )
                 run.finished_at = datetime.now()
         except asyncio.CancelledError:
             if process is not None and process.returncode is None:

@@ -403,6 +403,7 @@ def test_worker_records_process_result(
         assert Path(args[args.index("--models-dir") + 1]) == get_storage().path(
             f"projects/{training_project}/models"
         )
+        assert args[args.index("--model") + 1] == "yolo26n.pt"
         result = Path(args[args.index("--result-file") + 1])
         if exit_code == 0:
             result.write_text(
@@ -413,6 +414,13 @@ def test_worker_records_process_result(
                         "metrics": {"metrics/mAP50(B)": 0.5},
                     }
                 )
+            )
+        else:
+            result.write_text(
+                json.dumps(
+                    {"error_message": "模型 yolo26n.pt 权重下载失败，请检查网络"}
+                ),
+                encoding="utf-8",
             )
         return Process()
 
@@ -437,7 +445,8 @@ def test_worker_records_process_result(
         assert saved.model_name == "20261107-1.pt"
         assert json.loads(saved.metrics)["metrics/mAP50(B)"] == 0.5
     else:
-        assert saved.model_name is None and "1" in saved.error_message
+        assert saved.model_name is None
+        assert saved.error_message == "模型 yolo26n.pt 权重下载失败，请检查网络"
 
 
 def test_custom_training_parameters_are_saved_and_returned(

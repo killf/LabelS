@@ -156,8 +156,8 @@ export default function TemplateModal({ onSelect }: TemplateModalProps) {
   const [activeType, setActiveType] = useState(MediaType.IMAGE);
 
   const shouldShowTemplate = useMemo(() => {
-    return [ProjectStatus.CONFIGURED, ProjectStatus.DRAFT, ProjectStatus.IMPORTED].includes(project.status as ProjectStatus);
-  }, [project.status]);
+    return [ProjectStatus.CONFIGURED, ProjectStatus.DRAFT, ProjectStatus.IMPORTED].includes(project?.status as ProjectStatus);
+  }, [project?.status]);
 
   const handleOpenModal = () => {
     toggleVisible(true);

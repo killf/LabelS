@@ -9,6 +9,7 @@ import yaml
 from PIL import Image
 
 from backend.training import train
+from backend.common.storage import get_storage
 
 
 def test_training_help_does_not_load_model_runtime(monkeypatch, capsys):
@@ -40,6 +41,51 @@ def local_dataset(tmp_path):
         (directory / f"{split}.txt").write_text(f"images/{split}.png\n")
     (directory / "labels/test.txt").write_text("")
     return directory
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_training_shares_official_weights_and_reports_download_failure(
+    local_dataset, tmp_path, monkeypatch, failed
+):
+    best = tmp_path / "best.pt"
+    best.write_bytes(b"trained model")
+    downloads = []
+    name = "yolo26l.pt" if failed else "yolo26m.pt"
+    cached = get_storage().path(f"models/ultralytics/{name}")
+    run_ids = iter(["cache-first", "cache-second"])
+    monkeypatch.setattr(train, "_next_run_id", lambda _directory: next(run_ids))
+
+    def load_model(weights):
+        assert Path(weights) == cached
+        if not cached.exists():
+            downloads.append(weights)
+            if failed:
+                raise ConnectionError("synthetic private download address")
+            cached.write_bytes(b"downloaded official weights")
+        return SimpleNamespace(
+            train=Mock(), trainer=SimpleNamespace(best=best, metrics={})
+        )
+
+    monkeypatch.setitem(sys.modules, "ultralytics", SimpleNamespace(YOLO=load_model))
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace())
+    for index in range(2):
+        workspace = tmp_path / f"project-{index}" / "run"
+        result = workspace / "result.json"
+        code = train.run_training(
+            local_dataset,
+            {"model": name, "device": "cpu"},
+            work_dir=workspace,
+            result_file=result,
+        )
+        assert code == (1 if failed else 0)
+        response = json.loads(result.read_text(encoding="utf-8"))
+        if failed:
+            assert "权重下载或读取失败" in response["error_message"]
+            assert "private" not in response["error_message"]
+            assert not cached.exists()
+        else:
+            assert Path(response["model_path"]).is_file()
+    assert len(downloads) == (2 if failed else 1)
 
 
 def test_local_dataset_snapshot_is_independent(local_dataset, tmp_path):
