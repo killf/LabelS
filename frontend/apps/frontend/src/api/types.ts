@@ -152,6 +152,7 @@ export interface ListByApiV1ProjectsGetParams {
 export interface ListByApiV1ProjectsProjectIdSamplesGetParams {
   project_id: number;
   split?: DatasetSplit;
+  state?: SampleState;
   after?: number;
   before?: number;
   page?: number;

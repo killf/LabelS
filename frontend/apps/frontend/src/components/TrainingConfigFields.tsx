@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Form, Input, InputNumber, Modal, Select, Space, Table, Typography } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Table, Typography } from 'antd';
 
 import { getTrainingParameters } from '@/api/services/training';
 import type { TrainingParameters } from '@/api/services/training';
@@ -15,6 +15,9 @@ const defaults: TrainingParameters = {
   imgsz: 1024,
   batch: 2,
   lr0: 0.01,
+  augmentation: true,
+  training_scope: 'full',
+  unfreeze_steps: 100,
 };
 
 export function trainingFormValues(config?: TrainingParameters | null): TrainingFormValues {
@@ -55,6 +58,7 @@ export default function TrainingConfigFields({
 }) {
   const [showParameters, setShowParameters] = useState(false);
   const form = Form.useFormInstance();
+  const scope = Form.useWatch(prefix ? [prefix, 'training_scope'] : 'training_scope', form);
   const [search, setSearch] = useState('');
   const parameters = useQuery({
     queryKey: ['trainingParameters', projectId],
@@ -84,6 +88,39 @@ export default function TrainingConfigFields({
             ]}
           />
         </Form.Item>
+      </div>
+      <div style={{ ...grid, gridTemplateColumns: scope === 'head_then_full' ? '1fr 2fr 1fr' : '1fr 2fr' }}>
+        <Form.Item
+          name={name('augmentation')}
+          label="图像增强"
+          valuePropName="checked"
+          tooltip="开启时使用框架增强，可在 JSON 中细调；关闭时只做必要的尺寸适配。"
+        >
+          <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item
+          name={name('training_scope')}
+          label="训练范围"
+          tooltip="检测头模式冻结 backbone、neck 及其 BN 统计；全部参数模式保留框架固定层。"
+        >
+          <Select
+            options={[
+              { value: 'full', label: '全部参数' },
+              { value: 'head', label: '仅检测头' },
+              { value: 'head_then_full', label: '先检测头后全部' },
+            ]}
+          />
+        </Form.Item>
+        {scope === 'head_then_full' && (
+          <Form.Item
+            name={name('unfreeze_steps')}
+            label="解冻 step"
+            tooltip="检测头完成指定次数的优化器更新后解冻；梯度累积和 AMP 跳过的更新不计数。"
+            rules={[{ required: true }]}
+          >
+            <InputNumber min={1} max={10000000} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+        )}
       </div>
       <div style={{ ...grid, gridTemplateColumns: `repeat(${showImageSettings ? 4 : 2}, minmax(0, 1fr))` }}>
         <Form.Item name={name('epochs')} label="Epoch" rules={[{ required: true }]}>

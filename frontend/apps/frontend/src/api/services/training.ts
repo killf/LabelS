@@ -1,7 +1,7 @@
 import type { MetaData } from '../types';
 import request from '../request';
 
-export type TrainingStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED';
+export type TrainingStatus = 'PENDING' | 'RUNNING' | 'PAUSING' | 'PAUSED' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED';
 
 export interface TrainingParameters {
   algorithm?: 'yolo26_detect';
@@ -10,6 +10,9 @@ export interface TrainingParameters {
   imgsz: number;
   batch: number;
   lr0?: number | null;
+  augmentation?: boolean;
+  training_scope?: 'full' | 'head' | 'head_then_full';
+  unfreeze_steps?: number;
   extra_params?: Record<string, unknown>;
 }
 
@@ -34,6 +37,8 @@ export interface TrainingRun {
   model_name: string | null;
   model_available: boolean;
   log_available: boolean;
+  pause_available: boolean;
+  resume_available: boolean;
   run_id: string | null;
   metrics: Record<string, number>;
   error_message: string | null;
@@ -44,6 +49,14 @@ export interface TrainingRun {
 
 export function startTraining(projectId: number, parameters: TrainingParameters) {
   return request.post<never, { data: TrainingRun }>(`/v1/projects/${projectId}/training-runs`, parameters);
+}
+
+export function pauseTraining(projectId: number, runId: number) {
+  return request.post<never, { data: TrainingRun }>(`/v1/projects/${projectId}/training-runs/${runId}/pause`);
+}
+
+export function resumeTraining(projectId: number, runId: number) {
+  return request.post<never, { data: TrainingRun }>(`/v1/projects/${projectId}/training-runs/${runId}/resume`);
 }
 
 export function getTrainingRuns(projectId: number, page = 0, size = 10) {

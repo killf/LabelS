@@ -106,7 +106,7 @@ def test_upload_preview_and_delete_local_attachment(
     key = f"projects/{project['id']}/images/sample.png"
     storage = get_storage()
     assert storage.read_bytes(key) == content.getvalue()
-    assert storage.exists(f"projects/{project['id']}/images/sample-thumbnail.png")
+    assert storage.exists(f"projects/{project['id']}/thumbnails/images/sample.png")
     assert client.get(attachment["url"]).status_code == 200
     assert client.get(attachment["thumbnail_url"]).status_code == 200
 
@@ -121,7 +121,7 @@ def test_upload_preview_and_delete_local_attachment(
     )
     assert response.status_code == 200
     assert not storage.exists(key)
-    assert not storage.exists(f"projects/{project['id']}/images/sample-thumbnail.png")
+    assert not storage.exists(f"projects/{project['id']}/thumbnails/images/sample.png")
 
 
 def _create_project(client: TestClient, headers: dict) -> int:
@@ -217,7 +217,7 @@ def test_database_failure_removes_uploaded_objects(
     assert response.status_code == 500
     storage = get_storage()
     assert not storage.exists(f"projects/{project_id}/images/failed.png")
-    assert not storage.exists(f"projects/{project_id}/images/failed-thumbnail.png")
+    assert not storage.exists(f"projects/{project_id}/thumbnails/images/failed.png")
 
 
 def test_cleanup_failure_does_not_replace_upload_error(

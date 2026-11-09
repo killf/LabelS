@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -9,7 +10,7 @@ import yaml
 from PIL import Image
 
 from backend.training import train
-from backend.common.storage import get_storage
+from backend.common.storage import LocalStorage
 
 
 def test_training_help_does_not_load_model_runtime(monkeypatch, capsys):
@@ -44,14 +45,29 @@ def local_dataset(tmp_path):
 
 
 @pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.parametrize("device", ["cpu", "0,1"])
 def test_training_shares_official_weights_and_reports_download_failure(
-    local_dataset, tmp_path, monkeypatch, failed
+    local_dataset, tmp_path, monkeypatch, failed, device
 ):
+    class Paused(Exception):
+        pass
+
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.training.control",
+        SimpleNamespace(
+            ControlledDetectionTrainer=Mock(),
+            TrainingPaused=Paused,
+        ),
+    )
     best = tmp_path / "best.pt"
     best.write_bytes(b"trained model")
     downloads = []
     name = "yolo26l.pt" if failed else "yolo26m.pt"
-    cached = get_storage().path(f"models/ultralytics/{name}")
+    storage = LocalStorage()
+    storage.root = tmp_path / "shared-cache"
+    monkeypatch.setattr("backend.common.storage.get_storage", lambda: storage)
+    cached = storage.path(f"models/ultralytics/{name}")
     run_ids = iter(["cache-first", "cache-second"])
     monkeypatch.setattr(train, "_next_run_id", lambda _directory: next(run_ids))
 
@@ -73,7 +89,7 @@ def test_training_shares_official_weights_and_reports_download_failure(
         result = workspace / "result.json"
         code = train.run_training(
             local_dataset,
-            {"model": name, "device": "cpu"},
+            {"model": name, "device": device},
             work_dir=workspace,
             result_file=result,
         )
@@ -185,10 +201,23 @@ def test_parameter_catalog_matches_runtime_and_excludes_managed_fields(
 
 
 @pytest.mark.parametrize("prepared", [False, True])
+@pytest.mark.parametrize("custom_config", [False, True])
 def test_cli_custom_parameters_reach_yolo_and_result(
-    local_dataset, tmp_path, monkeypatch, prepared
+    local_dataset, tmp_path, monkeypatch, prepared, custom_config
 ):
     """核对真实 CLI、快照和产物流程，固定运行编号并替换模型计算。"""
+
+    class Paused(Exception):
+        pass
+
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.training.control",
+        SimpleNamespace(
+            ControlledDetectionTrainer=Mock(),
+            TrainingPaused=Paused,
+        ),
+    )
     best = tmp_path / "best.pt"
     best.write_bytes(b"test-only model")
     model = SimpleNamespace(
@@ -206,7 +235,20 @@ def test_cli_custom_parameters_reach_yolo_and_result(
         "torch",
         SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True)),
     )
-    monkeypatch.setenv("YOLO_CONFIG_DIR", str(tmp_path / "ultralytics"))
+    storage = LocalStorage()
+    storage.root = tmp_path / "shared-cache"
+    monkeypatch.setattr("backend.common.storage.get_storage", lambda: storage)
+    if custom_config:
+        config_dir = tmp_path / "custom-ultralytics"
+        monkeypatch.setenv("YOLO_CONFIG_DIR", str(config_dir))
+    else:
+        config_dir = storage.path(".ultralytics")
+        monkeypatch.delenv("YOLO_CONFIG_DIR", raising=False)
+
+    def check_config(**_kwargs):
+        assert Path(os.environ["YOLO_CONFIG_DIR"]) == config_dir
+
+    cfg.get_cfg.side_effect = check_config
     monkeypatch.setenv("YOLO_AUTOINSTALL", "false")
     monkeypatch.setattr(train, "_next_run_id", lambda _dataset: "test-parameters")
     result = tmp_path / "result.json"
@@ -235,6 +277,11 @@ def test_cli_custom_parameters_reach_yolo_and_result(
             "640",
             "--batch",
             "2",
+            "--no-augmentation",
+            "--training-scope",
+            "head_then_full",
+            "--unfreeze-steps",
+            "7",
             "--result-file",
             str(result),
             "--extra-params",
@@ -242,9 +289,13 @@ def test_cli_custom_parameters_reach_yolo_and_result(
         ],
     )
     assert train.main() == 0
+    assert Path(os.environ["YOLO_CONFIG_DIR"]) == config_dir
     passed = model.train.call_args.kwargs
     assert passed["lr0"] == 0.001 and passed["amp"] is False and passed["seed"] == 7
     assert passed["epochs"] == 2 and passed["imgsz"] == 640 and passed["batch"] == 2
+    assert passed["trainer"].keywords["augmentation"] is False
+    assert passed["trainer"].keywords["training_scope"] == "head_then_full"
+    assert passed["trainer"].keywords["unfreeze_steps"] == 7
     assert Path(passed["data"]).is_file()
     output = json.loads(result.read_text())
     assert Path(output["model_path"]).read_bytes() == best.read_bytes()

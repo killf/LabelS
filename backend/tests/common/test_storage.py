@@ -17,6 +17,23 @@ def test_local_file_round_trip(tmp_path: Path):
     assert not storage.exists("projects/1/uploads/sample.txt")
 
 
+def test_legacy_thumbnail_moves_without_touching_original():
+    storage = get_storage()
+    original = "projects/5/images/nested/sample.png"
+    legacy = "projects/5/images/nested/sample-thumbnail.png"
+    storage.save_bytes(b"original", original)
+    storage.save_bytes(b"thumbnail", legacy)
+    target = storage.thumbnail_key(original)
+    assert target == "projects/5/thumbnails/images/nested/sample.png"
+    assert storage.read_bytes(target) == b"thumbnail"
+    assert storage.read_bytes(original) == b"original"
+    assert not storage.exists(legacy)
+    assert storage.thumbnail_key(original) == target
+    storage.save_bytes(b"another original", legacy)
+    storage.thumbnail_key(original)
+    assert storage.read_bytes(legacy) == b"another original"
+
+
 @pytest.mark.parametrize(
     "key",
     ["../outside.txt", "/outside.txt", "projects/../../outside.txt", "C:\\outside.txt"],
@@ -26,7 +43,7 @@ def test_storage_rejects_paths_outside_root(key):
         get_storage().path(key)
 
 
-@pytest.mark.parametrize("directory", ["images", "uploads"])
+@pytest.mark.parametrize("directory", ["images", "uploads", "thumbnails"])
 def test_preview_signature_is_bound_to_path_and_expiration(directory):
     storage = get_storage()
     key = f"projects/1/{directory}/image.png"
@@ -58,8 +75,10 @@ def test_default_database_follows_data_directory(tmp_path):
 def test_default_data_directory_is_under_user_home(tmp_path, monkeypatch):
     from backend.common.config import Settings
 
-    monkeypatch.delenv("DATA_DIR", raising=False)
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("YOLO_MCP_DATA_DIR", raising=False)
+    monkeypatch.delenv("YOLO_MCP_DATABASE_URL", raising=False)
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "unrelated"))
+    monkeypatch.setenv("DATABASE_URL", "not-a-project-database")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     configured = Settings()
     assert configured.DATA_DIR == tmp_path / ".yolo-mcp"
@@ -73,10 +92,12 @@ def test_default_data_directory_is_under_user_home(tmp_path, monkeypatch):
 def test_new_environment_names_control_storage_and_inference(tmp_path, monkeypatch):
     from backend.common.config import Settings
 
-    monkeypatch.setenv("DATA_DIR", str(tmp_path / "custom"))
-    monkeypatch.setenv("DATABASE_URL", "")
-    monkeypatch.setenv("USE_AUTO_LABEL", "false")
-    monkeypatch.setenv("DEVICE", "cpu")
+    monkeypatch.setenv("YOLO_MCP_DATA_DIR", str(tmp_path / "custom"))
+    monkeypatch.setenv("YOLO_MCP_DATABASE_URL", "")
+    monkeypatch.setenv("YOLO_MCP_USE_AUTO_LABEL", "false")
+    monkeypatch.setenv("YOLO_MCP_DEVICE", "cpu")
+    monkeypatch.setenv("USE_AUTO_LABEL", "true")
+    monkeypatch.setenv("DEVICE", "unrelated-device")
     configured = Settings()
     assert configured.DATA_DIR == tmp_path / "custom"
     assert configured.USE_AUTO_LABEL is False

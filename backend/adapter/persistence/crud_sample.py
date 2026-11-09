@@ -24,6 +24,7 @@ def list_by(
     size: int,
     sorting: Union[str, None],
     split: str | None = None,
+    state: SampleState | None = None,
 ) -> List[ProjectSample]:
 
     # query filter
@@ -36,6 +37,8 @@ def list_by(
         query_filter.append(ProjectSample.project_id == project_id)
     if split is not None:
         query_filter.append(ProjectSample.split == split)
+    if state is not None:
+        query_filter.append(ProjectSample.state == state)
     query = db.query(ProjectSample).filter(*query_filter)
 
     # case when for state enum
@@ -129,12 +132,19 @@ def delete(db: Session, sample_ids: List[int]) -> None:
     )
 
 
-def count(db: Session, project_id: int, split: str | None = None) -> int:
+def count(
+    db: Session,
+    project_id: int,
+    split: str | None = None,
+    state: SampleState | None = None,
+) -> int:
     query_filter = [ProjectSample.deleted_at.is_(None)]
     if project_id:
         query_filter.append(ProjectSample.project_id == project_id)
     if split is not None:
         query_filter.append(ProjectSample.split == split)
+    if state is not None:
+        query_filter.append(ProjectSample.state == state)
     return db.query(ProjectSample).filter(*query_filter).count()
 
 

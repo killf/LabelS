@@ -127,7 +127,7 @@ class ErrorCode(Enum):
 
     CODE_56000_AUTO_LABEL_DISABLED = (
         PROJECT_INIT_CODE + 6000,
-        "AI annotation is not enabled. Set USE_AUTO_LABEL=true to activate",
+        "AI annotation is not enabled. Set YOLO_MCP_USE_AUTO_LABEL=true to activate",
     )
 
     CODE_56001_AUTO_LABEL_UNSUPPORTED_MEDIA = (

@@ -52,6 +52,23 @@ class LocalStorage:
     def exists(self, key: str) -> bool:
         return self.path(key).is_file()
 
+    def thumbnail_key(self, key: str) -> str:
+        """首次访问旧缩略图时迁入专用目录，原图和数据库路径保持不变。"""
+        target_key = build_thumbnail_key(key)
+        original = PurePosixPath(key)
+        legacy = self.path(
+            str(original.with_name(f"{original.stem}-thumbnail{original.suffix}"))
+        )
+        target = self.path(target_key)
+        if not target.is_file() and legacy.is_file():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                legacy.replace(target)
+            except FileNotFoundError:
+                if not target.is_file():
+                    raise
+        return target_key
+
     def read_text(self, key: str, encoding: str = "utf-8") -> str:
         return self.path(key).read_text(encoding=encoding)
 
@@ -88,7 +105,7 @@ class LocalStorage:
         if (
             len(parts) < 4
             or parts[0] != "projects"
-            or parts[2] not in {"images", "uploads"}
+            or parts[2] not in {"images", "uploads", "thumbnails"}
         ):
             raise ValueError("Only uploaded images may be previewed")
         expires = int(time.time()) + expires_in
@@ -109,7 +126,7 @@ class LocalStorage:
         return (
             len(parts) >= 4
             and parts[0] == "projects"
-            and parts[2] in {"images", "uploads"}
+            and parts[2] in {"images", "uploads", "thumbnails"}
             and int(time.time()) <= expires
             and hmac.compare_digest(
                 self._signature(key, expires, user_id, auth_version), signature
@@ -119,7 +136,13 @@ class LocalStorage:
 
 def build_thumbnail_key(key: str) -> str:
     path = PurePosixPath(key)
-    return str(path.with_name(f"{path.stem}-thumbnail{path.suffix}"))
+    if (
+        len(path.parts) < 4
+        or path.parts[0] != "projects"
+        or path.parts[2] not in {"images", "uploads"}
+    ):
+        raise ValueError("Invalid original image path")
+    return str(PurePosixPath(*path.parts[:2], "thumbnails", *path.parts[2:]))
 
 
 def create_thumbnail_bytes(local_path: Path) -> bytes:

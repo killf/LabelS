@@ -140,6 +140,35 @@ class TestClassProjectSampleRouter:
             params={"page": 0},
         )
         assert all_samples.json()["meta_data"]["total"] == 3
+        for filters, ids in [
+            ({"state": "DONE"}, [samples[0].id, samples[1].id]),
+            ({"state": "NEW"}, [samples[2].id]),
+            ({"state": "SKIPPED"}, []),
+            ({"state": "DONE", "split": "test"}, [samples[1].id]),
+            ({"state": "NEW", "split": "test"}, []),
+        ]:
+            response = client.get(
+                f"{url}/samples",
+                headers=testuser_token_headers,
+                params={"page": 0, **filters},
+            )
+            assert response.status_code == 200
+            assert [item["id"] for item in response.json()["data"]] == ids
+            assert response.json()["meta_data"]["total"] == len(ids)
+        response = client.get(
+            f"{url}/samples",
+            headers=testuser_token_headers,
+            params={"after": samples[0].id, "state": "DONE"},
+        )
+        assert [item["id"] for item in response.json()["data"]] == [samples[1].id]
+        assert (
+            client.get(
+                f"{url}/samples",
+                headers=testuser_token_headers,
+                params={"page": 0, "state": "invalid"},
+            ).status_code
+            == 422
+        )
         invalid = client.get(
             f"{url}/samples",
             headers=testuser_token_headers,

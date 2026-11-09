@@ -30,11 +30,17 @@ from backend.domain.models.auto_label_job import AutoLabelJob
 from backend.domain.models.user import User
 from backend.training.train import (
     OFFICIAL_MODELS,
+    PAUSED_EXIT_CODE,
     training_parameter_catalog,
     validate_training_options,
 )
 
 _workers: set[asyncio.Task] = set()
+ACTIVE_STATUSES = (
+    TrainingStatus.PENDING.value,
+    TrainingStatus.RUNNING.value,
+    TrainingStatus.PAUSING.value,
+)
 
 
 def _project(db: Session, project_id: int, user: User) -> Project:
@@ -62,6 +68,13 @@ def _response(run: TrainingRun) -> TrainingRunResponse:
             .is_file()
         ),
         log_available=(_workspace(run.project_id, run.id) / "console.log").is_file(),
+        pause_available=run.status == TrainingStatus.RUNNING.value
+        and "," not in settings.DEVICE,
+        resume_available=(
+            run.status == TrainingStatus.PAUSED.value
+            and (_workspace(run.project_id, run.id) / "resume.pt").is_file()
+            and (_workspace(run.project_id, run.id) / "dataset/data.yaml").is_file()
+        ),
         metrics=json.loads(run.metrics or "{}"),
         error_message=run.error_message,
         created_at=run.created_at,
@@ -126,7 +139,7 @@ def _cleanup_run(
     run = db.get(TrainingRun, run_id)
     if run is None or run.project_id != project_id:
         raise HTTPException(404, "训练记录不存在")
-    if run.status in {TrainingStatus.PENDING.value, TrainingStatus.RUNNING.value}:
+    if run.status in ACTIVE_STATUSES:
         raise HTTPException(409, "训练尚未结束，不能清理")
     return project, run
 
@@ -143,7 +156,9 @@ def _remove_logs(project_id: int, run_id: int) -> None:
 
 def clear_logs(db: Session, project_id: int, run_id: int, user: User) -> None:
     """清理日志和中间文件，保留数据库记录、指标与产出模型。"""
-    _cleanup_run(db, project_id, run_id, user)
+    _, run = _cleanup_run(db, project_id, run_id, user)
+    if run.status == TrainingStatus.PAUSED.value:
+        raise HTTPException(409, "暂停中的训练需要保留检查点；如需放弃训练，请删除记录")
     try:
         _remove_logs(project_id, run_id)
     except OSError:
@@ -161,9 +176,7 @@ def delete_run(db: Session, project_id: int, run_id: int, user: User) -> None:
             .filter(
                 TrainingRun.project_id == project_id,
                 TrainingRun.initial_model == run.model_name,
-                TrainingRun.status.in_(
-                    [TrainingStatus.PENDING.value, TrainingStatus.RUNNING.value]
-                ),
+                TrainingRun.status.in_([*ACTIVE_STATUSES, TrainingStatus.PAUSED.value]),
             )
             .first()
             is not None
@@ -229,9 +242,7 @@ async def start(
         db.query(TrainingRun)
         .filter(
             TrainingRun.project_id == project_id,
-            TrainingRun.status.in_(
-                [TrainingStatus.PENDING.value, TrainingStatus.RUNNING.value]
-            ),
+            TrainingRun.status.in_(ACTIVE_STATUSES),
         )
         .first()
     )
@@ -294,9 +305,86 @@ async def start(
             raise HTTPException(500, "训练目录创建失败，请检查本地文件后重试") from None
         raise
     response = _response(run)
+    _schedule(run_id)
+    return response
+
+
+def _schedule(run_id: int) -> None:
     worker = asyncio.create_task(_run(run_id))
     _workers.add(worker)
     worker.add_done_callback(_workers.discard)
+
+
+def pause(db: Session, project_id: int, run_id: int, user: User) -> TrainingRunResponse:
+    """请求训练在下一个 epoch 检查点写入后退出，当前 epoch 继续运行。"""
+    response = get_run(db, project_id, run_id, user)
+    if not response.pause_available:
+        raise HTTPException(409, "只有单设备上运行中的训练可以暂停")
+    request = _workspace(project_id, run_id) / "pause.request"
+    try:
+        with begin_transaction(db):
+            changed = (
+                db.query(TrainingRun)
+                .filter(
+                    TrainingRun.id == run_id,
+                    TrainingRun.status == TrainingStatus.RUNNING.value,
+                )
+                .update({TrainingRun.status: TrainingStatus.PAUSING.value})
+            )
+            if not changed:
+                raise HTTPException(409, "只有运行中的训练可以暂停")
+            request.touch()
+    except OSError:
+        raise HTTPException(500, "无法写入暂停请求，请检查运行目录后重试") from None
+    db.expire_all()
+    return _response(db.get(TrainingRun, run_id))
+
+
+async def resume(
+    db: Session, project_id: int, run_id: int, user: User
+) -> TrainingRunResponse:
+    """复用原记录、参数和数据快照，从暂停检查点恢复。"""
+    response = get_run(db, project_id, run_id, user)
+    if not response.resume_available:
+        raise HTTPException(409, "训练未暂停或检查点已丢失，无法继续")
+    if importlib.util.find_spec("ultralytics") is None:
+        raise HTTPException(503, "当前后端 Python 环境尚未安装训练依赖")
+    active = (
+        db.query(TrainingRun)
+        .filter(
+            TrainingRun.project_id == project_id,
+            TrainingRun.status.in_(ACTIVE_STATUSES),
+        )
+        .first()
+    )
+    if active is not None:
+        raise HTTPException(409, "该项目已有训练正在进行，请先暂停或等待完成")
+    workspace = _workspace(project_id, run_id)
+    try:
+        with begin_transaction(db):
+            changed = (
+                db.query(TrainingRun)
+                .filter(
+                    TrainingRun.id == run_id,
+                    TrainingRun.status == TrainingStatus.PAUSED.value,
+                )
+                .update(
+                    {
+                        TrainingRun.status: TrainingStatus.PENDING.value,
+                        TrainingRun.error_message: None,
+                        TrainingRun.finished_at: None,
+                    }
+                )
+            )
+            if not changed:
+                raise HTTPException(409, "训练状态已变化，请刷新记录")
+            (workspace / "pause.request").unlink(missing_ok=True)
+            (workspace / "result.json").unlink(missing_ok=True)
+    except OSError:
+        raise HTTPException(500, "无法准备恢复训练，请检查运行目录后重试") from None
+    db.expire_all()
+    response = _response(db.get(TrainingRun, run_id))
+    _schedule(run_id)
     return response
 
 
@@ -320,10 +408,13 @@ async def _run(run_id: int) -> None:
                     f"{project.dataset_prefix}/models/{run.initial_model}"
                 )
             parameters = json.loads(run.parameters)
+            checkpoint = workspace / "resume.pt"
+            resuming = checkpoint.is_file()
             prefix = project.dataset_prefix
             with begin_transaction(db):
                 run.status = TrainingStatus.RUNNING.value
-                run.started_at = datetime.now()
+                if run.started_at is None:
+                    run.started_at = datetime.now()
 
             # 2. 参数通过数组传入独立进程，不经过 shell，不接收任意用户命令。
             environment = os.environ.copy()
@@ -331,7 +422,7 @@ async def _run(run_id: int) -> None:
                 {
                     "YOLO_AUTOINSTALL": "false",
                     "PYTHONUNBUFFERED": "1",
-                    "YOLO_CONFIG_DIR": str(workspace / "ultralytics"),
+                    "YOLO_CONFIG_DIR": str(get_storage().path(".ultralytics")),
                 }
             )
             args = [
@@ -359,6 +450,21 @@ async def _run(run_id: int) -> None:
             ]
             if settings.DEVICE:
                 args.extend(["--device", settings.DEVICE])
+            args.extend(
+                [
+                    (
+                        "--augmentation"
+                        if parameters.get("augmentation", True)
+                        else "--no-augmentation"
+                    ),
+                    "--training-scope",
+                    parameters.get("training_scope", "full"),
+                    "--unfreeze-steps",
+                    str(parameters.get("unfreeze_steps", 100)),
+                ]
+            )
+            if resuming:
+                args.extend(["--resume-checkpoint", str(checkpoint)])
             if parameters.get("lr0") is not None:
                 args.extend(["--lr0", str(parameters["lr0"])])
             if parameters.get("extra_params"):
@@ -368,7 +474,7 @@ async def _run(run_id: int) -> None:
                         json.dumps(parameters["extra_params"], allow_nan=False),
                     ]
                 )
-            with (workspace / "console.log").open("wb") as output:
+            with (workspace / "console.log").open("ab" if resuming else "wb") as output:
                 process = await asyncio.create_subprocess_exec(
                     *args,
                     cwd=str(Path(__file__).resolve().parents[3]),
@@ -388,6 +494,9 @@ async def _run(run_id: int) -> None:
                     run.run_id = result["run_id"]
                     run.model_name = result["model_name"]
                     run.metrics = json.dumps(result["metrics"])
+                elif code == PAUSED_EXIT_CODE and checkpoint.is_file():
+                    run.status = TrainingStatus.PAUSED.value
+                    run.error_message = None
                 else:
                     run.status = TrainingStatus.FAILED.value
                     run.error_message = f"训练进程退出码为 {code}，请查看训练日志"
@@ -397,7 +506,11 @@ async def _run(run_id: int) -> None:
                         run.error_message = (
                             result.get("error_message") or run.error_message
                         )
-                run.finished_at = datetime.now()
+                run.finished_at = (
+                    None
+                    if run.status == TrainingStatus.PAUSED.value
+                    else datetime.now()
+                )
         except asyncio.CancelledError:
             if process is not None and process.returncode is None:
                 process.terminate()
@@ -425,6 +538,7 @@ def fail_interrupted_runs() -> None:
                 [
                     TrainingStatus.PENDING.value,
                     TrainingStatus.RUNNING.value,
+                    TrainingStatus.PAUSING.value,
                 ]
             )
         ).update(

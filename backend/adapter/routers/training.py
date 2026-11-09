@@ -80,6 +80,32 @@ async def get_log(
     return PlainTextResponse(service.get_log(db, project_id, run_id, user))
 
 
+@router.post(
+    "/{run_id}/pause", response_model=OkResp[TrainingRunResponse], status_code=202
+)
+async def pause(
+    project_id: int,
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return OkResp[TrainingRunResponse](data=service.pause(db, project_id, run_id, user))
+
+
+@router.post(
+    "/{run_id}/resume", response_model=OkResp[TrainingRunResponse], status_code=202
+)
+async def resume(
+    project_id: int,
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return OkResp[TrainingRunResponse](
+        data=await service.resume(db, project_id, run_id, user)
+    )
+
+
 @router.delete("/{run_id}/log", response_model=OkResp[CommonDataResp])
 async def clear_logs(
     project_id: int,

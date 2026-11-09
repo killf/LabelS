@@ -14,6 +14,7 @@ import signal
 import sys
 import tempfile
 from datetime import datetime
+from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 from zoneinfo import ZoneInfo
@@ -27,6 +28,7 @@ from backend.application.command.training import (
 
 LOGGER = logging.getLogger("backend.training")
 OFFICIAL_MODELS = {f"yolo26{size}.pt" for size in "nsmlx"}
+PAUSED_EXIT_CODE = 75
 
 # 中文说明覆盖当前框架参数；框架新增字段时保留配置文件中的原文说明。
 PARAMETER_DESCRIPTIONS = {
@@ -309,6 +311,7 @@ def run_training(
     work_dir: Path | None = None,
     result_file: Path | None = None,
     models_dir: Path | None = None,
+    resume_checkpoint: Path | None = None,
 ) -> int:
     """冻结本地输入并训练，将最佳权重复制到项目 models/，日志留在 runs/。"""
     dataset = dataset.resolve()
@@ -324,7 +327,9 @@ def run_training(
 
     # 1. 独立进程内同时记录控制台和训练日志，便于页面查看。
     with (
-        (run_dir / "train.log").open("w", encoding="utf-8", buffering=1) as logfile,
+        (run_dir / "train.log").open(
+            "a" if resume_checkpoint else "w", encoding="utf-8", buffering=1
+        ) as logfile,
         Tee(sys.stdout, logfile) as stdout,
         Tee(sys.stderr, logfile) as stderr,
         contextlib.redirect_stdout(stdout),
@@ -344,6 +349,10 @@ def run_training(
             # 2. 复用当前 Python 的 GPU 后端，测试集验证结果决定 best.pt。
             import torch
             from ultralytics import YOLO
+            from backend.training.control import (
+                ControlledDetectionTrainer,
+                TrainingPaused,
+            )
 
             if "device" not in train_args:
                 train_args["device"] = (
@@ -354,9 +363,36 @@ def run_training(
             LOGGER.info(
                 "Training device: %s, parameters: %s", train_args["device"], train_args
             )
+            multi_device = "," in str(train_args["device"]) or isinstance(
+                train_args["device"], (list, tuple)
+            )
+            augmentation = train_args.pop("augmentation", True)
+            training_scope = train_args.pop("training_scope", "full")
+            unfreeze_steps = train_args.pop("unfreeze_steps", 100)
+            if multi_device and (
+                not augmentation or training_scope != "full" or resume_checkpoint
+            ):
+                raise ValueError(
+                    "暂停恢复与检测头训练目前仅支持单设备，请设置 YOLO_MCP_DEVICE 为单个设备"
+                )
+            trainer = (
+                None
+                if multi_device
+                else partial(
+                    ControlledDetectionTrainer,
+                    augmentation=augmentation,
+                    training_scope=training_scope,
+                    unfreeze_steps=unfreeze_steps,
+                    control_dir=run_dir,
+                )
+            )
             initial_model = train_args.pop("model")
             try:
-                model = YOLO(_initial_weights(initial_model))
+                model = YOLO(
+                    str(resume_checkpoint)
+                    if resume_checkpoint
+                    else _initial_weights(initial_model)
+                )
             except Exception as error:
                 from backend.inference import model_load_error
 
@@ -366,9 +402,22 @@ def run_training(
                         json.dumps({"error_message": message}), encoding="utf-8"
                     )
                 raise RuntimeError(message) from None
-            model.train(
-                data=str(data), project=str(run_dir), name="training", **train_args
-            )
+            try:
+                model.train(
+                    trainer=trainer,
+                    resume=str(resume_checkpoint) if resume_checkpoint else False,
+                    data=str(data),
+                    project=str(run_dir),
+                    name="training",
+                    **train_args,
+                )
+            except TrainingPaused:
+                if result_file is not None:
+                    result_file.write_text(
+                        json.dumps({"status": "PAUSED"}), encoding="utf-8"
+                    )
+                LOGGER.info("Training paused after checkpoint save")
+                return PAUSED_EXIT_CODE
 
             # 3. 只发布最佳权重，其他训练文件保留在本次工作目录。
             best = Path(model.trainer.best)
@@ -435,6 +484,24 @@ def main() -> int:
         "--extra-params",
         default="{}",
         help='附加训练参数的 JSON 对象，例如 \'{"lr0": 0.001, "amp": false}\'',
+    )
+    parser.add_argument(
+        "--resume-checkpoint", type=Path, help="从本次运行的暂停检查点继续"
+    )
+    parser.add_argument(
+        "--augmentation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="启用训练图像增强",
+    )
+    parser.add_argument(
+        "--training-scope",
+        choices=["full", "head", "head_then_full"],
+        default="full",
+        help="训练全部参数、仅检测头或检测头预热后解冻",
+    )
+    parser.add_argument(
+        "--unfreeze-steps", type=int, default=100, help="解冻前检测头的优化器更新次数"
     )
 
     # 模型、训练规模和计算设备。
@@ -505,18 +572,30 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    # 字体与框架配置跨训练共用，必须在参数校验首次导入 Ultralytics 前设置。
+    from backend.common.storage import get_storage
+
+    os.environ.setdefault("YOLO_CONFIG_DIR", str(get_storage().path(".ultralytics")))
+
     # 2. 分离工作目录，未设置的可选参数不传给 YOLO。
     parameters = vars(args).copy()
     dataset = parameters.pop("data").resolve()
     models_dir = parameters.pop("models_dir")
     work_dir = parameters.pop("work_dir")
     result_file = parameters.pop("result_file")
+    resume_checkpoint = parameters.pop("resume_checkpoint")
     extra_params = parameters.pop("extra_params")
     parameters = {key: value for key, value in parameters.items() if value is not None}
 
     # JSON 参数只补充未指定的可选参数，冲突或非法输入在启动训练前返回。
     try:
         overrides = validate_training_options(json.loads(extra_params))
+        if parameters["unfreeze_steps"] < 1:
+            raise ValueError("解冻步数必须为正整数")
+        if parameters["training_scope"] != "full" and (
+            overrides.get("freeze") is not None or overrides.get("compile")
+        ):
+            raise ValueError("检测头训练不能同时设置 freeze 或 compile")
         conflicts = parameters.keys() & overrides.keys()
         if conflicts:
             raise ValueError("重复训练参数：" + ", ".join(sorted(conflicts)))
@@ -527,12 +606,10 @@ def main() -> int:
     # 3. 训练入口不安装依赖，不修改既有 PyTorch 运行时。
     previous = signal.signal(signal.SIGTERM, terminate)
     os.environ.setdefault("YOLO_AUTOINSTALL", "false")
-    os.environ.setdefault(
-        "YOLO_CONFIG_DIR",
-        str((work_dir or dataset / "runs").resolve() / ".ultralytics"),
-    )
     try:
-        return run_training(dataset, parameters, work_dir, result_file, models_dir)
+        return run_training(
+            dataset, parameters, work_dir, result_file, models_dir, resume_checkpoint
+        )
     except (Exception, KeyboardInterrupt) as exc:
         print(error_text(exc), file=sys.stderr)
         return 1

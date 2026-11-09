@@ -15,10 +15,10 @@ from fastapi.testclient import TestClient
 
 # 1. 数据库与文件存储均使用隔离临时目录，不读取开发者的配置或凭据。
 _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="yolo-mcp-test-"))
-os.environ["DATABASE_URL"] = (
+os.environ["YOLO_MCP_DATABASE_URL"] = (
     f"sqlite:///{(_TEST_DATA_DIR / 'application.sqlite').as_posix()}"
 )
-os.environ["DATA_DIR"] = str(_TEST_DATA_DIR)
+os.environ["YOLO_MCP_DATA_DIR"] = str(_TEST_DATA_DIR)
 from backend.common.config import settings
 
 settings.initialize_secret_key()

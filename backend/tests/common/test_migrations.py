@@ -121,8 +121,8 @@ def _run_isolated_app(tmp_path: Path, script: str) -> None:
         "PYTHONPATH": str(Path(__file__).resolve().parents[3]),
         "TEMP": str(tmp_path),
         "TMP": str(tmp_path),
-        "DATABASE_URL": f"sqlite:///{database.as_posix()}",
-        "DATA_DIR": str(database.parent),
+        "YOLO_MCP_DATABASE_URL": f"sqlite:///{database.as_posix()}",
+        "YOLO_MCP_DATA_DIR": str(database.parent),
     }
     result = subprocess.run(
         [sys.executable, "-c", script, str(database)],
@@ -191,7 +191,7 @@ from backend.main import app
 database = Path(sys.argv[1])
 assert not database.exists()
 with TestClient(app) as client:
-    assert client.get("/openapi.json").json()["info"]["version"] == "2.0.1"
+    assert client.get("/openapi.json").json()["info"]["version"] == "2.0.3"
     with sqlite3.connect(database) as connection:
         connection.execute(
             "INSERT INTO auto_label_job (id, status, model_name) "
@@ -249,7 +249,7 @@ import os
 import sys
 from pathlib import Path
 
-os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["YOLO_MCP_DATABASE_URL"] = "sqlite://"
 from backend.migrations.run_migrate import run_db_migrations
 
 run_db_migrations()

@@ -41,7 +41,7 @@ def build_attachment_response(
     url = storage.get_read_url(
         attachment.path, current_user.id, current_user.auth_version
     )
-    thumbnail_key = build_thumbnail_key(attachment.path)
+    thumbnail_key = storage.thumbnail_key(attachment.path)
     thumbnail_url = (
         storage.get_read_url(thumbnail_key, current_user.id, current_user.auth_version)
         if storage.exists(thumbnail_key)
@@ -224,7 +224,7 @@ async def delete(
     storage = get_storage()
     for attachment in attachments:
         storage.delete(attachment.path)
-        thumbnail_key = build_thumbnail_key(attachment.path)
+        thumbnail_key = storage.thumbnail_key(attachment.path)
         if storage.exists(thumbnail_key):
             storage.delete(thumbnail_key)
 

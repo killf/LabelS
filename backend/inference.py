@@ -32,7 +32,9 @@ def model_load_error(error: Exception, weights: str) -> str:
     ):
         return f"模型 {weights} 访问受限，请先取得模型访问权限并在服务运行环境完成 Hugging Face 登录"
     if any(isinstance(cause, PermissionError) for cause in causes):
-        return f"模型 {weights} 缓存写入失败，请检查 DATA_DIR/models 的目录权限"
+        return (
+            f"模型 {weights} 缓存写入失败，请检查 YOLO_MCP_DATA_DIR/models 的目录权限"
+        )
     network_errors = {
         "RequestException",
         "HTTPError",
